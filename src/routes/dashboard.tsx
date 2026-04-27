@@ -93,7 +93,7 @@ function Dashboard() {
                     border: "1px solid oklch(0.30 0.04 320 / 0.6)",
                     borderRadius: 12, fontSize: 12,
                   }}
-                  formatter={(val: number, name: string) => [name === "revenue" ? ZAR(val) : val, name]}
+                  formatter={(val) => [ZAR(Number(val)), "Revenue"]}
                 />
                 <Area type="monotone" dataKey="revenue" stroke="oklch(0.68 0.27 350)" strokeWidth={2} fill="url(#rev)" />
               </AreaChart>

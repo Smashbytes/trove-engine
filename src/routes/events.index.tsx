@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useTroveData, ZAR } from "@/lib/trove-store";
 import { motion } from "framer-motion";
 
-export const Route = createFileRoute("/events")({
+export const Route = createFileRoute("/events/")({
   head: () => ({ meta: [{ title: "Events · Trove Engine" }] }),
   component: EventsPage,
 });

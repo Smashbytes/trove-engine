@@ -9,38 +9,181 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ScannerRouteImport } from './routes/scanner'
+import { Route as PromoteRouteImport } from './routes/promote'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as PaymentsRouteImport } from './routes/payments'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as EventsIndexRouteImport } from './routes/events.index'
+import { Route as EventsNewRouteImport } from './routes/events.new'
+import { Route as EventsEventIdRouteImport } from './routes/events.$eventId'
 
+const ScannerRoute = ScannerRouteImport.update({
+  id: '/scanner',
+  path: '/scanner',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PromoteRoute = PromoteRouteImport.update({
+  id: '/promote',
+  path: '/promote',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaymentsRoute = PaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EventsIndexRoute = EventsIndexRouteImport.update({
+  id: '/events/',
+  path: '/events/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EventsNewRoute = EventsNewRouteImport.update({
+  id: '/events/new',
+  path: '/events/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EventsEventIdRoute = EventsEventIdRouteImport.update({
+  id: '/events/$eventId',
+  path: '/events/$eventId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
+  '/payments': typeof PaymentsRoute
+  '/profile': typeof ProfileRoute
+  '/promote': typeof PromoteRoute
+  '/scanner': typeof ScannerRoute
+  '/events/$eventId': typeof EventsEventIdRoute
+  '/events/new': typeof EventsNewRoute
+  '/events/': typeof EventsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
+  '/payments': typeof PaymentsRoute
+  '/profile': typeof ProfileRoute
+  '/promote': typeof PromoteRoute
+  '/scanner': typeof ScannerRoute
+  '/events/$eventId': typeof EventsEventIdRoute
+  '/events/new': typeof EventsNewRoute
+  '/events': typeof EventsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
+  '/payments': typeof PaymentsRoute
+  '/profile': typeof ProfileRoute
+  '/promote': typeof PromoteRoute
+  '/scanner': typeof ScannerRoute
+  '/events/$eventId': typeof EventsEventIdRoute
+  '/events/new': typeof EventsNewRoute
+  '/events/': typeof EventsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/dashboard'
+    | '/payments'
+    | '/profile'
+    | '/promote'
+    | '/scanner'
+    | '/events/$eventId'
+    | '/events/new'
+    | '/events/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/payments'
+    | '/profile'
+    | '/promote'
+    | '/scanner'
+    | '/events/$eventId'
+    | '/events/new'
+    | '/events'
+  id:
+    | '__root__'
+    | '/'
+    | '/dashboard'
+    | '/payments'
+    | '/profile'
+    | '/promote'
+    | '/scanner'
+    | '/events/$eventId'
+    | '/events/new'
+    | '/events/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DashboardRoute: typeof DashboardRoute
+  PaymentsRoute: typeof PaymentsRoute
+  ProfileRoute: typeof ProfileRoute
+  PromoteRoute: typeof PromoteRoute
+  ScannerRoute: typeof ScannerRoute
+  EventsEventIdRoute: typeof EventsEventIdRoute
+  EventsNewRoute: typeof EventsNewRoute
+  EventsIndexRoute: typeof EventsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/scanner': {
+      id: '/scanner'
+      path: '/scanner'
+      fullPath: '/scanner'
+      preLoaderRoute: typeof ScannerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/promote': {
+      id: '/promote'
+      path: '/promote'
+      fullPath: '/promote'
+      preLoaderRoute: typeof PromoteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payments': {
+      id: '/payments'
+      path: '/payments'
+      fullPath: '/payments'
+      preLoaderRoute: typeof PaymentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +191,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/events/': {
+      id: '/events/'
+      path: '/events'
+      fullPath: '/events/'
+      preLoaderRoute: typeof EventsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/events/new': {
+      id: '/events/new'
+      path: '/events/new'
+      fullPath: '/events/new'
+      preLoaderRoute: typeof EventsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/events/$eventId': {
+      id: '/events/$eventId'
+      path: '/events/$eventId'
+      fullPath: '/events/$eventId'
+      preLoaderRoute: typeof EventsEventIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DashboardRoute: DashboardRoute,
+  PaymentsRoute: PaymentsRoute,
+  ProfileRoute: ProfileRoute,
+  PromoteRoute: PromoteRoute,
+  ScannerRoute: ScannerRoute,
+  EventsEventIdRoute: EventsEventIdRoute,
+  EventsNewRoute: EventsNewRoute,
+  EventsIndexRoute: EventsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
