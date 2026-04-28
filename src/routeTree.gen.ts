@@ -13,11 +13,12 @@ import { Route as ScannerRouteImport } from './routes/scanner'
 import { Route as PromoteRouteImport } from './routes/promote'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PaymentsRouteImport } from './routes/payments'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as EventsIndexRouteImport } from './routes/events.index'
-import { Route as EventsNewRouteImport } from './routes/events.new'
-import { Route as EventsEventIdRouteImport } from './routes/events.$eventId'
+import { Route as ListingsIndexRouteImport } from './routes/listings.index'
+import { Route as ListingsNewRouteImport } from './routes/listings.new'
+import { Route as ListingsListingIdRouteImport } from './routes/listings.$listingId'
 
 const ScannerRoute = ScannerRouteImport.update({
   id: '/scanner',
@@ -39,6 +40,11 @@ const PaymentsRoute = PaymentsRouteImport.update({
   path: '/payments',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -49,102 +55,109 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const EventsIndexRoute = EventsIndexRouteImport.update({
-  id: '/events/',
-  path: '/events/',
+const ListingsIndexRoute = ListingsIndexRouteImport.update({
+  id: '/listings/',
+  path: '/listings/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const EventsNewRoute = EventsNewRouteImport.update({
-  id: '/events/new',
-  path: '/events/new',
+const ListingsNewRoute = ListingsNewRouteImport.update({
+  id: '/listings/new',
+  path: '/listings/new',
   getParentRoute: () => rootRouteImport,
 } as any)
-const EventsEventIdRoute = EventsEventIdRouteImport.update({
-  id: '/events/$eventId',
-  path: '/events/$eventId',
+const ListingsListingIdRoute = ListingsListingIdRouteImport.update({
+  id: '/listings/$listingId',
+  path: '/listings/$listingId',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/onboarding': typeof OnboardingRoute
   '/payments': typeof PaymentsRoute
   '/profile': typeof ProfileRoute
   '/promote': typeof PromoteRoute
   '/scanner': typeof ScannerRoute
-  '/events/$eventId': typeof EventsEventIdRoute
-  '/events/new': typeof EventsNewRoute
-  '/events/': typeof EventsIndexRoute
+  '/listings/$listingId': typeof ListingsListingIdRoute
+  '/listings/new': typeof ListingsNewRoute
+  '/listings/': typeof ListingsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/onboarding': typeof OnboardingRoute
   '/payments': typeof PaymentsRoute
   '/profile': typeof ProfileRoute
   '/promote': typeof PromoteRoute
   '/scanner': typeof ScannerRoute
-  '/events/$eventId': typeof EventsEventIdRoute
-  '/events/new': typeof EventsNewRoute
-  '/events': typeof EventsIndexRoute
+  '/listings/$listingId': typeof ListingsListingIdRoute
+  '/listings/new': typeof ListingsNewRoute
+  '/listings': typeof ListingsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/onboarding': typeof OnboardingRoute
   '/payments': typeof PaymentsRoute
   '/profile': typeof ProfileRoute
   '/promote': typeof PromoteRoute
   '/scanner': typeof ScannerRoute
-  '/events/$eventId': typeof EventsEventIdRoute
-  '/events/new': typeof EventsNewRoute
-  '/events/': typeof EventsIndexRoute
+  '/listings/$listingId': typeof ListingsListingIdRoute
+  '/listings/new': typeof ListingsNewRoute
+  '/listings/': typeof ListingsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/dashboard'
+    | '/onboarding'
     | '/payments'
     | '/profile'
     | '/promote'
     | '/scanner'
-    | '/events/$eventId'
-    | '/events/new'
-    | '/events/'
+    | '/listings/$listingId'
+    | '/listings/new'
+    | '/listings/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/dashboard'
+    | '/onboarding'
     | '/payments'
     | '/profile'
     | '/promote'
     | '/scanner'
-    | '/events/$eventId'
-    | '/events/new'
-    | '/events'
+    | '/listings/$listingId'
+    | '/listings/new'
+    | '/listings'
   id:
     | '__root__'
     | '/'
     | '/dashboard'
+    | '/onboarding'
     | '/payments'
     | '/profile'
     | '/promote'
     | '/scanner'
-    | '/events/$eventId'
-    | '/events/new'
-    | '/events/'
+    | '/listings/$listingId'
+    | '/listings/new'
+    | '/listings/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
+  OnboardingRoute: typeof OnboardingRoute
   PaymentsRoute: typeof PaymentsRoute
   ProfileRoute: typeof ProfileRoute
   PromoteRoute: typeof PromoteRoute
   ScannerRoute: typeof ScannerRoute
-  EventsEventIdRoute: typeof EventsEventIdRoute
-  EventsNewRoute: typeof EventsNewRoute
-  EventsIndexRoute: typeof EventsIndexRoute
+  ListingsListingIdRoute: typeof ListingsListingIdRoute
+  ListingsNewRoute: typeof ListingsNewRoute
+  ListingsIndexRoute: typeof ListingsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -177,6 +190,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PaymentsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
@@ -191,25 +211,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/events/': {
-      id: '/events/'
-      path: '/events'
-      fullPath: '/events/'
-      preLoaderRoute: typeof EventsIndexRouteImport
+    '/listings/': {
+      id: '/listings/'
+      path: '/listings'
+      fullPath: '/listings/'
+      preLoaderRoute: typeof ListingsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/events/new': {
-      id: '/events/new'
-      path: '/events/new'
-      fullPath: '/events/new'
-      preLoaderRoute: typeof EventsNewRouteImport
+    '/listings/new': {
+      id: '/listings/new'
+      path: '/listings/new'
+      fullPath: '/listings/new'
+      preLoaderRoute: typeof ListingsNewRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/events/$eventId': {
-      id: '/events/$eventId'
-      path: '/events/$eventId'
-      fullPath: '/events/$eventId'
-      preLoaderRoute: typeof EventsEventIdRouteImport
+    '/listings/$listingId': {
+      id: '/listings/$listingId'
+      path: '/listings/$listingId'
+      fullPath: '/listings/$listingId'
+      preLoaderRoute: typeof ListingsListingIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -218,13 +238,14 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
+  OnboardingRoute: OnboardingRoute,
   PaymentsRoute: PaymentsRoute,
   ProfileRoute: ProfileRoute,
   PromoteRoute: PromoteRoute,
   ScannerRoute: ScannerRoute,
-  EventsEventIdRoute: EventsEventIdRoute,
-  EventsNewRoute: EventsNewRoute,
-  EventsIndexRoute: EventsIndexRoute,
+  ListingsListingIdRoute: ListingsListingIdRoute,
+  ListingsNewRoute: ListingsNewRoute,
+  ListingsIndexRoute: ListingsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

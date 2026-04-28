@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useTroveData, saveProfile, STOCK_COVERS } from "@/lib/trove-store";
+import { useTroveData, saveProfile, STOCK_COVERS, SPOT_TYPES } from "@/lib/trove-store";
 import { toast } from "sonner";
 import { Building2, Globe, Instagram, Mail, MapPin, Phone } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({ meta: [{ title: "Spot Profile · Trove Engine" }] }),
@@ -16,9 +17,10 @@ export const Route = createFileRoute("/profile")({
 });
 
 function Profile() {
-  const { profile, events } = useTroveData();
+  const { profile, listings } = useTroveData();
   const [p, setP] = useState(profile);
   const [cover, setCover] = useState(profile.cover ?? STOCK_COVERS[0]);
+  const spotMeta = SPOT_TYPES.find((s) => s.id === profile.spotType);
 
   const save = () => {
     saveProfile({ ...p, cover });
@@ -32,6 +34,20 @@ function Profile() {
         title="Spot profile"
         subtitle="Customize how your venue shows up to Seekers — logo, bio, socials, follower base."
       />
+
+      {spotMeta && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-primary/30 bg-gradient-brand-soft p-5">
+          <div className="flex items-center gap-4">
+            <div className="text-3xl">{spotMeta.icon}</div>
+            <div>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">Spot type</p>
+              <p className="font-display text-xl font-bold">{spotMeta.label}</p>
+              <p className="text-xs text-muted-foreground">{spotMeta.examples}</p>
+            </div>
+          </div>
+          <Link to="/onboarding"><button className="text-sm text-primary hover:underline">Change type</button></Link>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Editor */}
@@ -100,8 +116,8 @@ function Profile() {
 
               <div className="mt-5 grid grid-cols-3 gap-2 border-t border-border/40 pt-4 text-center">
                 <div>
-                  <p className="font-display text-lg font-bold text-gradient">{events.length}</p>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Events</p>
+                  <p className="font-display text-lg font-bold text-gradient">{listings.length}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Listings</p>
                 </div>
                 <div>
                   <p className="font-display text-lg font-bold text-gradient">2.4k</p>
