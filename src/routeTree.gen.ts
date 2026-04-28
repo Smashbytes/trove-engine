@@ -19,6 +19,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ListingsIndexRouteImport } from './routes/listings.index'
 import { Route as EventsIndexRouteImport } from './routes/events.index'
 import { Route as ListingsNewRouteImport } from './routes/listings.new'
+import { Route as ListingsListingIdRouteImport } from './routes/listings.$listingId'
 import { Route as EventsNewRouteImport } from './routes/events.new'
 import { Route as EventsEventIdRouteImport } from './routes/events.$eventId'
 
@@ -72,6 +73,11 @@ const ListingsNewRoute = ListingsNewRouteImport.update({
   path: '/listings/new',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ListingsListingIdRoute = ListingsListingIdRouteImport.update({
+  id: '/listings/$listingId',
+  path: '/listings/$listingId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EventsNewRoute = EventsNewRouteImport.update({
   id: '/events/new',
   path: '/events/new',
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/scanner': typeof ScannerRoute
   '/events/$eventId': typeof EventsEventIdRoute
   '/events/new': typeof EventsNewRoute
+  '/listings/$listingId': typeof ListingsListingIdRoute
   '/listings/new': typeof ListingsNewRoute
   '/events/': typeof EventsIndexRoute
   '/listings/': typeof ListingsIndexRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByTo {
   '/scanner': typeof ScannerRoute
   '/events/$eventId': typeof EventsEventIdRoute
   '/events/new': typeof EventsNewRoute
+  '/listings/$listingId': typeof ListingsListingIdRoute
   '/listings/new': typeof ListingsNewRoute
   '/events': typeof EventsIndexRoute
   '/listings': typeof ListingsIndexRoute
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/scanner': typeof ScannerRoute
   '/events/$eventId': typeof EventsEventIdRoute
   '/events/new': typeof EventsNewRoute
+  '/listings/$listingId': typeof ListingsListingIdRoute
   '/listings/new': typeof ListingsNewRoute
   '/events/': typeof EventsIndexRoute
   '/listings/': typeof ListingsIndexRoute
@@ -138,6 +147,7 @@ export interface FileRouteTypes {
     | '/scanner'
     | '/events/$eventId'
     | '/events/new'
+    | '/listings/$listingId'
     | '/listings/new'
     | '/events/'
     | '/listings/'
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/scanner'
     | '/events/$eventId'
     | '/events/new'
+    | '/listings/$listingId'
     | '/listings/new'
     | '/events'
     | '/listings'
@@ -166,6 +177,7 @@ export interface FileRouteTypes {
     | '/scanner'
     | '/events/$eventId'
     | '/events/new'
+    | '/listings/$listingId'
     | '/listings/new'
     | '/events/'
     | '/listings/'
@@ -181,6 +193,7 @@ export interface RootRouteChildren {
   ScannerRoute: typeof ScannerRoute
   EventsEventIdRoute: typeof EventsEventIdRoute
   EventsNewRoute: typeof EventsNewRoute
+  ListingsListingIdRoute: typeof ListingsListingIdRoute
   ListingsNewRoute: typeof ListingsNewRoute
   EventsIndexRoute: typeof EventsIndexRoute
   ListingsIndexRoute: typeof ListingsIndexRoute
@@ -258,6 +271,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ListingsNewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/listings/$listingId': {
+      id: '/listings/$listingId'
+      path: '/listings/$listingId'
+      fullPath: '/listings/$listingId'
+      preLoaderRoute: typeof ListingsListingIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/events/new': {
       id: '/events/new'
       path: '/events/new'
@@ -285,6 +305,7 @@ const rootRouteChildren: RootRouteChildren = {
   ScannerRoute: ScannerRoute,
   EventsEventIdRoute: EventsEventIdRoute,
   EventsNewRoute: EventsNewRoute,
+  ListingsListingIdRoute: ListingsListingIdRoute,
   ListingsNewRoute: ListingsNewRoute,
   EventsIndexRoute: EventsIndexRoute,
   ListingsIndexRoute: ListingsIndexRoute,
