@@ -17,11 +17,8 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ListingsIndexRouteImport } from './routes/listings.index'
-import { Route as EventsIndexRouteImport } from './routes/events.index'
 import { Route as ListingsNewRouteImport } from './routes/listings.new'
 import { Route as ListingsListingIdRouteImport } from './routes/listings.$listingId'
-import { Route as EventsNewRouteImport } from './routes/events.new'
-import { Route as EventsEventIdRouteImport } from './routes/events.$eventId'
 
 const ScannerRoute = ScannerRouteImport.update({
   id: '/scanner',
@@ -63,11 +60,6 @@ const ListingsIndexRoute = ListingsIndexRouteImport.update({
   path: '/listings/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const EventsIndexRoute = EventsIndexRouteImport.update({
-  id: '/events/',
-  path: '/events/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ListingsNewRoute = ListingsNewRouteImport.update({
   id: '/listings/new',
   path: '/listings/new',
@@ -76,16 +68,6 @@ const ListingsNewRoute = ListingsNewRouteImport.update({
 const ListingsListingIdRoute = ListingsListingIdRouteImport.update({
   id: '/listings/$listingId',
   path: '/listings/$listingId',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EventsNewRoute = EventsNewRouteImport.update({
-  id: '/events/new',
-  path: '/events/new',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EventsEventIdRoute = EventsEventIdRouteImport.update({
-  id: '/events/$eventId',
-  path: '/events/$eventId',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -97,11 +79,8 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/promote': typeof PromoteRoute
   '/scanner': typeof ScannerRoute
-  '/events/$eventId': typeof EventsEventIdRoute
-  '/events/new': typeof EventsNewRoute
   '/listings/$listingId': typeof ListingsListingIdRoute
   '/listings/new': typeof ListingsNewRoute
-  '/events/': typeof EventsIndexRoute
   '/listings/': typeof ListingsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -112,11 +91,8 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/promote': typeof PromoteRoute
   '/scanner': typeof ScannerRoute
-  '/events/$eventId': typeof EventsEventIdRoute
-  '/events/new': typeof EventsNewRoute
   '/listings/$listingId': typeof ListingsListingIdRoute
   '/listings/new': typeof ListingsNewRoute
-  '/events': typeof EventsIndexRoute
   '/listings': typeof ListingsIndexRoute
 }
 export interface FileRoutesById {
@@ -128,11 +104,8 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/promote': typeof PromoteRoute
   '/scanner': typeof ScannerRoute
-  '/events/$eventId': typeof EventsEventIdRoute
-  '/events/new': typeof EventsNewRoute
   '/listings/$listingId': typeof ListingsListingIdRoute
   '/listings/new': typeof ListingsNewRoute
-  '/events/': typeof EventsIndexRoute
   '/listings/': typeof ListingsIndexRoute
 }
 export interface FileRouteTypes {
@@ -145,11 +118,8 @@ export interface FileRouteTypes {
     | '/profile'
     | '/promote'
     | '/scanner'
-    | '/events/$eventId'
-    | '/events/new'
     | '/listings/$listingId'
     | '/listings/new'
-    | '/events/'
     | '/listings/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -160,11 +130,8 @@ export interface FileRouteTypes {
     | '/profile'
     | '/promote'
     | '/scanner'
-    | '/events/$eventId'
-    | '/events/new'
     | '/listings/$listingId'
     | '/listings/new'
-    | '/events'
     | '/listings'
   id:
     | '__root__'
@@ -175,11 +142,8 @@ export interface FileRouteTypes {
     | '/profile'
     | '/promote'
     | '/scanner'
-    | '/events/$eventId'
-    | '/events/new'
     | '/listings/$listingId'
     | '/listings/new'
-    | '/events/'
     | '/listings/'
   fileRoutesById: FileRoutesById
 }
@@ -191,11 +155,8 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   PromoteRoute: typeof PromoteRoute
   ScannerRoute: typeof ScannerRoute
-  EventsEventIdRoute: typeof EventsEventIdRoute
-  EventsNewRoute: typeof EventsNewRoute
   ListingsListingIdRoute: typeof ListingsListingIdRoute
   ListingsNewRoute: typeof ListingsNewRoute
-  EventsIndexRoute: typeof EventsIndexRoute
   ListingsIndexRoute: typeof ListingsIndexRoute
 }
 
@@ -257,13 +218,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ListingsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/events/': {
-      id: '/events/'
-      path: '/events'
-      fullPath: '/events/'
-      preLoaderRoute: typeof EventsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/listings/new': {
       id: '/listings/new'
       path: '/listings/new'
@@ -278,20 +232,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ListingsListingIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/events/new': {
-      id: '/events/new'
-      path: '/events/new'
-      fullPath: '/events/new'
-      preLoaderRoute: typeof EventsNewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/events/$eventId': {
-      id: '/events/$eventId'
-      path: '/events/$eventId'
-      fullPath: '/events/$eventId'
-      preLoaderRoute: typeof EventsEventIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -303,11 +243,8 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   PromoteRoute: PromoteRoute,
   ScannerRoute: ScannerRoute,
-  EventsEventIdRoute: EventsEventIdRoute,
-  EventsNewRoute: EventsNewRoute,
   ListingsListingIdRoute: ListingsListingIdRoute,
   ListingsNewRoute: ListingsNewRoute,
-  EventsIndexRoute: EventsIndexRoute,
   ListingsIndexRoute: ListingsIndexRoute,
 }
 export const routeTree = rootRouteImport
