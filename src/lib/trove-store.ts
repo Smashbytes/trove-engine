@@ -527,9 +527,9 @@ export function createEvent(input: {
   return evt;
 }
 
-// Generic listing creator (used by new wizard)
-export function createListing(l: Omit<Listing, "id" | "createdAt"> & { id?: string }): Listing {
-  const full = { ...l, id: l.id ?? uid(l.type), createdAt: new Date().toISOString() } as Listing;
+// Generic listing creator (used by new wizard). Accepts any object — caller is responsible for shape.
+export function createListing(l: Record<string, unknown> & { type: ListingType }): Listing {
+  const full = { ...l, id: uid(l.type), createdAt: new Date().toISOString() } as unknown as Listing;
   saveListing(full);
   return full;
 }
