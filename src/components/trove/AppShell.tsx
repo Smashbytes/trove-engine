@@ -1,22 +1,21 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
-  LayoutDashboard, CalendarDays, PlusCircle, ScanLine, Wallet,
+  LayoutDashboard, PlusCircle, ScanLine, Wallet,
   Megaphone, Building2, LogOut, Menu, X, Sparkles,
+  CalendarDays, Hotel, Clock, Palette, Users,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { TroveLogo } from "./Logo";
-import { logout, useTroveData } from "@/lib/trove-store";
+import { logout, useTroveData, SPOT_TYPES } from "@/lib/trove-store";
 import { Button } from "@/components/ui/button";
 
-const NAV = [
-  { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/events", icon: CalendarDays, label: "Events" },
-  { to: "/events/new", icon: PlusCircle, label: "Create Event" },
-  { to: "/scanner", icon: ScanLine, label: "Scanner" },
-  { to: "/payments", icon: Wallet, label: "Payments" },
-  { to: "/promote", icon: Megaphone, label: "Promote" },
-  { to: "/profile", icon: Building2, label: "Spot Profile" },
-] as const;
+const LISTING_LABEL: Record<string, { label: string; icon: typeof CalendarDays }> = {
+  venue:    { label: "Events",   icon: CalendarDays },
+  resort:   { label: "Stays",    icon: Hotel },
+  activity: { label: "Slots",    icon: Clock },
+  gallery:  { label: "Exhibits", icon: Palette },
+  operator: { label: "Packages", icon: Users },
+};
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -24,14 +23,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
 
-  const handleLogout = () => {
-    logout();
-    navigate({ to: "/" });
-  };
+  // Gate: if no spotType yet, send them to onboarding
+  useEffect(() => {
+    if (!profile.spotType && path !== "/onboarding" && path !== "/") {
+      navigate({ to: "/onboarding" });
+    }
+  }, [profile.spotType, path, navigate]);
+
+  const meta = profile.spotType ? LISTING_LABEL[profile.spotType] : LISTING_LABEL.venue;
+  const spotMeta = SPOT_TYPES.find((s) => s.id === profile.spotType);
+
+  const NAV = [
+    { to: "/dashboard",    icon: LayoutDashboard, label: "Dashboard" },
+    { to: "/listings",     icon: meta.icon,       label: meta.label },
+    { to: "/listings/new", icon: PlusCircle,      label: `Create ${meta.label.replace(/s$/, "")}` },
+    { to: "/scanner",      icon: ScanLine,        label: "Check-in" },
+    { to: "/payments",     icon: Wallet,          label: "Payments" },
+    { to: "/promote",      icon: Megaphone,       label: "Promote" },
+    { to: "/profile",      icon: Building2,       label: "Spot Profile" },
+  ] as const;
+
+  const handleLogout = () => { logout(); navigate({ to: "/" }); };
 
   return (
     <div className="flex min-h-screen w-full bg-background">
-      {/* Sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 z-40 w-64 transform border-r border-sidebar-border bg-sidebar transition-transform lg:static lg:translate-x-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
@@ -41,17 +56,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Link to="/dashboard" onClick={() => setMobileOpen(false)}>
             <TroveLogo />
           </Link>
-          <button
-            className="lg:hidden text-muted-foreground hover:text-foreground"
-            onClick={() => setMobileOpen(false)}
-          >
+          <button className="lg:hidden text-muted-foreground hover:text-foreground" onClick={() => setMobileOpen(false)}>
             <X className="h-5 w-5" />
           </button>
         </div>
 
+        {spotMeta && (
+          <div className="mx-3 mt-3 rounded-xl border border-border/40 bg-background/40 px-3 py-2">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Spot type</p>
+            <p className="text-sm font-semibold">{spotMeta.icon} {spotMeta.label}</p>
+          </div>
+        )}
+
         <nav className="flex flex-col gap-1 p-3">
           {NAV.map((item) => {
-            const active = path === item.to || (item.to !== "/dashboard" && path.startsWith(item.to));
+            const active =
+              path === item.to ||
+              (item.to !== "/dashboard" && item.to !== "/listings/new" && path.startsWith(item.to)) ||
+              (item.to === "/listings/new" && path === "/listings/new");
             return (
               <Link
                 key={item.to}
@@ -82,31 +104,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleLogout}
-            className="w-full justify-start text-muted-foreground hover:text-foreground"
-          >
+          <Button variant="ghost" size="sm" onClick={handleLogout}
+            className="w-full justify-start text-muted-foreground hover:text-foreground">
             <LogOut className="mr-2 h-4 w-4" /> Sign out
           </Button>
         </div>
       </aside>
 
       {mobileOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm lg:hidden"
-          onClick={() => setMobileOpen(false)}
-        />
+        <div className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm lg:hidden" onClick={() => setMobileOpen(false)} />
       )}
 
-      {/* Main */}
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-border/60 bg-background/80 px-4 backdrop-blur-md lg:px-8">
-          <button
-            className="lg:hidden text-foreground"
-            onClick={() => setMobileOpen(true)}
-          >
+          <button className="lg:hidden text-foreground" onClick={() => setMobileOpen(true)}>
             <Menu className="h-5 w-5" />
           </button>
           <div className="hidden items-center gap-2 text-xs text-muted-foreground lg:flex">
@@ -114,9 +125,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             All systems live · Trove Engine v1.0
           </div>
           <div className="flex items-center gap-2">
-            <Link to="/events/new">
+            <Link to="/listings/new">
               <Button size="sm" className="bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95">
-                <Sparkles className="mr-1.5 h-4 w-4" /> New Event
+                <Sparkles className="mr-1.5 h-4 w-4" /> New {meta.label.replace(/s$/, "")}
               </Button>
             </Link>
           </div>
