@@ -2,7 +2,7 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, PlusCircle, ScanLine, Wallet,
   Megaphone, Building2, LogOut, Menu, X, Sparkles,
-  CalendarDays, Hotel, Clock, Palette, Users,
+  CalendarDays, Hotel, Clock, Palette, Users, Film,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { TroveLogo } from "./Logo";
@@ -34,13 +34,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const spotMeta = SPOT_TYPES.find((s) => s.id === profile.spotType);
 
   const NAV = [
-    { to: "/dashboard",    icon: LayoutDashboard, label: "Dashboard" },
-    { to: "/listings",     icon: meta.icon,       label: meta.label },
-    { to: "/listings/new", icon: PlusCircle,      label: `Create ${meta.label.replace(/s$/, "")}` },
-    { to: "/scanner",      icon: ScanLine,        label: "Check-in" },
-    { to: "/payments",     icon: Wallet,          label: "Payments" },
-    { to: "/promote",      icon: Megaphone,       label: "Promote" },
-    { to: "/profile",      icon: Building2,       label: "Spot Profile" },
+    { to: "/dashboard",    icon: LayoutDashboard, label: "Dashboard", badge: undefined as string | undefined },
+    { to: "/listings",     icon: meta.icon,       label: meta.label,  badge: undefined },
+    { to: "/listings/new", icon: PlusCircle,      label: `Create ${meta.label.replace(/s$/, "")}`, badge: undefined },
+    { to: "/studio",       icon: Film,            label: "Story Studio", badge: "NEW" },
+    { to: "/scanner",      icon: ScanLine,        label: "Check-in",  badge: undefined },
+    { to: "/payments",     icon: Wallet,          label: "Payments",  badge: undefined },
+    { to: "/promote",      icon: Megaphone,       label: "Promote",   badge: undefined },
+    { to: "/profile",      icon: Building2,       label: "Spot Profile", badge: undefined },
   ] as const;
 
   const handleLogout = () => { logout(); navigate({ to: "/" }); };
@@ -76,7 +77,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
-        <nav className="flex flex-col gap-1 p-3">
+        <nav className="flex flex-col gap-0.5 p-3">
           {NAV.map((item) => {
             const active =
               path === item.to ||
@@ -87,14 +88,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 key={item.to}
                 to={item.to}
                 onClick={() => setMobileOpen(false)}
-                className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+                className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                   active
-                    ? "bg-gradient-brand text-primary-foreground shadow-glow-sm"
-                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                    ? "bg-sidebar-accent text-foreground"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                 }`}
               >
-                <item.icon className="h-4 w-4" />
-                {item.label}
+                {active && <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r bg-primary" />}
+                <item.icon className={`h-4 w-4 ${active ? "text-primary" : ""}`} />
+                <span className="flex-1">{item.label}</span>
+                {item.badge && (
+                  <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
+                    {item.badge}
+                  </span>
+                )}
               </Link>
             );
           })}
