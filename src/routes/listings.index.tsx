@@ -123,11 +123,11 @@ function ListingsPage() {
               transition={{ duration: 0.4, delay: i * 0.04 }}>
               <Link
                 to="/listings/$listingId" params={{ listingId: l.id }}
-                className="group block overflow-hidden rounded-2xl card-flat shadow-card transition-all hover:border-primary/40 hover:shadow-glow-sm"
+                className="group block overflow-hidden rounded-2xl card-flat lift-on-hover"
               >
                 <div className="relative aspect-[16/10] overflow-hidden">
-                  <img src={l.cover} alt={l.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-card via-card/40 to-transparent" />
+                  <img src={l.cover} alt={l.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[var(--surface-2)] via-[var(--surface-2)]/30 to-transparent" />
                   <div className="absolute left-3 top-3 flex flex-wrap gap-2">
                     {typeChip(l.type)}
                     {statusBadge(l.status)}
@@ -143,8 +143,8 @@ function ListingsPage() {
                     <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{l.venue}</span>
                   </div>
                   {cap > 0 && (
-                    <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-muted">
-                      <div className="h-full bg-gradient-brand" style={{ width: `${pct}%` }} />
+                    <div className="mt-4 h-1 overflow-hidden rounded-full bg-[var(--hairline)]">
+                      <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
                     </div>
                   )}
                   <div className="mt-2 flex items-center justify-between text-xs">
@@ -152,7 +152,7 @@ function ListingsPage() {
                       {sold} {l.type === "stay" ? "bookings" : l.type === "package" ? "groups" : "sold"}
                       {cap > 0 ? ` · ${pct}%` : ""}
                     </span>
-                    <span className="font-semibold text-gradient">{ZAR(revenue)}</span>
+                    <span className="font-semibold">{ZAR(revenue)}</span>
                   </div>
                 </div>
               </Link>
