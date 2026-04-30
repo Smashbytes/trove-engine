@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Copy, Instagram, Twitter, MessageCircle, Mail, Megaphone, Link as LinkIcon, Sparkles } from "lucide-react";
+import { Copy, Instagram, Twitter, MessageCircle, Mail, Megaphone, Link as LinkIcon, Sparkles, Film, ArrowRight } from "lucide-react";
 import { AppShell } from "@/components/trove/AppShell";
 import { PageHeader } from "@/components/trove/PageHeader";
 import { Button } from "@/components/ui/button";
