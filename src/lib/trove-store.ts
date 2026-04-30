@@ -2,6 +2,12 @@
 // Multi-vertical: events, timeslots, stays, open passes, packages.
 
 import { useEffect, useState } from "react";
+import imgVenue from "@/assets/categories/venue.jpg";
+import imgLodge from "@/assets/categories/lodge.jpg";
+import imgActivity from "@/assets/categories/activity.jpg";
+import imgGallery from "@/assets/categories/gallery.jpg";
+import imgOperator from "@/assets/categories/operator.jpg";
+import imgSpa from "@/assets/categories/spa.jpg";
 
 // ---------- Spot Type ----------
 export type SpotType = "venue" | "resort" | "activity" | "gallery" | "operator";
@@ -11,16 +17,24 @@ export const SPOT_TYPES: Array<{
   label: string;
   blurb: string;
   examples: string;
-  icon: string; // emoji for prototype
+  image: string;
   defaultListingType: ListingType;
-  accent: string; // tailwind color class root
+  accent: string;
 }> = [
-  { id: "venue",    label: "Venue",    blurb: "Events & ticketed nights",  examples: "Clubs, comedy rooms, festivals, expos, mega churches", icon: "🎟️",  defaultListingType: "event",     accent: "primary" },
-  { id: "resort",   label: "Resort",   blurb: "Stays & getaways",          examples: "Lodges, hotels, glamping, weekend retreats",          icon: "🏝️",  defaultListingType: "stay",      accent: "teal" },
-  { id: "activity", label: "Activity", blurb: "Bookable time slots",        examples: "Spa, skydive, paintball sessions, go-carting, sip & paint", icon: "🪂", defaultListingType: "timeslot",  accent: "lime" },
-  { id: "gallery",  label: "Gallery",  blurb: "Open passes & exhibits",     examples: "Museums, art galleries, ongoing exhibits, food fests", icon: "🎨", defaultListingType: "open_pass", accent: "amber" },
-  { id: "operator", label: "Operator", blurb: "Group packages",             examples: "Paintball groups, hiking trips, wine tours, team builds", icon: "🎯", defaultListingType: "package",  accent: "violet" },
+  { id: "venue",    label: "Venue",    blurb: "Events & ticketed nights",   examples: "Clubs, comedy rooms, festivals, expos, mega churches",        image: imgVenue,    defaultListingType: "event",     accent: "primary" },
+  { id: "resort",   label: "Resort",   blurb: "Stays & getaways",            examples: "Lodges, hotels, glamping, weekend retreats",                  image: imgLodge,    defaultListingType: "stay",      accent: "teal" },
+  { id: "activity", label: "Activity", blurb: "Bookable time slots",         examples: "Spa, skydive, paintball sessions, go-carting, sip & paint",  image: imgActivity, defaultListingType: "timeslot",  accent: "lime" },
+  { id: "gallery",  label: "Gallery",  blurb: "Open passes & exhibits",      examples: "Museums, art galleries, ongoing exhibits, food fests",        image: imgGallery,  defaultListingType: "open_pass", accent: "amber" },
+  { id: "operator", label: "Operator", blurb: "Group packages & festivals",  examples: "Paintball groups, hiking trips, wine tours, food festivals",  image: imgOperator, defaultListingType: "package",   accent: "violet" },
 ];
+
+export const LISTING_TYPE_IMAGE: Record<ListingType, string> = {
+  event:     imgVenue,
+  timeslot:  imgSpa,
+  stay:      imgLodge,
+  open_pass: imgGallery,
+  package:   imgActivity,
+};
 
 // ---------- Listing types ----------
 export type ListingType = "event" | "timeslot" | "stay" | "open_pass" | "package";
