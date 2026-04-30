@@ -1,146 +1,86 @@
-## Goal
+# Trove Engine — Editorial Pass + Story Studio
 
-Turn Trove Engine from an event-only tool into a **multi-vertical Spot platform**, so a Spa, Lodge, Skydive operator, Gallery, or Paintball venue feels the app was built for them — not a nightclub tool they're forced into.
+## Part 1 — Visual overhaul (kill the "AI-generic" look)
 
-## The 5 Listing Types
+The Trove brand IS magenta/violet/pink on dark — that stays. What changes is **how often** we use it and **what fills the space instead**. Right now every card glows, every CTA is a gradient, every category is an emoji. We're going to swap that for **real photography, monochrome surfaces, gradient as accent only**.
 
-| Type | Real-world fit | Inventory model | "Ticket" = | Scanner mode |
-|---|---|---|---|---|
-| **Event** | Nightlife, festivals, comedy, concerts, expos, conventions, mega-church services | Fixed date + tiered capacity | Ticket tier | QR per attendee |
-| **Timeslot** | Spa treatments, skydive, bungee, paintball sessions, go-karting heats, sip & paint, workshops, hiking guides | Recurring slots (e.g. Tue–Sat, 9am/11am/2pm) × per-slot capacity | Slot booking | QR per booking, slot-aware |
-| **Stay** | Resorts, lodges, hotels, getaways, glamping | Room types × nights × check-in/check-out | Reservation | Front-desk check-in (no QR) |
-| **Open Pass** | Galleries, art museums, ongoing exhibitions, food festivals (multi-day) | Date range + daily cap (or unlimited) | Day pass | QR valid within date window |
-| **Package** | Paintball groups, team builds, hiking guided trips, wine tours, multi-activity bundles | Min/max group size + add-ons + scheduled date OR on-request | Group booking | QR + headcount confirm |
+### Rules going forward
+- **Gradient = accent only.** Used on the logo mark, the primary CTA, and one hero element per page. Not on every card border, every icon tile, every chip.
+- **No emojis in product UI.** Replace every emoji with a real photo (categories, spot types, dashboard tiles, listing-type pickers) or a thin Lucide icon where a photo doesn't fit.
+- **Real photography for every category.** Generate one wide editorial photo per spot type and per listing category (lodge, spa, gallery, festival, paintball, skydive, sip & paint, food fest, wine fest, etc.). Used on cards, the onboarding tiles, the listing-type picker, and the seekers preview.
+- **Surfaces go quieter.** Cards become near-black with a 1px hairline border. Hover lifts with a subtle shadow, not a glow. The radial pink wash on `body` gets dialed down ~60%.
+- **Editorial typography.** More whitespace, tighter tracking on display, all-caps eyebrows in a narrow weight, body in a slightly larger size. Magenta is reserved for live status, key numbers, and the active nav item.
 
-Each type maps directly to your verticals:
-- **Getaways / Resorts / Lodges / Hotels** → Stay
-- **Spa treatments / Skydive / Bungee / Go-carting / Hiking / Paintball sessions** → Timeslot
-- **Paintball group bookings / Guided trips / Wine tours** → Package
-- **Galleries / Museums / Ongoing exhibits** → Open Pass
-- **Food fests / Wine fests / Comic Con / rAge / Conventions / Mega churches / Festivals / Nightlife / Comedy** → Event
-- **Sip & Paint / Creative workshops / Fashion shows** → Event *or* Timeslot (depending on if it's a one-night vs recurring class)
+### Files touched
+- `src/styles.css` — soften `--gradient-radial`, add `--surface-1/2/3`, `--hairline`, new utility `.card-flat`, `.eyebrow`. Keep brand tokens.
+- `src/assets/categories/*.jpg` — generate ~12 editorial photos (lodge, spa, gallery, festival, club-night, paintball, skydive, food-fest, wine-fest, sip-paint, expo, hike).
+- `src/lib/trove-store.ts` — replace `icon: emoji` with `image: <path>` on `SPOT_TYPES` and listing-type meta. Keep an optional Lucide icon for compact contexts.
+- `src/routes/onboarding.tsx` — tiles become photo cards, not emoji chips.
+- `src/routes/listings.new.tsx` — type picker becomes 5 photo cards.
+- `src/routes/listings.index.tsx` — listing cards use real cover, drop the gradient border.
+- `src/routes/dashboard.tsx` — KPI tiles flat (one is allowed to be gradient).
+- `src/routes/promote.tsx` — drop gradient social-button rainbow, use mono buttons + Lucide.
+- `src/components/trove/AppShell.tsx` — sidebar active state thinned out.
 
-## New Onboarding Flow
+## Part 2 — Trove Story Studio (the new high-ticket feature)
 
-First-time visit (or via Profile → "Change Spot Type") sees a one-screen Spot Type picker:
+A native, in-platform reel creator. Replaces the static "IG story creative" panel on `/promote` with a full studio. Reels live on Trove for **48 hours**, **max 10 active per Spot**, push to the Seekers app as a "Story Update" on that Spot's profile, and can be downloaded as MP4 to share elsewhere.
 
-```text
-What kind of Spot are you?
-┌──────────────┬──────────────┬──────────────┐
-│ 🎟  Venue     │ 🏝  Resort    │ 🪂 Activity  │
-│ Events &     │ Stays &      │ Bookable     │
-│ ticketed     │ getaways     │ time slots   │
-│ nights       │              │              │
-├──────────────┼──────────────┼──────────────┤
-│ 🎨 Gallery   │ 🎯 Operator  │              │
-│ Open passes  │ Group        │              │
-│ & exhibits   │ packages     │              │
-└──────────────┴──────────────┴──────────────┘
-```
+### How it shows up for the user
+- New route `/studio` in the sidebar ("Story Studio" with a NEW chip).
+- Studio dashboard: grid of active reels with countdown ("expires in 31h"), counter `7 / 10 active reels`, "Create Reel" CTA.
+- Reel editor (full-screen modal):
+  1. **Pick a base** — start blank, from a listing's cover, or upload a clip/photo.
+  2. **Compose** — 9:16 canvas with layers: media → overlays (title, price, CTA pill, location chip) → music (mock track picker) → duration (3/5/10s) → transitions.
+  3. **Preview** — in-frame phone mock playing the reel in a loop.
+  4. **Publish** — "Save Draft", "Download MP4", "Publish to Seekers (48h)". Publishing deducts one of the 10 slots.
+- Seekers preview drawer shows where the reel will appear (rail of avatars at the top of the Seekers feed, mock).
 
-Selection is stored on profile (`spotType`) and **adapts the whole Engine**:
-- Sidebar relabels: "Events" → "Listings" / "Stays" / "Slots" / "Exhibits" / "Packages"
-- Dashboard KPIs swap (e.g. Resort sees "Occupancy %", Activity sees "Slots filled today")
-- Create CTA defaults to the matching listing type (still allows mixing types)
-- Seekers preview reflects the right card style
+### OpenReel integration plan
+The repo (`Augani/openreel-video`) is a Next.js app, not a published npm package. So we **port the editor** as a vendored module rather than installing a package:
+- Add `src/components/studio/openreel/` containing the timeline, canvas, layer system, and export (MediaRecorder + Canvas/WebCodecs) — adapted to our Tailwind v4 / shadcn stack and TanStack Start (client-only — `'use client'`-equivalent: dynamic import in the route, no SSR for canvas pieces).
+- Wrap it in our `<StoryStudio />` component with Trove-themed chrome (presets for listings: title, price, CTA pill auto-filled from selected listing).
+- Required deps (added via `bun add`): `@dnd-kit/core`, `@dnd-kit/sortable`, `framer-motion` (already in), `wavesurfer.js` (audio scrub), `file-saver`. No native binaries.
+- Export uses `MediaRecorder` on a hidden `<canvas>` stream → MP4/WebM blob → `file-saver` for download. All client-side, works in the Worker SSR model because it's gated to client only.
 
-## Pages To Build/Update
-
-**New (3):**
-1. `src/routes/onboarding.tsx` — Spot Type picker, gates first visit
-2. `src/routes/listings.new.tsx` — replaces `events.new.tsx`; type picker → branches into 5 wizards
-3. `src/routes/listings.$listingId.tsx` — replaces `events.$eventId.tsx`; renders type-specific tabs
-
-**Updated (6):**
-4. `src/lib/trove-store.ts` — extended schema (see Technical), new seed data per type
-5. `src/routes/dashboard.tsx` — adaptive KPIs based on `spotType` + listing mix
-6. `src/routes/events.index.tsx` → renamed conceptually to `listings.index.tsx` — filters by type chips (All / Events / Stays / Slots / Passes / Packages), per-type card layouts
-7. `src/routes/scanner.tsx` — type-aware: QR scan for Event/Pass/Package, slot-aware for Timeslot, name lookup for Stay
-8. `src/routes/profile.tsx` — adds Spot Type display + "change type" link
-9. `src/components/trove/AppShell.tsx` — sidebar labels react to `spotType`
-
-## Per-Type Wizard Details (each is 3 steps)
-
-**Event wizard** — keeps current flow (title, date, tiers).
-
-**Timeslot wizard** —
-- Step 1: Service name, category (Spa/Skydive/Paintball…), duration (30/60/90 min)
-- Step 2: Days of week + time slots + capacity per slot + price (single or by service variant)
-- Step 3: Booking window (how far in advance), preview
-
-**Stay wizard** —
-- Step 1: Property name, location, amenities checklist (Pool/Spa/Restaurant/Wifi)
-- Step 2: Room types (Standard/Deluxe/Suite) with count + price/night + max guests
-- Step 3: Min nights, check-in/out times, preview
-
-**Open Pass wizard** —
-- Step 1: Exhibit/Pass title, description
-- Step 2: Valid from–to date range, daily cap (or unlimited toggle), price (Adult/Child/Concession)
-- Step 3: Operating hours, preview
-
-**Package wizard** —
-- Step 1: Package name, description, what's included (chips: "200 paintballs", "Lunch", "Guide")
-- Step 2: Min/max group size, price-per-person OR flat group price, add-ons
-- Step 3: Scheduling mode (Fixed date / On-request / Recurring), preview
-
-## Per-Type Detail View (tabs)
-
-| Tab | Event | Timeslot | Stay | Open Pass | Package |
-|---|---|---|---|---|---|
-| Overview | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Tiers/Inventory | Tiers | Slots calendar | Rooms | Pass types | Add-ons |
-| Bookings | Attendees | Slot bookings | Reservations | Pass holders | Group bookings |
-| Check-in QR | ✓ | ✓ (slot-bound) | Front desk view | ✓ (date-window) | ✓ (+headcount) |
-| Promote | ✓ | ✓ | ✓ | ✓ | ✓ |
-
-## Adaptive Dashboard KPIs
-
-```text
-spotType=venue   → Revenue · Tickets sold · Sell-through · Check-ins
-spotType=resort  → Revenue · Room-nights · Occupancy % · Avg stay
-spotType=activity→ Revenue · Slots filled today · Upcoming bookings · No-show %
-spotType=gallery → Revenue · Passes issued · Visits today · Avg per day
-spotType=operator→ Revenue · Groups booked · Avg group size · Pending requests
-```
-
-Charts stay (revenue + bookings over time), labels swap.
-
-## Branding & UX
-
-Carries over the existing Trove dark + magenta/violet system. Each Spot Type gets a tiny accent icon + one-line color treatment (e.g. Resort = teal accent badge, Activity = lime, Gallery = amber) so the Engine feels alive without breaking the brand.
-
-## Technical Section
-
-**Schema changes in `trove-store.ts`:**
-
+### Data model (mock, localStorage)
 ```ts
-type SpotType = "venue" | "resort" | "activity" | "gallery" | "operator";
-type ListingType = "event" | "timeslot" | "stay" | "open_pass" | "package";
-
-type BaseListing = {
-  id; type: ListingType; title; description; category;
-  venue; city; cover; status; createdAt;
+type Reel = {
+  id: string;
+  spotId: string;
+  listingId?: string;
+  title: string;
+  thumbnail: string;       // dataURL of frame 0
+  videoBlobKey: string;    // IndexedDB key for the exported blob
+  durationMs: number;
+  layers: Layer[];         // re-editable
+  status: 'draft' | 'published';
+  publishedAt?: number;
+  expiresAt?: number;      // publishedAt + 48h
 };
-
-// Replaces TroveEvent — TroveEvent becomes Listing (discriminated union)
-type EventListing      = BaseListing & { type: "event"; date; doorsOpen?; tiers; attendees };
-type TimeslotListing   = BaseListing & { type: "timeslot"; durationMin; daysOfWeek; slots: {time;capacity;price}[]; bookings: SlotBooking[] };
-type StayListing       = BaseListing & { type: "stay"; amenities; rooms: {name;count;price;maxGuests}[]; reservations: Reservation[]; minNights };
-type OpenPassListing   = BaseListing & { type: "open_pass"; validFrom; validTo; dailyCap?; passTypes: {name;price}[]; passes: Pass[] };
-type PackageListing    = BaseListing & { type: "package"; minGroup; maxGroup; includes: string[]; addons; pricingMode: "per_person"|"flat"; price; groupBookings };
-
-type Listing = EventListing | TimeslotListing | StayListing | OpenPassListing | PackageListing;
 ```
+- Stored under `trove_reels_v1` (metadata in localStorage, blobs in IndexedDB so we don't blow the 5MB cap).
+- Selectors: `useActiveReels(spotId)` filters `published && expiresAt > now`, enforces the 10-reel ceiling at publish time.
 
-- `SpotProfile` gains `spotType: SpotType | null` (null → onboarding shows)
-- Storage key `trove_engine_events_v1` → bumped to `trove_engine_listings_v2` (auto-migrates old events on first load)
-- Seed data: 2 events, 2 timeslots (spa + skydive), 1 stay (lodge), 1 open pass (gallery), 1 package (paintball)
-- New helpers: `occupancyPct(stay)`, `slotsFilledToday(timeslot)`, `groupCount(package)`, `passesIssued(pass)`, `kpisForSpotType(profile, listings)`
+### Files added
+- `src/routes/studio.tsx` — studio dashboard (list + create CTA + countdowns).
+- `src/components/studio/StoryStudio.tsx` — full-screen editor.
+- `src/components/studio/openreel/` — vendored editor pieces (Canvas, Timeline, LayerPanel, Exporter, Presets).
+- `src/lib/reels-store.ts` — Reel CRUD, IndexedDB blob helpers, 48h expiry, 10-reel cap.
+- `src/lib/idb.ts` — tiny IndexedDB wrapper (no extra dep).
 
-**Routing:** flat dot-convention preserved (`listings.new.tsx`, `listings.$listingId.tsx`, `onboarding.tsx`). Keep old `/events` paths as redirects to `/listings` for the demo flow's muscle memory. Each route gets `head()` meta + error/notFound boundaries.
+### Files edited
+- `src/routes/promote.tsx` — IG Story panel becomes "Open in Story Studio →".
+- `src/components/trove/AppShell.tsx` — new "Studio" nav item with NEW badge.
+- `src/routeTree.gen.ts` — auto-generated, will regenerate.
 
-**Components:** new `<TypeBadge type=…/>`, `<ListingCard listing=…/>` (polymorphic by type), `<SlotCalendar/>` (Timeslot), `<RoomGrid/>` (Stay), reused `<TierEditor/>` (Event/Pass).
+## Part 3 — Out of scope (explicit)
+- No real video upload to a server (all client-side blobs).
+- No auth changes.
+- We're not pulling in OpenReel's whole Next.js project — we port the editor primitives only and re-style them.
 
-**No backend changes** — all localStorage, per the original approval. Ready to swap to Lovable Cloud later: schema is already discriminated-union shaped for a single `listings` table with a `type` column.
-
-Approve this and I'll build it in one pass.
+## Notes for the technical reviewer
+- Studio editor is dynamically imported in `studio.tsx` via `React.lazy` to keep canvas/MediaRecorder client-only and out of SSR.
+- The 10-reel cap is enforced at publish (not save), so users can keep unlimited drafts.
+- Countdown uses a single `requestAnimationFrame`-throttled hook, not per-card intervals.
+- All new photography is generated once into `src/assets/categories/` and imported as ES modules so Vite hashes them.
