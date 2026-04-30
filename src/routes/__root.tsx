@@ -33,11 +33,15 @@ export const Route = createRootRoute({
       { title: "Trove Engine — Run your Spot. Sell out your nights." },
       { name: "description", content: "The all-in-one Spot dashboard for Trove. Publish events, sell tickets, scan guests, get paid." },
       { name: "author", content: "Trove" },
-      { property: "og:title", content: "Trove Engine" },
-      { property: "og:description", content: "Run your Spot. Sell out your nights." },
+      { property: "og:title", content: "Trove Engine — Run your Spot. Sell out your nights." },
+      { property: "og:description", content: "The all-in-one Spot dashboard for Trove. Publish events, sell tickets, scan guests, get paid." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Trove Engine — Run your Spot. Sell out your nights." },
+      { name: "twitter:description", content: "The all-in-one Spot dashboard for Trove. Publish events, sell tickets, scan guests, get paid." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/2f9a9525-9bd6-4a03-9a4f-7eddf3389e4f/id-preview-ce8e6f40--68761f42-cc94-47c6-aa6d-c5f0dda2d550.lovable.app-1777511737314.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/2f9a9525-9bd6-4a03-9a4f-7eddf3389e4f/id-preview-ce8e6f40--68761f42-cc94-47c6-aa6d-c5f0dda2d550.lovable.app-1777511737314.png" },
     ],
     links: [
       {
