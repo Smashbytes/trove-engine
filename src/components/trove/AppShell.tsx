@@ -62,9 +62,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         {spotMeta && (
-          <div className="mx-3 mt-3 rounded-xl border border-border/40 bg-background/40 px-3 py-2">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Spot type</p>
-            <p className="text-sm font-semibold">{spotMeta.icon} {spotMeta.label}</p>
+          <div className="mx-3 mt-3 overflow-hidden rounded-xl ring-hairline">
+            <div className="relative h-16 w-full">
+              <img src={spotMeta.image} alt="" className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
+              <div className="absolute inset-0 bg-gradient-to-t from-sidebar via-sidebar/70 to-transparent" />
+              <div className="absolute inset-0 flex items-end px-3 pb-2">
+                <div>
+                  <p className="text-[9px] uppercase tracking-[0.18em] text-white/70">Spot type</p>
+                  <p className="text-sm font-semibold leading-tight text-white">{spotMeta.label}</p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
