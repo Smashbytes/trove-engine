@@ -39,13 +39,13 @@ function Payments() {
           </Button>
         </div>
 
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-card">
+        <div className="rounded-2xl card-flat p-6 shadow-card">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Gross revenue</p>
           <p className="mt-3 font-display text-3xl font-bold">{ZAR(t.revenue)}</p>
           <p className="mt-1 text-xs text-muted-foreground">{t.sold} tickets across {events.length} events</p>
         </div>
 
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-card">
+        <div className="rounded-2xl card-flat p-6 shadow-card">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pending payouts</p>
           <p className="mt-3 font-display text-3xl font-bold">{ZAR(pending)}</p>
           <p className="mt-1 text-xs text-muted-foreground">Settling within 48 hours</p>
@@ -53,7 +53,7 @@ function Payments() {
       </div>
 
       {/* PayFast strip */}
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card p-5 shadow-card">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl card-flat p-5 shadow-card">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-brand text-primary-foreground">
             <CreditCard className="h-5 w-5" />
@@ -67,7 +67,7 @@ function Payments() {
       </div>
 
       <h3 className="mt-8 mb-3 font-display text-xl font-semibold">Payout history</h3>
-      <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-card">
+      <div className="overflow-hidden rounded-2xl card-flat shadow-card">
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
             <tr>

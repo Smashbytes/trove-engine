@@ -56,7 +56,7 @@ function Profile() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Editor */}
-        <div className="lg:col-span-2 rounded-2xl border border-border/60 bg-card p-6 shadow-card space-y-5">
+        <div className="lg:col-span-2 rounded-2xl card-flat p-6 shadow-card space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Spot name</Label>
@@ -98,7 +98,7 @@ function Profile() {
 
         {/* Preview */}
         <aside className="lg:col-span-1">
-          <div className="sticky top-24 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-card">
+          <div className="sticky top-24 overflow-hidden rounded-2xl card-flat shadow-card">
             <div className="relative aspect-[16/10]">
               <img src={cover} alt="" className="h-full w-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-card via-card/40 to-transparent" />

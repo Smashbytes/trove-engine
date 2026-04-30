@@ -123,7 +123,7 @@ function ListingsPage() {
               transition={{ duration: 0.4, delay: i * 0.04 }}>
               <Link
                 to="/listings/$listingId" params={{ listingId: l.id }}
-                className="group block overflow-hidden rounded-2xl border border-border/60 bg-card shadow-card transition-all hover:border-primary/40 hover:shadow-glow-sm"
+                className="group block overflow-hidden rounded-2xl card-flat shadow-card transition-all hover:border-primary/40 hover:shadow-glow-sm"
               >
                 <div className="relative aspect-[16/10] overflow-hidden">
                   <img src={l.cover} alt={l.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
