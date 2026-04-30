@@ -75,7 +75,7 @@ function ListingsPage() {
         subtitle="Everything your Spot is selling — events, stays, slots, passes and packages."
         actions={
           <Link to="/listings/new">
-            <Button className="bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95">
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
               <Plus className="mr-1.5 h-4 w-4" /> Create listing
             </Button>
           </Link>
@@ -92,10 +92,10 @@ function ListingsPage() {
             <button
               key={f.id}
               onClick={() => setFilter(f.id)}
-              className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+              className={`rounded-full px-3 py-1 text-xs font-semibold transition ring-1 ${
                 active
-                  ? "border-primary bg-gradient-brand text-primary-foreground shadow-glow-sm"
-                  : "border-border/60 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                  ? "ring-primary bg-primary text-primary-foreground"
+                  : "ring-[var(--hairline)] text-muted-foreground hover:text-foreground hover:ring-[var(--hairline-strong)]"
               }`}
             >
               {f.label} <span className="opacity-60">· {count}</span>
@@ -105,9 +105,9 @@ function ListingsPage() {
       </div>
 
       {filtered.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-border/60 p-12 text-center">
+        <div className="rounded-2xl border border-dashed hairline p-12 text-center">
           <p className="text-muted-foreground">No listings of this type yet.</p>
-          <Link to="/listings/new"><Button className="mt-4 bg-gradient-brand text-primary-foreground">Create one</Button></Link>
+          <Link to="/listings/new"><Button className="mt-4 bg-primary text-primary-foreground">Create one</Button></Link>
         </div>
       )}
 

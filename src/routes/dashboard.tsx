@@ -169,7 +169,7 @@ function Dashboard() {
             {recent.length === 0 && <p className="text-sm text-muted-foreground">No bookings yet.</p>}
             {recent.map((r) => (
               <div key={r.id} className="flex items-start gap-3">
-                <div className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-gradient-brand text-[11px] font-semibold text-primary-foreground">
+                <div className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary">
                   {r.name.split(" ").map((s) => s[0]).slice(0, 2).join("")}
                 </div>
                 <div className="min-w-0 flex-1">
