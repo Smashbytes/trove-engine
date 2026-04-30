@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as StudioRouteImport } from './routes/studio'
 import { Route as ScannerRouteImport } from './routes/scanner'
 import { Route as PromoteRouteImport } from './routes/promote'
 import { Route as ProfileRouteImport } from './routes/profile'
@@ -20,6 +21,11 @@ import { Route as ListingsIndexRouteImport } from './routes/listings.index'
 import { Route as ListingsNewRouteImport } from './routes/listings.new'
 import { Route as ListingsListingIdRouteImport } from './routes/listings.$listingId'
 
+const StudioRoute = StudioRouteImport.update({
+  id: '/studio',
+  path: '/studio',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ScannerRoute = ScannerRouteImport.update({
   id: '/scanner',
   path: '/scanner',
@@ -79,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/promote': typeof PromoteRoute
   '/scanner': typeof ScannerRoute
+  '/studio': typeof StudioRoute
   '/listings/$listingId': typeof ListingsListingIdRoute
   '/listings/new': typeof ListingsNewRoute
   '/listings/': typeof ListingsIndexRoute
@@ -91,6 +98,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/promote': typeof PromoteRoute
   '/scanner': typeof ScannerRoute
+  '/studio': typeof StudioRoute
   '/listings/$listingId': typeof ListingsListingIdRoute
   '/listings/new': typeof ListingsNewRoute
   '/listings': typeof ListingsIndexRoute
@@ -104,6 +112,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/promote': typeof PromoteRoute
   '/scanner': typeof ScannerRoute
+  '/studio': typeof StudioRoute
   '/listings/$listingId': typeof ListingsListingIdRoute
   '/listings/new': typeof ListingsNewRoute
   '/listings/': typeof ListingsIndexRoute
@@ -118,6 +127,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/promote'
     | '/scanner'
+    | '/studio'
     | '/listings/$listingId'
     | '/listings/new'
     | '/listings/'
@@ -130,6 +140,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/promote'
     | '/scanner'
+    | '/studio'
     | '/listings/$listingId'
     | '/listings/new'
     | '/listings'
@@ -142,6 +153,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/promote'
     | '/scanner'
+    | '/studio'
     | '/listings/$listingId'
     | '/listings/new'
     | '/listings/'
@@ -155,6 +167,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   PromoteRoute: typeof PromoteRoute
   ScannerRoute: typeof ScannerRoute
+  StudioRoute: typeof StudioRoute
   ListingsListingIdRoute: typeof ListingsListingIdRoute
   ListingsNewRoute: typeof ListingsNewRoute
   ListingsIndexRoute: typeof ListingsIndexRoute
@@ -162,6 +175,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/studio': {
+      id: '/studio'
+      path: '/studio'
+      fullPath: '/studio'
+      preLoaderRoute: typeof StudioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/scanner': {
       id: '/scanner'
       path: '/scanner'
@@ -243,6 +263,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   PromoteRoute: PromoteRoute,
   ScannerRoute: ScannerRoute,
+  StudioRoute: StudioRoute,
   ListingsListingIdRoute: ListingsListingIdRoute,
   ListingsNewRoute: ListingsNewRoute,
   ListingsIndexRoute: ListingsIndexRoute,

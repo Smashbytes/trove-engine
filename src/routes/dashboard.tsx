@@ -46,25 +46,29 @@ function Dashboard() {
         subtitle="Real-time view of your sales, bookings and what's coming up."
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((k, i) => {
           const Icon = ICONS[i] ?? DollarSign;
+          const featured = i === 0;
           return (
             <motion.div key={k.label}
               initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: i * 0.05 }}
-              className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-5 shadow-card">
-              <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-brand opacity-10 blur-2xl" />
-              <div className="relative flex items-start justify-between">
+              className={`relative overflow-hidden rounded-2xl p-5 ${featured
+                ? "bg-gradient-brand text-primary-foreground shadow-glow-sm"
+                : "card-flat"}`}>
+              <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{k.label}</p>
-                  <p className="mt-2 font-display text-3xl font-bold">{k.value}</p>
+                  <p className={`eyebrow ${featured ? "text-primary-foreground/80" : ""}`}>{k.label}</p>
+                  <p className="mt-3 font-display text-3xl font-bold">{k.value}</p>
                 </div>
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-brand-soft text-primary">
+                <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${featured
+                  ? "bg-white/15 text-white"
+                  : "bg-primary/10 text-primary"}`}>
                   <Icon className="h-4 w-4" />
                 </div>
               </div>
-              <div className="mt-3 flex items-center gap-1 text-xs text-success">
+              <div className={`mt-3 flex items-center gap-1 text-xs ${featured ? "text-white/85" : "text-success"}`}>
                 <TrendingUp className="h-3 w-3" /> {k.delta}
               </div>
             </motion.div>
@@ -165,7 +169,7 @@ function Dashboard() {
             {recent.length === 0 && <p className="text-sm text-muted-foreground">No bookings yet.</p>}
             {recent.map((r) => (
               <div key={r.id} className="flex items-start gap-3">
-                <div className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-gradient-brand text-[11px] font-semibold text-primary-foreground">
+                <div className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary">
                   {r.name.split(" ").map((s) => s[0]).slice(0, 2).join("")}
                 </div>
                 <div className="min-w-0 flex-1">

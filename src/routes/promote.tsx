@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Copy, Instagram, Twitter, MessageCircle, Mail, Megaphone, Link as LinkIcon, Sparkles } from "lucide-react";
+import { Copy, Instagram, Twitter, MessageCircle, Mail, Megaphone, Link as LinkIcon, Sparkles, Film, ArrowRight } from "lucide-react";
 import { AppShell } from "@/components/trove/AppShell";
 import { PageHeader } from "@/components/trove/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -67,7 +67,7 @@ function Promote() {
         </div>
 
         {/* Share links */}
-        <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-card">
+        <div className="rounded-2xl card-flat p-5 shadow-card">
           <h3 className="mb-4 flex items-center gap-2 font-display text-lg font-semibold">
             <LinkIcon className="h-4 w-4 text-primary" /> Share link
           </h3>
@@ -93,7 +93,7 @@ function Promote() {
         </div>
 
         {/* Affiliate codes */}
-        <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-card">
+        <div className="rounded-2xl card-flat p-5 shadow-card">
           <h3 className="mb-4 flex items-center gap-2 font-display text-lg font-semibold">
             <Megaphone className="h-4 w-4 text-primary" /> Promoter affiliate
           </h3>
@@ -114,7 +114,7 @@ function Promote() {
         </div>
 
         {/* Story creative */}
-        <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-card">
+        <div className="rounded-2xl card-flat p-5 shadow-card">
           <h3 className="mb-4 flex items-center gap-2 font-display text-lg font-semibold">
             <Instagram className="h-4 w-4 text-primary" /> IG story creative
           </h3>

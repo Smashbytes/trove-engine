@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   CATEGORIES, STOCK_COVERS, ZAR, createListing, useTroveData,
-  SPOT_TYPES, type ListingType,
+  SPOT_TYPES, LISTING_TYPE_IMAGE, type ListingType,
 } from "@/lib/trove-store";
 import { toast } from "sonner";
 
@@ -24,12 +24,12 @@ export const Route = createFileRoute("/listings/new")({
   component: NewListing,
 });
 
-const TYPE_CARDS: Array<{ id: ListingType; icon: string; label: string; blurb: string }> = [
-  { id: "event",     icon: "🎟️",  label: "Event",     blurb: "Fixed-date drop with ticket tiers (clubs, festivals, comedy, expos, mega church)." },
-  { id: "timeslot",  icon: "🪂",  label: "Timeslot",  blurb: "Recurring bookable slots (spa, skydive, paintball, go-karting, sip & paint)." },
-  { id: "stay",      icon: "🏝️",  label: "Stay",      blurb: "Overnight rooms with check-in/check-out (lodge, hotel, glamping)." },
-  { id: "open_pass", icon: "🎨",  label: "Open Pass", blurb: "Multi-day pass valid in a date window (gallery, museum, food fest)." },
-  { id: "package",   icon: "🎯",  label: "Package",   blurb: "Group package with min/max size + add-ons (paintball groups, hiking trips)." },
+const TYPE_CARDS: Array<{ id: ListingType; label: string; blurb: string }> = [
+  { id: "event",     label: "Event",     blurb: "Fixed-date drop with ticket tiers — clubs, festivals, comedy, expos, mega church." },
+  { id: "timeslot",  label: "Timeslot",  blurb: "Recurring bookable slots — spa, skydive, paintball, go-karting, sip & paint." },
+  { id: "stay",      label: "Stay",      blurb: "Overnight rooms with check-in/check-out — lodge, hotel, glamping." },
+  { id: "open_pass", label: "Open Pass", blurb: "Multi-day pass valid in a date window — gallery, museum, food fest." },
+  { id: "package",   label: "Package",   blurb: "Group package with min/max size + add-ons — paintball, hiking trips." },
 ];
 
 function NewListing() {
@@ -71,14 +71,18 @@ function PickType({ onPick }: { onPick: (t: ListingType) => void }) {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {TYPE_CARDS.map((t) => (
           <motion.button key={t.id} onClick={() => onPick(t.id)} whileHover={{ y: -4 }}
-            className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card p-6 text-left transition-all hover:border-primary/40 hover:shadow-glow-sm">
-            <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-brand opacity-10 blur-3xl" />
-            <div className="relative">
-              <div className="mb-4 text-4xl">{t.icon}</div>
-              <h3 className="font-display text-xl font-bold">{t.label}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t.blurb}</p>
-              <div className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-primary">
-                Continue <ArrowRight className="h-3.5 w-3.5" />
+            className="group relative overflow-hidden rounded-2xl ring-hairline text-left lift-on-hover">
+            <div className="relative aspect-[5/3] overflow-hidden">
+              <img src={LISTING_TYPE_IMAGE[t.id]} alt={t.label}
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                loading="lazy" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/10" />
+              <div className="absolute inset-x-0 bottom-0 p-5">
+                <h3 className="font-display text-2xl font-bold text-white">{t.label}</h3>
+                <p className="mt-2 text-xs leading-relaxed text-white/75">{t.blurb}</p>
+                <div className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-white">
+                  Continue <ArrowRight className="h-3.5 w-3.5" />
+                </div>
               </div>
             </div>
           </motion.button>

@@ -66,7 +66,7 @@ function Scanner() {
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 rounded-2xl border border-border/60 bg-card p-6 shadow-card">
+        <div className="lg:col-span-2 rounded-2xl card-flat p-6 shadow-card">
           <label className="text-sm font-medium">Checking in for</label>
           <select value={listingId} onChange={(e) => setListingId(e.target.value)}
             className="mt-2 flex h-11 w-full rounded-md border border-input bg-input px-3 text-sm">
@@ -101,7 +101,7 @@ function Scanner() {
           )}
         </div>
 
-        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-card">
+        <div className="rounded-2xl card-flat p-6 shadow-card">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Recent activity</p>
           <div className="mt-4 space-y-2">
             <AnimatePresence>

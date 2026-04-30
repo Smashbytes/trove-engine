@@ -75,7 +75,7 @@ function ListingsPage() {
         subtitle="Everything your Spot is selling — events, stays, slots, passes and packages."
         actions={
           <Link to="/listings/new">
-            <Button className="bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95">
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
               <Plus className="mr-1.5 h-4 w-4" /> Create listing
             </Button>
           </Link>
@@ -92,10 +92,10 @@ function ListingsPage() {
             <button
               key={f.id}
               onClick={() => setFilter(f.id)}
-              className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+              className={`rounded-full px-3 py-1 text-xs font-semibold transition ring-1 ${
                 active
-                  ? "border-primary bg-gradient-brand text-primary-foreground shadow-glow-sm"
-                  : "border-border/60 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                  ? "ring-primary bg-primary text-primary-foreground"
+                  : "ring-[var(--hairline)] text-muted-foreground hover:text-foreground hover:ring-[var(--hairline-strong)]"
               }`}
             >
               {f.label} <span className="opacity-60">· {count}</span>
@@ -105,9 +105,9 @@ function ListingsPage() {
       </div>
 
       {filtered.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-border/60 p-12 text-center">
+        <div className="rounded-2xl border border-dashed hairline p-12 text-center">
           <p className="text-muted-foreground">No listings of this type yet.</p>
-          <Link to="/listings/new"><Button className="mt-4 bg-gradient-brand text-primary-foreground">Create one</Button></Link>
+          <Link to="/listings/new"><Button className="mt-4 bg-primary text-primary-foreground">Create one</Button></Link>
         </div>
       )}
 
@@ -123,11 +123,11 @@ function ListingsPage() {
               transition={{ duration: 0.4, delay: i * 0.04 }}>
               <Link
                 to="/listings/$listingId" params={{ listingId: l.id }}
-                className="group block overflow-hidden rounded-2xl border border-border/60 bg-card shadow-card transition-all hover:border-primary/40 hover:shadow-glow-sm"
+                className="group block overflow-hidden rounded-2xl card-flat lift-on-hover"
               >
                 <div className="relative aspect-[16/10] overflow-hidden">
-                  <img src={l.cover} alt={l.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-card via-card/40 to-transparent" />
+                  <img src={l.cover} alt={l.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[var(--surface-2)] via-[var(--surface-2)]/30 to-transparent" />
                   <div className="absolute left-3 top-3 flex flex-wrap gap-2">
                     {typeChip(l.type)}
                     {statusBadge(l.status)}
@@ -143,8 +143,8 @@ function ListingsPage() {
                     <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{l.venue}</span>
                   </div>
                   {cap > 0 && (
-                    <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-muted">
-                      <div className="h-full bg-gradient-brand" style={{ width: `${pct}%` }} />
+                    <div className="mt-4 h-1 overflow-hidden rounded-full bg-[var(--hairline)]">
+                      <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
                     </div>
                   )}
                   <div className="mt-2 flex items-center justify-between text-xs">
@@ -152,7 +152,7 @@ function ListingsPage() {
                       {sold} {l.type === "stay" ? "bookings" : l.type === "package" ? "groups" : "sold"}
                       {cap > 0 ? ` · ${pct}%` : ""}
                     </span>
-                    <span className="font-semibold text-gradient">{ZAR(revenue)}</span>
+                    <span className="font-semibold">{ZAR(revenue)}</span>
                   </div>
                 </div>
               </Link>

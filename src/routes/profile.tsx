@@ -36,22 +36,27 @@ function Profile() {
       />
 
       {spotMeta && (
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-primary/30 bg-gradient-brand-soft p-5">
-          <div className="flex items-center gap-4">
-            <div className="text-3xl">{spotMeta.icon}</div>
-            <div>
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">Spot type</p>
-              <p className="font-display text-xl font-bold">{spotMeta.label}</p>
-              <p className="text-xs text-muted-foreground">{spotMeta.examples}</p>
+        <div className="mb-6 overflow-hidden rounded-2xl border hairline">
+          <div className="grid gap-0 sm:grid-cols-[1fr_2fr]">
+            <div className="relative aspect-[3/2] sm:aspect-auto">
+              <img src={spotMeta.image} alt={spotMeta.label} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
+              <div className="absolute inset-0 bg-gradient-to-r from-background via-background/30 to-transparent sm:bg-gradient-to-r sm:from-transparent sm:to-background/80" />
+            </div>
+            <div className="flex items-center justify-between gap-4 surface-2 p-6">
+              <div>
+                <p className="eyebrow">Spot type</p>
+                <p className="mt-2 font-display text-2xl font-bold">{spotMeta.label}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{spotMeta.examples}</p>
+              </div>
+              <Link to="/onboarding"><button className="text-sm text-primary hover:underline whitespace-nowrap">Change type</button></Link>
             </div>
           </div>
-          <Link to="/onboarding"><button className="text-sm text-primary hover:underline">Change type</button></Link>
         </div>
       )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Editor */}
-        <div className="lg:col-span-2 rounded-2xl border border-border/60 bg-card p-6 shadow-card space-y-5">
+        <div className="lg:col-span-2 rounded-2xl card-flat p-6 shadow-card space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Spot name</Label>
@@ -93,7 +98,7 @@ function Profile() {
 
         {/* Preview */}
         <aside className="lg:col-span-1">
-          <div className="sticky top-24 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-card">
+          <div className="sticky top-24 overflow-hidden rounded-2xl card-flat shadow-card">
             <div className="relative aspect-[16/10]">
               <img src={cover} alt="" className="h-full w-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-card via-card/40 to-transparent" />

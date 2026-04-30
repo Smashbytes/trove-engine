@@ -167,7 +167,7 @@ function ListingDetail() {
 function OverviewTab({ l }: { l: Listing }) {
   return (
     <div className="grid gap-4 lg:grid-cols-3">
-      <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-card lg:col-span-2">
+      <div className="rounded-2xl card-flat p-5 shadow-card lg:col-span-2">
         <h3 className="mb-3 font-display text-lg font-semibold">About</h3>
         <p className="text-sm leading-relaxed text-muted-foreground">{l.description || "No description yet."}</p>
         {l.type === "stay" && (
@@ -190,7 +190,7 @@ function OverviewTab({ l }: { l: Listing }) {
           <p className="mt-5 text-sm"><span className="text-muted-foreground">Hours:</span> {l.hours}</p>
         )}
       </div>
-      <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-card">
+      <div className="rounded-2xl card-flat p-5 shadow-card">
         <h3 className="mb-3 font-display text-lg font-semibold">Quick stats</h3>
         <div className="space-y-3 text-sm">
           <div className="flex justify-between"><span className="text-muted-foreground">Type</span><span className="font-semibold">{listingTypeLabel(l.type)}</span></div>
@@ -379,7 +379,7 @@ function QRTab({ l }: { l: Listing }) {
       <p className="mb-4 text-sm text-muted-foreground">Every booking gets a unique, tamper-proof QR. These would be emailed automatically.</p>
       <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {codes.slice(0, 12).map((c) => (
-          <div key={c.id} className="rounded-2xl border border-border/60 bg-card p-4 shadow-card text-center">
+          <div key={c.id} className="rounded-2xl card-flat p-4 shadow-card text-center">
             <div className="rounded-xl bg-white p-3"><QRCodeSVG value={c.qr} size={140} className="mx-auto" /></div>
             <p className="mt-3 truncate text-sm font-medium">{c.name}</p>
             <p className="text-xs text-muted-foreground">{c.sub}</p>
@@ -397,7 +397,7 @@ function QRTab({ l }: { l: Listing }) {
 
 function PromoteTab({ l, shareUrl }: { l: Listing; shareUrl: string }) {
   return (
-    <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-card">
+    <div className="rounded-2xl card-flat p-6 shadow-card">
       <h3 className="font-display text-lg font-semibold">Share {l.title}</h3>
       <p className="mt-1 text-sm text-muted-foreground">Drop this link anywhere. Goes straight into the Trove Seekers app.</p>
       <div className="mt-4 flex gap-2">
@@ -414,7 +414,7 @@ function PromoteTab({ l, shareUrl }: { l: Listing; shareUrl: string }) {
 // ---------- helpers ----------
 function Table({ head, children }: { head: string[]; children: React.ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-card">
+    <div className="overflow-hidden rounded-2xl card-flat shadow-card">
       <table className="w-full text-sm">
         <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
           <tr>{head.map((h, i) => <th key={h} className={`px-5 py-3 ${i === 0 ? "text-left" : "text-right"}`}>{h}</th>)}</tr>
