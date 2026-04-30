@@ -108,9 +108,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="absolute inset-x-3 bottom-3 space-y-2">
-          <div className="glass rounded-xl p-3">
+          <div className="rounded-xl ring-hairline surface-2 p-3">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-brand font-display text-sm font-bold text-primary-foreground">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 font-display text-sm font-bold text-primary">
                 {profile.name.slice(0, 2).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
@@ -131,7 +131,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-border/60 bg-background/80 px-4 backdrop-blur-md lg:px-8">
+        <header className="sticky top-0 z-20 flex h-16 items-center justify-between hairline-b bg-background/85 px-4 backdrop-blur-md lg:px-8">
           <button className="lg:hidden text-foreground" onClick={() => setMobileOpen(true)}>
             <Menu className="h-5 w-5" />
           </button>
@@ -141,7 +141,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex items-center gap-2">
             <Link to="/listings/new">
-              <Button size="sm" className="bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95">
+              <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
                 <Sparkles className="mr-1.5 h-4 w-4" /> New {meta.label.replace(/s$/, "")}
               </Button>
             </Link>
