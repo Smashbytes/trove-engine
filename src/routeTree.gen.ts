@@ -9,21 +9,31 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as StudioRouteImport } from './routes/studio'
+import { Route as TeamRouteImport } from './routes/team'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ScannerRouteImport } from './routes/scanner'
-import { Route as PromoteRouteImport } from './routes/promote'
+import { Route as ReviewsRouteImport } from './routes/reviews'
 import { Route as ProfileRouteImport } from './routes/profile'
-import { Route as PaymentsRouteImport } from './routes/payments'
+import { Route as PayoutsRouteImport } from './routes/payouts'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ListingsIndexRouteImport } from './routes/listings.index'
 import { Route as ListingsNewRouteImport } from './routes/listings.new'
 import { Route as ListingsListingIdRouteImport } from './routes/listings.$listingId'
+import { Route as ListingsListingIdSlotsRouteImport } from './routes/listings.$listingId.slots'
+import { Route as ListingsListingIdBookingsRouteImport } from './routes/listings.$listingId.bookings'
 
-const StudioRoute = StudioRouteImport.update({
-  id: '/studio',
-  path: '/studio',
+const TeamRoute = TeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ScannerRoute = ScannerRouteImport.update({
@@ -31,9 +41,9 @@ const ScannerRoute = ScannerRouteImport.update({
   path: '/scanner',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PromoteRoute = PromoteRouteImport.update({
-  id: '/promote',
-  path: '/promote',
+const ReviewsRoute = ReviewsRouteImport.update({
+  id: '/reviews',
+  path: '/reviews',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfileRoute = ProfileRouteImport.update({
@@ -41,9 +51,9 @@ const ProfileRoute = ProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PaymentsRoute = PaymentsRouteImport.update({
-  id: '/payments',
-  path: '/payments',
+const PayoutsRoute = PayoutsRouteImport.update({
+  id: '/payouts',
+  path: '/payouts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OnboardingRoute = OnboardingRouteImport.update({
@@ -51,9 +61,19 @@ const OnboardingRoute = OnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnalyticsRoute = AnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -76,110 +96,161 @@ const ListingsListingIdRoute = ListingsListingIdRouteImport.update({
   path: '/listings/$listingId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ListingsListingIdSlotsRoute = ListingsListingIdSlotsRouteImport.update({
+  id: '/slots',
+  path: '/slots',
+  getParentRoute: () => ListingsListingIdRoute,
+} as any)
+const ListingsListingIdBookingsRoute =
+  ListingsListingIdBookingsRouteImport.update({
+    id: '/bookings',
+    path: '/bookings',
+    getParentRoute: () => ListingsListingIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/analytics': typeof AnalyticsRoute
   '/dashboard': typeof DashboardRoute
+  '/notifications': typeof NotificationsRoute
   '/onboarding': typeof OnboardingRoute
-  '/payments': typeof PaymentsRoute
+  '/payouts': typeof PayoutsRoute
   '/profile': typeof ProfileRoute
-  '/promote': typeof PromoteRoute
+  '/reviews': typeof ReviewsRoute
   '/scanner': typeof ScannerRoute
-  '/studio': typeof StudioRoute
-  '/listings/$listingId': typeof ListingsListingIdRoute
+  '/settings': typeof SettingsRoute
+  '/team': typeof TeamRoute
+  '/listings/$listingId': typeof ListingsListingIdRouteWithChildren
   '/listings/new': typeof ListingsNewRoute
   '/listings/': typeof ListingsIndexRoute
+  '/listings/$listingId/bookings': typeof ListingsListingIdBookingsRoute
+  '/listings/$listingId/slots': typeof ListingsListingIdSlotsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/analytics': typeof AnalyticsRoute
   '/dashboard': typeof DashboardRoute
+  '/notifications': typeof NotificationsRoute
   '/onboarding': typeof OnboardingRoute
-  '/payments': typeof PaymentsRoute
+  '/payouts': typeof PayoutsRoute
   '/profile': typeof ProfileRoute
-  '/promote': typeof PromoteRoute
+  '/reviews': typeof ReviewsRoute
   '/scanner': typeof ScannerRoute
-  '/studio': typeof StudioRoute
-  '/listings/$listingId': typeof ListingsListingIdRoute
+  '/settings': typeof SettingsRoute
+  '/team': typeof TeamRoute
+  '/listings/$listingId': typeof ListingsListingIdRouteWithChildren
   '/listings/new': typeof ListingsNewRoute
   '/listings': typeof ListingsIndexRoute
+  '/listings/$listingId/bookings': typeof ListingsListingIdBookingsRoute
+  '/listings/$listingId/slots': typeof ListingsListingIdSlotsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/analytics': typeof AnalyticsRoute
   '/dashboard': typeof DashboardRoute
+  '/notifications': typeof NotificationsRoute
   '/onboarding': typeof OnboardingRoute
-  '/payments': typeof PaymentsRoute
+  '/payouts': typeof PayoutsRoute
   '/profile': typeof ProfileRoute
-  '/promote': typeof PromoteRoute
+  '/reviews': typeof ReviewsRoute
   '/scanner': typeof ScannerRoute
-  '/studio': typeof StudioRoute
-  '/listings/$listingId': typeof ListingsListingIdRoute
+  '/settings': typeof SettingsRoute
+  '/team': typeof TeamRoute
+  '/listings/$listingId': typeof ListingsListingIdRouteWithChildren
   '/listings/new': typeof ListingsNewRoute
   '/listings/': typeof ListingsIndexRoute
+  '/listings/$listingId/bookings': typeof ListingsListingIdBookingsRoute
+  '/listings/$listingId/slots': typeof ListingsListingIdSlotsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/analytics'
     | '/dashboard'
+    | '/notifications'
     | '/onboarding'
-    | '/payments'
+    | '/payouts'
     | '/profile'
-    | '/promote'
+    | '/reviews'
     | '/scanner'
-    | '/studio'
+    | '/settings'
+    | '/team'
     | '/listings/$listingId'
     | '/listings/new'
     | '/listings/'
+    | '/listings/$listingId/bookings'
+    | '/listings/$listingId/slots'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/analytics'
     | '/dashboard'
+    | '/notifications'
     | '/onboarding'
-    | '/payments'
+    | '/payouts'
     | '/profile'
-    | '/promote'
+    | '/reviews'
     | '/scanner'
-    | '/studio'
+    | '/settings'
+    | '/team'
     | '/listings/$listingId'
     | '/listings/new'
     | '/listings'
+    | '/listings/$listingId/bookings'
+    | '/listings/$listingId/slots'
   id:
     | '__root__'
     | '/'
+    | '/analytics'
     | '/dashboard'
+    | '/notifications'
     | '/onboarding'
-    | '/payments'
+    | '/payouts'
     | '/profile'
-    | '/promote'
+    | '/reviews'
     | '/scanner'
-    | '/studio'
+    | '/settings'
+    | '/team'
     | '/listings/$listingId'
     | '/listings/new'
     | '/listings/'
+    | '/listings/$listingId/bookings'
+    | '/listings/$listingId/slots'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AnalyticsRoute: typeof AnalyticsRoute
   DashboardRoute: typeof DashboardRoute
+  NotificationsRoute: typeof NotificationsRoute
   OnboardingRoute: typeof OnboardingRoute
-  PaymentsRoute: typeof PaymentsRoute
+  PayoutsRoute: typeof PayoutsRoute
   ProfileRoute: typeof ProfileRoute
-  PromoteRoute: typeof PromoteRoute
+  ReviewsRoute: typeof ReviewsRoute
   ScannerRoute: typeof ScannerRoute
-  StudioRoute: typeof StudioRoute
-  ListingsListingIdRoute: typeof ListingsListingIdRoute
+  SettingsRoute: typeof SettingsRoute
+  TeamRoute: typeof TeamRoute
+  ListingsListingIdRoute: typeof ListingsListingIdRouteWithChildren
   ListingsNewRoute: typeof ListingsNewRoute
   ListingsIndexRoute: typeof ListingsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/studio': {
-      id: '/studio'
-      path: '/studio'
-      fullPath: '/studio'
-      preLoaderRoute: typeof StudioRouteImport
+    '/team': {
+      id: '/team'
+      path: '/team'
+      fullPath: '/team'
+      preLoaderRoute: typeof TeamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/scanner': {
@@ -189,11 +260,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ScannerRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/promote': {
-      id: '/promote'
-      path: '/promote'
-      fullPath: '/promote'
-      preLoaderRoute: typeof PromoteRouteImport
+    '/reviews': {
+      id: '/reviews'
+      path: '/reviews'
+      fullPath: '/reviews'
+      preLoaderRoute: typeof ReviewsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profile': {
@@ -203,11 +274,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/payments': {
-      id: '/payments'
-      path: '/payments'
-      fullPath: '/payments'
-      preLoaderRoute: typeof PaymentsRouteImport
+    '/payouts': {
+      id: '/payouts'
+      path: '/payouts'
+      fullPath: '/payouts'
+      preLoaderRoute: typeof PayoutsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/onboarding': {
@@ -217,11 +288,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analytics': {
+      id: '/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof AnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -252,19 +337,49 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ListingsListingIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/listings/$listingId/slots': {
+      id: '/listings/$listingId/slots'
+      path: '/slots'
+      fullPath: '/listings/$listingId/slots'
+      preLoaderRoute: typeof ListingsListingIdSlotsRouteImport
+      parentRoute: typeof ListingsListingIdRoute
+    }
+    '/listings/$listingId/bookings': {
+      id: '/listings/$listingId/bookings'
+      path: '/bookings'
+      fullPath: '/listings/$listingId/bookings'
+      preLoaderRoute: typeof ListingsListingIdBookingsRouteImport
+      parentRoute: typeof ListingsListingIdRoute
+    }
   }
 }
 
+interface ListingsListingIdRouteChildren {
+  ListingsListingIdBookingsRoute: typeof ListingsListingIdBookingsRoute
+  ListingsListingIdSlotsRoute: typeof ListingsListingIdSlotsRoute
+}
+
+const ListingsListingIdRouteChildren: ListingsListingIdRouteChildren = {
+  ListingsListingIdBookingsRoute: ListingsListingIdBookingsRoute,
+  ListingsListingIdSlotsRoute: ListingsListingIdSlotsRoute,
+}
+
+const ListingsListingIdRouteWithChildren =
+  ListingsListingIdRoute._addFileChildren(ListingsListingIdRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AnalyticsRoute: AnalyticsRoute,
   DashboardRoute: DashboardRoute,
+  NotificationsRoute: NotificationsRoute,
   OnboardingRoute: OnboardingRoute,
-  PaymentsRoute: PaymentsRoute,
+  PayoutsRoute: PayoutsRoute,
   ProfileRoute: ProfileRoute,
-  PromoteRoute: PromoteRoute,
+  ReviewsRoute: ReviewsRoute,
   ScannerRoute: ScannerRoute,
-  StudioRoute: StudioRoute,
-  ListingsListingIdRoute: ListingsListingIdRoute,
+  SettingsRoute: SettingsRoute,
+  TeamRoute: TeamRoute,
+  ListingsListingIdRoute: ListingsListingIdRouteWithChildren,
   ListingsNewRoute: ListingsNewRoute,
   ListingsIndexRoute: ListingsIndexRoute,
 }

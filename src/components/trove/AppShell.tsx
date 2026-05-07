@@ -1,50 +1,50 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
-  LayoutDashboard, PlusCircle, ScanLine, Wallet,
-  Megaphone, Building2, LogOut, Menu, X, Sparkles,
-  CalendarDays, Hotel, Clock, Palette, Users, Film,
+  LayoutDashboard, PlusCircle, ScanLine, Wallet, Building2, LogOut,
+  Menu, X, Sparkles, CalendarDays, Hotel, MessageSquare, Star,
+  Bell, Users, BarChart3, Settings as SettingsIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { TroveLogo } from "./Logo";
-import { logout, useTroveData, SPOT_TYPES } from "@/lib/trove-store";
+import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import type { HostType } from "@/lib/database.types";
 
-const LISTING_LABEL: Record<string, { label: string; icon: typeof CalendarDays }> = {
-  venue:    { label: "Events",   icon: CalendarDays },
-  resort:   { label: "Stays",    icon: Hotel },
-  activity: { label: "Slots",    icon: Clock },
-  gallery:  { label: "Exhibits", icon: Palette },
-  operator: { label: "Packages", icon: Users },
+const HOST_TYPE_LABEL: Record<HostType, { label: string; icon: typeof CalendarDays }> = {
+  venue:         { label: "Listings", icon: Building2 },
+  organiser:     { label: "Events",   icon: CalendarDays },
+  experience:    { label: "Sessions", icon: Sparkles },
+  accommodation: { label: "Rooms",    icon: Hotel },
 };
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { profile } = useTroveData();
+  const { profile, hostProfile, signOut } = useAuth();
   const navigate = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
 
-  // Gate: if no spotType yet, send them to onboarding
-  useEffect(() => {
-    if (!profile.spotType && path !== "/onboarding" && path !== "/") {
-      navigate({ to: "/onboarding" });
-    }
-  }, [profile.spotType, path, navigate]);
-
-  const meta = profile.spotType ? LISTING_LABEL[profile.spotType] : LISTING_LABEL.venue;
-  const spotMeta = SPOT_TYPES.find((s) => s.id === profile.spotType);
+  const meta = HOST_TYPE_LABEL[hostProfile?.host_type ?? "venue"];
 
   const NAV = [
-    { to: "/dashboard",    icon: LayoutDashboard, label: "Dashboard", badge: undefined as string | undefined },
-    { to: "/listings",     icon: meta.icon,       label: meta.label,  badge: undefined },
-    { to: "/listings/new", icon: PlusCircle,      label: `Create ${meta.label.replace(/s$/, "")}`, badge: undefined },
-    { to: "/studio",       icon: Film,            label: "Story Studio", badge: "NEW" },
-    { to: "/scanner",      icon: ScanLine,        label: "Check-in",  badge: undefined },
-    { to: "/payments",     icon: Wallet,          label: "Payments",  badge: undefined },
-    { to: "/promote",      icon: Megaphone,       label: "Promote",   badge: undefined },
-    { to: "/profile",      icon: Building2,       label: "Spot Profile", badge: undefined },
+    { to: "/dashboard",     icon: LayoutDashboard, label: "Dashboard" },
+    { to: "/listings",      icon: meta.icon,       label: meta.label },
+    { to: "/listings/new",  icon: PlusCircle,      label: `New ${meta.label.replace(/s$/, "")}` },
+    { to: "/scanner",       icon: ScanLine,        label: "Check-in" },
+    { to: "/payouts",       icon: Wallet,          label: "Payouts" },
+    { to: "/reviews",       icon: Star,            label: "Reviews" },
+    { to: "/notifications", icon: Bell,            label: "Inbox" },
+    { to: "/analytics",     icon: BarChart3,       label: "Analytics" },
+    { to: "/team",          icon: Users,           label: "Team" },
+    { to: "/profile",       icon: Building2,       label: "Spot Profile" },
+    { to: "/settings",      icon: SettingsIcon,    label: "Settings" },
   ] as const;
 
-  const handleLogout = () => { logout(); navigate({ to: "/" }); };
+  const handleLogout = async () => {
+    await signOut();
+    navigate({ to: "/" });
+  };
+
+  const initials = (profile?.full_name ?? "??").split(" ").map((s) => s[0]).slice(0, 2).join("").toUpperCase();
 
   return (
     <div className="flex min-h-screen w-full bg-background">
@@ -62,22 +62,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </button>
         </div>
 
-        {spotMeta && (
+        {hostProfile && (
           <div className="mx-3 mt-3 overflow-hidden rounded-xl ring-hairline">
-            <div className="relative h-16 w-full">
-              <img src={spotMeta.image} alt="" className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
-              <div className="absolute inset-0 bg-gradient-to-t from-sidebar via-sidebar/70 to-transparent" />
+            <div className="relative h-16 w-full bg-gradient-brand-soft">
               <div className="absolute inset-0 flex items-end px-3 pb-2">
                 <div>
-                  <p className="text-[9px] uppercase tracking-[0.18em] text-white/70">Spot type</p>
-                  <p className="text-sm font-semibold leading-tight text-white">{spotMeta.label}</p>
+                  <p className="text-[9px] uppercase tracking-[0.18em] text-white/70">Host type</p>
+                  <p className="text-sm font-semibold leading-tight text-white capitalize">{hostProfile.host_type}</p>
                 </div>
+                {hostProfile.verified && (
+                  <span className="ml-auto rounded-full bg-success/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-success">
+                    Verified
+                  </span>
+                )}
               </div>
             </div>
           </div>
         )}
 
-        <nav className="flex flex-col gap-0.5 p-3">
+        <nav className="flex flex-col gap-0.5 p-3 max-h-[calc(100vh-260px)] overflow-y-auto">
           {NAV.map((item) => {
             const active =
               path === item.to ||
@@ -97,11 +100,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 {active && <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r bg-primary" />}
                 <item.icon className={`h-4 w-4 ${active ? "text-primary" : ""}`} />
                 <span className="flex-1">{item.label}</span>
-                {item.badge && (
-                  <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
-                    {item.badge}
-                  </span>
-                )}
               </Link>
             );
           })}
@@ -111,11 +109,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="rounded-xl ring-hairline surface-2 p-3">
             <div className="flex items-center gap-2.5">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 font-display text-sm font-bold text-primary">
-                {profile.name.slice(0, 2).toUpperCase()}
+                {initials}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">{profile.name}</p>
-                <p className="truncate text-xs text-muted-foreground">{profile.city}</p>
+                <p className="truncate text-sm font-semibold">{profile?.full_name ?? "Host"}</p>
+                <p className="truncate text-xs text-muted-foreground">{hostProfile?.city ?? ""}</p>
               </div>
             </div>
           </div>
@@ -137,7 +135,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </button>
           <div className="hidden items-center gap-2 text-xs text-muted-foreground lg:flex">
             <span className="flex h-2 w-2 rounded-full bg-success shadow-[0_0_10px_currentColor]" />
-            All systems live · Trove Engine v1.0
+            All systems live · Trove Engine v2
           </div>
           <div className="flex items-center gap-2">
             <Link to="/listings/new">

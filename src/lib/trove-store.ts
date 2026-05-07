@@ -1,3 +1,11 @@
+// DEPRECATED — v1 mock store (localStorage). Slated for removal once
+// dashboard.tsx, listings.*, profile.tsx, scanner.tsx, onboarding.tsx, and
+// index.tsx are migrated to TanStack Query hooks against Supabase.
+//
+// Do not add new callers. Each existing caller should be replaced with a
+// real-data hook (e.g. useHostListings, useDashboardKpis) defined in
+// lib/queries.ts after migration 0002 is applied.
+//
 // Mock data + localStorage persistence for Trove Engine prototype.
 // Multi-vertical: events, timeslots, stays, open passes, packages.
 
