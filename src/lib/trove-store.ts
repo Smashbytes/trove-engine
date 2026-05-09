@@ -29,19 +29,59 @@ export const SPOT_TYPES: Array<{
   defaultListingType: ListingType;
   accent: string;
 }> = [
-  { id: "venue",    label: "Venue",    blurb: "Events & ticketed nights",   examples: "Clubs, comedy rooms, festivals, expos, mega churches",        image: imgVenue,    defaultListingType: "event",     accent: "primary" },
-  { id: "resort",   label: "Resort",   blurb: "Stays & getaways",            examples: "Lodges, hotels, glamping, weekend retreats",                  image: imgLodge,    defaultListingType: "stay",      accent: "teal" },
-  { id: "activity", label: "Activity", blurb: "Bookable time slots",         examples: "Spa, skydive, paintball sessions, go-carting, sip & paint",  image: imgActivity, defaultListingType: "timeslot",  accent: "lime" },
-  { id: "gallery",  label: "Gallery",  blurb: "Open passes & exhibits",      examples: "Museums, art galleries, ongoing exhibits, food fests",        image: imgGallery,  defaultListingType: "open_pass", accent: "amber" },
-  { id: "operator", label: "Operator", blurb: "Group packages & festivals",  examples: "Paintball groups, hiking trips, wine tours, food festivals",  image: imgOperator, defaultListingType: "package",   accent: "violet" },
+  {
+    id: "venue",
+    label: "Venue",
+    blurb: "Events & ticketed nights",
+    examples: "Clubs, comedy rooms, festivals, expos, mega churches",
+    image: imgVenue,
+    defaultListingType: "event",
+    accent: "primary",
+  },
+  {
+    id: "resort",
+    label: "Resort",
+    blurb: "Stays & getaways",
+    examples: "Lodges, hotels, glamping, weekend retreats",
+    image: imgLodge,
+    defaultListingType: "stay",
+    accent: "teal",
+  },
+  {
+    id: "activity",
+    label: "Activity",
+    blurb: "Bookable time slots",
+    examples: "Spa, skydive, paintball sessions, go-carting, sip & paint",
+    image: imgActivity,
+    defaultListingType: "timeslot",
+    accent: "lime",
+  },
+  {
+    id: "gallery",
+    label: "Gallery",
+    blurb: "Open passes & exhibits",
+    examples: "Museums, art galleries, ongoing exhibits, food fests",
+    image: imgGallery,
+    defaultListingType: "open_pass",
+    accent: "amber",
+  },
+  {
+    id: "operator",
+    label: "Operator",
+    blurb: "Group packages & festivals",
+    examples: "Paintball groups, hiking trips, wine tours, food festivals",
+    image: imgOperator,
+    defaultListingType: "package",
+    accent: "violet",
+  },
 ];
 
 export const LISTING_TYPE_IMAGE: Record<ListingType, string> = {
-  event:     imgVenue,
-  timeslot:  imgSpa,
-  stay:      imgLodge,
+  event: imgVenue,
+  timeslot: imgSpa,
+  stay: imgLodge,
   open_pass: imgGallery,
-  package:   imgActivity,
+  package: imgActivity,
 };
 
 // ---------- Listing types ----------
@@ -71,9 +111,11 @@ export type Attendee = {
 // Timeslot
 export type Slot = { time: string; capacity: number; price: number }; // time = "HH:mm"
 export type SlotBooking = {
-  id: string; name: string; email: string;
-  date: string;           // ISO date "YYYY-MM-DD"
-  slotTime: string;       // "HH:mm"
+  id: string;
+  name: string;
+  email: string;
+  date: string; // ISO date "YYYY-MM-DD"
+  slotTime: string; // "HH:mm"
   guests: number;
   qr: string;
   checkedIn: boolean;
@@ -83,9 +125,14 @@ export type SlotBooking = {
 // Stay
 export type Room = { id: string; name: string; count: number; price: number; maxGuests: number };
 export type Reservation = {
-  id: string; name: string; email: string; phone?: string;
-  roomId: string; roomName: string;
-  checkIn: string; checkOut: string; // ISO date
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  roomId: string;
+  roomName: string;
+  checkIn: string;
+  checkOut: string; // ISO date
   guests: number;
   total: number;
   checkedIn: boolean;
@@ -95,9 +142,13 @@ export type Reservation = {
 // Open Pass
 export type PassType = { id: string; name: string; price: number };
 export type Pass = {
-  id: string; name: string; email: string;
-  passTypeId: string; passTypeName: string;
-  validFrom: string; validTo: string;
+  id: string;
+  name: string;
+  email: string;
+  passTypeId: string;
+  passTypeName: string;
+  validFrom: string;
+  validTo: string;
   qr: string;
   visited: boolean;
   purchasedAt: string;
@@ -106,7 +157,10 @@ export type Pass = {
 // Package
 export type Addon = { id: string; name: string; price: number };
 export type GroupBooking = {
-  id: string; name: string; email: string; phone?: string;
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
   groupSize: number;
   date?: string; // optional if on-request
   addons: string[]; // ids
@@ -181,7 +235,11 @@ export type PackageListing = BaseListing & {
 };
 
 export type Listing =
-  | EventListing | TimeslotListing | StayListing | OpenPassListing | PackageListing;
+  | EventListing
+  | TimeslotListing
+  | StayListing
+  | OpenPassListing
+  | PackageListing;
 
 // Backwards-compat alias
 export type TroveEvent = EventListing;
@@ -238,10 +296,22 @@ function randomQR() {
 }
 
 const NAMES = [
-  "Siya Mokoena", "Nomvula Dube", "Thabo Khumalo", "Lerato Naidoo",
-  "Kabelo Smith", "Aisha Patel", "Tendai Mbeki", "Zanele Botha",
-  "Mpho Sithole", "Refilwe Adams", "Bongani Pillay", "Nadia van Wyk",
-  "Tumi Mahlangu", "Karabo Joseph", "Sade Williams", "Itumeleng Cele",
+  "Siya Mokoena",
+  "Nomvula Dube",
+  "Thabo Khumalo",
+  "Lerato Naidoo",
+  "Kabelo Smith",
+  "Aisha Patel",
+  "Tendai Mbeki",
+  "Zanele Botha",
+  "Mpho Sithole",
+  "Refilwe Adams",
+  "Bongani Pillay",
+  "Nadia van Wyk",
+  "Tumi Mahlangu",
+  "Karabo Joseph",
+  "Sade Williams",
+  "Itumeleng Cele",
 ];
 const nameAt = (i: number) => NAMES[i % NAMES.length];
 const emailFor = (n: string) => `${n.toLowerCase().replace(/ /g, ".")}@example.com`;
@@ -252,8 +322,12 @@ function makeEventAttendees(count: number, tiers: TicketTier[]): Attendee[] {
     const tier = tiers[i % tiers.length];
     const n = nameAt(i);
     out.push({
-      id: uid("att"), name: n, email: emailFor(n),
-      tierId: tier.id, tierName: tier.name, qr: randomQR(),
+      id: uid("att"),
+      name: n,
+      email: emailFor(n),
+      tierId: tier.id,
+      tierName: tier.name,
+      qr: randomQR(),
       checkedIn: Math.random() < 0.35,
       purchasedAt: new Date(Date.now() - Math.random() * 14 * 86400000).toISOString(),
     });
@@ -262,28 +336,48 @@ function makeEventAttendees(count: number, tiers: TicketTier[]): Attendee[] {
 }
 
 function seedEvent(
-  title: string, cat: string, venue: string, city: string, daysOut: number,
-  cover: string, tierDefs: Array<Omit<TicketTier, "id" | "sold"> & { sold: number }>
+  title: string,
+  cat: string,
+  venue: string,
+  city: string,
+  daysOut: number,
+  cover: string,
+  tierDefs: Array<Omit<TicketTier, "id" | "sold"> & { sold: number }>,
 ): EventListing {
   const tiers: TicketTier[] = tierDefs.map((t) => ({ ...t, id: uid("tier") }));
-  const attendees = makeEventAttendees(tiers.reduce((s, t) => s + t.sold, 0), tiers);
+  const attendees = makeEventAttendees(
+    tiers.reduce((s, t) => s + t.sold, 0),
+    tiers,
+  );
   const totalSold = tiers.reduce((s, t) => s + t.sold, 0);
   const totalCap = tiers.reduce((s, t) => s + t.inventory, 0);
   return {
-    id: uid("evt"), type: "event",
-    title, description: `${title} — an unforgettable ${cat.toLowerCase()} night at ${venue}.`,
-    category: cat, venue, city, cover,
+    id: uid("evt"),
+    type: "event",
+    title,
+    description: `${title} — an unforgettable ${cat.toLowerCase()} night at ${venue}.`,
+    category: cat,
+    venue,
+    city,
+    cover,
     date: new Date(Date.now() + daysOut * 86400000).toISOString(),
     doorsOpen: "20:00",
     status: totalSold >= totalCap ? "sold_out" : daysOut < 0 ? "ended" : "live",
-    tiers, attendees,
+    tiers,
+    attendees,
     createdAt: new Date(Date.now() - 10 * 86400000).toISOString(),
   };
 }
 
 function seedTimeslot(
-  title: string, cat: string, venue: string, city: string, cover: string,
-  durationMin: number, slots: Slot[], bookingsCount: number
+  title: string,
+  cat: string,
+  venue: string,
+  city: string,
+  cover: string,
+  durationMin: number,
+  slots: Slot[],
+  bookingsCount: number,
 ): TimeslotListing {
   const bookings: SlotBooking[] = [];
   for (let i = 0; i < bookingsCount; i++) {
@@ -291,7 +385,9 @@ function seedTimeslot(
     const n = nameAt(i);
     const dayOffset = (i % 5) + 1;
     bookings.push({
-      id: uid("bk"), name: n, email: emailFor(n),
+      id: uid("bk"),
+      name: n,
+      email: emailFor(n),
       date: new Date(Date.now() + dayOffset * 86400000).toISOString().slice(0, 10),
       slotTime: slot.time,
       guests: 1 + (i % 2),
@@ -301,10 +397,18 @@ function seedTimeslot(
     });
   }
   return {
-    id: uid("ts"), type: "timeslot",
-    title, description: `${title} — book your slot at ${venue}.`,
-    category: cat, venue, city, cover,
-    durationMin, daysOfWeek: [2, 3, 4, 5, 6], slots, bookings,
+    id: uid("ts"),
+    type: "timeslot",
+    title,
+    description: `${title} — book your slot at ${venue}.`,
+    category: cat,
+    venue,
+    city,
+    cover,
+    durationMin,
+    daysOfWeek: [2, 3, 4, 5, 6],
+    slots,
+    bookings,
     bookingWindowDays: 30,
     status: "live",
     createdAt: new Date(Date.now() - 20 * 86400000).toISOString(),
@@ -312,8 +416,13 @@ function seedTimeslot(
 }
 
 function seedStay(
-  title: string, venue: string, city: string, cover: string,
-  amenities: string[], rooms: Array<Omit<Room, "id">>, resCount: number
+  title: string,
+  venue: string,
+  city: string,
+  cover: string,
+  amenities: string[],
+  rooms: Array<Omit<Room, "id">>,
+  resCount: number,
 ): StayListing {
   const r: Room[] = rooms.map((rm) => ({ ...rm, id: uid("rm") }));
   const reservations: Reservation[] = [];
@@ -323,8 +432,12 @@ function seedStay(
     const inDays = (i % 6) + 2;
     const nights = 1 + (i % 4);
     reservations.push({
-      id: uid("res"), name: n, email: emailFor(n), phone: "+27 82 555 0" + (100 + i),
-      roomId: room.id, roomName: room.name,
+      id: uid("res"),
+      name: n,
+      email: emailFor(n),
+      phone: "+27 82 555 0" + (100 + i),
+      roomId: room.id,
+      roomName: room.name,
       checkIn: new Date(Date.now() + inDays * 86400000).toISOString().slice(0, 10),
       checkOut: new Date(Date.now() + (inDays + nights) * 86400000).toISOString().slice(0, 10),
       guests: 1 + (i % room.maxGuests),
@@ -334,19 +447,33 @@ function seedStay(
     });
   }
   return {
-    id: uid("stay"), type: "stay",
-    title, description: `${title} — escape the city at ${venue}.`,
-    category: "Stay", venue, city, cover,
-    amenities, rooms: r, reservations,
-    minNights: 1, checkInTime: "14:00", checkOutTime: "10:00",
+    id: uid("stay"),
+    type: "stay",
+    title,
+    description: `${title} — escape the city at ${venue}.`,
+    category: "Stay",
+    venue,
+    city,
+    cover,
+    amenities,
+    rooms: r,
+    reservations,
+    minNights: 1,
+    checkInTime: "14:00",
+    checkOutTime: "10:00",
     status: "live",
     createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),
   };
 }
 
 function seedOpenPass(
-  title: string, venue: string, city: string, cover: string,
-  passTypes: Array<Omit<PassType, "id">>, dailyCap: number | null, passCount: number
+  title: string,
+  venue: string,
+  city: string,
+  cover: string,
+  passTypes: Array<Omit<PassType, "id">>,
+  dailyCap: number | null,
+  passCount: number,
 ): OpenPassListing {
   const pt: PassType[] = passTypes.map((p) => ({ ...p, id: uid("pt") }));
   const passes: Pass[] = [];
@@ -354,8 +481,11 @@ function seedOpenPass(
     const t = pt[i % pt.length];
     const n = nameAt(i);
     passes.push({
-      id: uid("pass"), name: n, email: emailFor(n),
-      passTypeId: t.id, passTypeName: t.name,
+      id: uid("pass"),
+      name: n,
+      email: emailFor(n),
+      passTypeId: t.id,
+      passTypeName: t.name,
       validFrom: new Date().toISOString().slice(0, 10),
       validTo: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
       qr: randomQR(),
@@ -364,21 +494,34 @@ function seedOpenPass(
     });
   }
   return {
-    id: uid("pass"), type: "open_pass",
-    title, description: `${title} — visit any day during the run.`,
-    category: "Exhibit", venue, city, cover,
+    id: uid("pass"),
+    type: "open_pass",
+    title,
+    description: `${title} — visit any day during the run.`,
+    category: "Exhibit",
+    venue,
+    city,
+    cover,
     validFrom: new Date().toISOString().slice(0, 10),
     validTo: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
-    dailyCap, passTypes: pt, passes, hours: "10:00–18:00",
+    dailyCap,
+    passTypes: pt,
+    passes,
+    hours: "10:00–18:00",
     status: "live",
     createdAt: new Date(Date.now() - 15 * 86400000).toISOString(),
   };
 }
 
 function seedPackage(
-  title: string, venue: string, city: string, cover: string,
-  includes: string[], addonsDef: Array<Omit<Addon, "id">>,
-  pricingMode: "per_person" | "flat", price: number,
+  title: string,
+  venue: string,
+  city: string,
+  cover: string,
+  includes: string[],
+  addonsDef: Array<Omit<Addon, "id">>,
+  pricingMode: "per_person" | "flat",
+  price: number,
   bookingsCount: number,
 ): PackageListing {
   const addons: Addon[] = addonsDef.map((a) => ({ ...a, id: uid("ad") }));
@@ -388,8 +531,12 @@ function seedPackage(
     const groupSize = 6 + (i % 8);
     const total = pricingMode === "per_person" ? price * groupSize : price;
     groupBookings.push({
-      id: uid("gb"), name: n, email: emailFor(n), phone: "+27 83 555 0" + (200 + i),
-      groupSize, addons: i % 2 === 0 && addons[0] ? [addons[0].id] : [],
+      id: uid("gb"),
+      name: n,
+      email: emailFor(n),
+      phone: "+27 83 555 0" + (200 + i),
+      groupSize,
+      addons: i % 2 === 0 && addons[0] ? [addons[0].id] : [],
       date: new Date(Date.now() + ((i % 10) + 3) * 86400000).toISOString().slice(0, 10),
       total: total + (i % 2 === 0 && addons[0] ? addons[0].price * groupSize : 0),
       qr: randomQR(),
@@ -398,11 +545,21 @@ function seedPackage(
     });
   }
   return {
-    id: uid("pkg"), type: "package",
-    title, description: `${title} — group experience at ${venue}.`,
-    category: "Package", venue, city, cover,
-    minGroup: 6, maxGroup: 20, includes, addons,
-    pricingMode, price, scheduling: "on_request",
+    id: uid("pkg"),
+    type: "package",
+    title,
+    description: `${title} — group experience at ${venue}.`,
+    category: "Package",
+    venue,
+    city,
+    cover,
+    minGroup: 6,
+    maxGroup: 20,
+    includes,
+    addons,
+    pricingMode,
+    price,
+    scheduling: "on_request",
     groupBookings,
     status: "live",
     createdAt: new Date(Date.now() - 12 * 86400000).toISOString(),
@@ -416,48 +573,113 @@ function seedListings(): Listing[] {
       { name: "General Admission", price: 150, inventory: 120, sold: 98 },
       { name: "VIP Booth", price: 450, inventory: 30, sold: 22 },
     ]),
-    seedEvent("Sunset Sessions: Sandton Rooftop", "Nightlife", "The Rooftop", "Sandton", 7, COVERS[1], [
-      { name: "General", price: 200, inventory: 100, sold: 87 },
-      { name: "VIP Cabana", price: 750, inventory: 20, sold: 15 },
-    ]),
-    seedTimeslot("Signature Massage · 60min", "Spa", "Glow Spa", "Rosebank", COVERS[7], 60, [
-      { time: "09:00", capacity: 3, price: 750 },
-      { time: "11:00", capacity: 3, price: 750 },
-      { time: "14:00", capacity: 3, price: 850 },
-      { time: "16:00", capacity: 3, price: 850 },
-    ], 18),
-    seedTimeslot("Tandem Skydive", "Skydive", "Skydive JHB", "Carletonville", COVERS[8], 90, [
-      { time: "08:00", capacity: 4, price: 2950 },
-      { time: "10:00", capacity: 4, price: 2950 },
-      { time: "13:00", capacity: 4, price: 3250 },
-    ], 14),
-    seedStay("Magalies River Lodge", "Magalies River Lodge", "Magaliesberg", COVERS[5],
+    seedEvent(
+      "Sunset Sessions: Sandton Rooftop",
+      "Nightlife",
+      "The Rooftop",
+      "Sandton",
+      7,
+      COVERS[1],
+      [
+        { name: "General", price: 200, inventory: 100, sold: 87 },
+        { name: "VIP Cabana", price: 750, inventory: 20, sold: 15 },
+      ],
+    ),
+    seedTimeslot(
+      "Signature Massage · 60min",
+      "Spa",
+      "Glow Spa",
+      "Rosebank",
+      COVERS[7],
+      60,
+      [
+        { time: "09:00", capacity: 3, price: 750 },
+        { time: "11:00", capacity: 3, price: 750 },
+        { time: "14:00", capacity: 3, price: 850 },
+        { time: "16:00", capacity: 3, price: 850 },
+      ],
+      18,
+    ),
+    seedTimeslot(
+      "Tandem Skydive",
+      "Skydive",
+      "Skydive JHB",
+      "Carletonville",
+      COVERS[8],
+      90,
+      [
+        { time: "08:00", capacity: 4, price: 2950 },
+        { time: "10:00", capacity: 4, price: 2950 },
+        { time: "13:00", capacity: 4, price: 3250 },
+      ],
+      14,
+    ),
+    seedStay(
+      "Magalies River Lodge",
+      "Magalies River Lodge",
+      "Magaliesberg",
+      COVERS[5],
       ["Pool", "Spa", "Restaurant", "Wifi", "Fire pit", "River access"],
       [
-        { name: "Standard Suite",   count: 8, price: 1850, maxGuests: 2 },
+        { name: "Standard Suite", count: 8, price: 1850, maxGuests: 2 },
         { name: "Deluxe Riverside", count: 4, price: 2950, maxGuests: 3 },
-        { name: "Family Cabin",     count: 3, price: 3850, maxGuests: 5 },
-      ], 12),
-    seedOpenPass("Modern Africa · Spring Exhibit", "Goodman Gallery", "Rosebank", COVERS[10],
+        { name: "Family Cabin", count: 3, price: 3850, maxGuests: 5 },
+      ],
+      12,
+    ),
+    seedOpenPass(
+      "Modern Africa · Spring Exhibit",
+      "Goodman Gallery",
+      "Rosebank",
+      COVERS[10],
       [
         { name: "Adult", price: 120 },
         { name: "Concession", price: 80 },
         { name: "Child (under 12)", price: 0 },
-      ], 200, 24),
-    seedPackage("Paintball Group Battle", "Battlezone Paintball", "Lanseria", COVERS[9],
+      ],
+      200,
+      24,
+    ),
+    seedPackage(
+      "Paintball Group Battle",
+      "Battlezone Paintball",
+      "Lanseria",
+      COVERS[9],
       ["200 paintballs each", "Full kit & overalls", "Marshall", "2 hours field time"],
       [
         { name: "Extra 100 paintballs", price: 95 },
         { name: "Lunch combo", price: 145 },
-      ], "per_person", 450, 6),
+      ],
+      "per_person",
+      450,
+      6,
+    ),
   ];
 }
 
 function seedPayouts(): Payout[] {
   return [
-    { id: uid("po"), amount: 8450,  status: "paid",    date: new Date(Date.now() - 7 * 86400000).toISOString(),  reference: "PAYFAST-9X42" },
-    { id: uid("po"), amount: 12200, status: "paid",    date: new Date(Date.now() - 21 * 86400000).toISOString(), reference: "PAYFAST-7K11" },
-    { id: uid("po"), amount: 5680,  status: "pending", date: new Date(Date.now() + 3 * 86400000).toISOString(),  reference: "PAYFAST-PEND" },
+    {
+      id: uid("po"),
+      amount: 8450,
+      status: "paid",
+      date: new Date(Date.now() - 7 * 86400000).toISOString(),
+      reference: "PAYFAST-9X42",
+    },
+    {
+      id: uid("po"),
+      amount: 12200,
+      status: "paid",
+      date: new Date(Date.now() - 21 * 86400000).toISOString(),
+      reference: "PAYFAST-7K11",
+    },
+    {
+      id: uid("po"),
+      amount: 5680,
+      status: "pending",
+      date: new Date(Date.now() + 3 * 86400000).toISOString(),
+      reference: "PAYFAST-PEND",
+    },
   ];
 }
 
@@ -481,7 +703,9 @@ function read<T>(key: string, fallback: T): T {
     const raw = localStorage.getItem(key);
     if (!raw) return fallback;
     return JSON.parse(raw) as T;
-  } catch { return fallback; }
+  } catch {
+    return fallback;
+  }
 }
 function write<T>(key: string, value: T) {
   if (typeof window === "undefined") return;
@@ -518,7 +742,10 @@ export function saveListing(l: Listing) {
 }
 
 export function deleteListing(id: string) {
-  write(KEY_LISTINGS, getListings().filter((l) => l.id !== id));
+  write(
+    KEY_LISTINGS,
+    getListings().filter((l) => l.id !== id),
+  );
 }
 
 // Backward-compatible helpers used by older routes (events index/detail)
@@ -529,21 +756,38 @@ export function getEvent(id: string): EventListing | undefined {
   const l = getListing(id);
   return l && l.type === "event" ? l : undefined;
 }
-export function saveEvent(evt: EventListing) { saveListing(evt); }
-export function deleteEvent(id: string) { deleteListing(id); }
+export function saveEvent(evt: EventListing) {
+  saveListing(evt);
+}
+export function deleteEvent(id: string) {
+  deleteListing(id);
+}
 
 export function createEvent(input: {
-  title: string; description: string; category: string;
-  venue: string; city: string; cover: string;
-  date: string; tiers: Array<Omit<TicketTier, "id" | "sold">>;
+  title: string;
+  description: string;
+  category: string;
+  venue: string;
+  city: string;
+  cover: string;
+  date: string;
+  tiers: Array<Omit<TicketTier, "id" | "sold">>;
 }): EventListing {
   const tiers: TicketTier[] = input.tiers.map((t) => ({ ...t, id: uid("tier"), sold: 0 }));
   const evt: EventListing = {
-    id: uid("evt"), type: "event",
-    title: input.title, description: input.description, category: input.category,
-    venue: input.venue, city: input.city, cover: input.cover,
-    date: input.date, status: "live",
-    tiers, attendees: [], createdAt: new Date().toISOString(),
+    id: uid("evt"),
+    type: "event",
+    title: input.title,
+    description: input.description,
+    category: input.category,
+    venue: input.venue,
+    city: input.city,
+    cover: input.cover,
+    date: input.date,
+    status: "live",
+    tiers,
+    attendees: [],
+    createdAt: new Date().toISOString(),
   };
   saveListing(evt);
   return evt;
@@ -582,29 +826,52 @@ export function scanQR(listingId: string, qr: string): ScanResult {
   if (l.type === "event") {
     const a = l.attendees.find((x) => x.qr === code);
     if (!a) return { kind: "not_found" };
-    if (a.checkedIn) return { kind: "duplicate", listingType: "event", name: a.name, detail: a.tierName };
-    a.checkedIn = true; saveListing(l);
+    if (a.checkedIn)
+      return { kind: "duplicate", listingType: "event", name: a.name, detail: a.tierName };
+    a.checkedIn = true;
+    saveListing(l);
     return { kind: "ok", listingType: "event", name: a.name, detail: a.tierName };
   }
   if (l.type === "timeslot") {
     const b = l.bookings.find((x) => x.qr === code);
     if (!b) return { kind: "not_found" };
-    if (b.checkedIn) return { kind: "duplicate", listingType: "timeslot", name: b.name, detail: `${b.date} · ${b.slotTime}` };
-    b.checkedIn = true; saveListing(l);
-    return { kind: "ok", listingType: "timeslot", name: b.name, detail: `${b.date} · ${b.slotTime} · ${b.guests}p` };
+    if (b.checkedIn)
+      return {
+        kind: "duplicate",
+        listingType: "timeslot",
+        name: b.name,
+        detail: `${b.date} · ${b.slotTime}`,
+      };
+    b.checkedIn = true;
+    saveListing(l);
+    return {
+      kind: "ok",
+      listingType: "timeslot",
+      name: b.name,
+      detail: `${b.date} · ${b.slotTime} · ${b.guests}p`,
+    };
   }
   if (l.type === "open_pass") {
     const p = l.passes.find((x) => x.qr === code);
     if (!p) return { kind: "not_found" };
-    if (p.visited) return { kind: "duplicate", listingType: "open_pass", name: p.name, detail: p.passTypeName };
-    p.visited = true; saveListing(l);
+    if (p.visited)
+      return { kind: "duplicate", listingType: "open_pass", name: p.name, detail: p.passTypeName };
+    p.visited = true;
+    saveListing(l);
     return { kind: "ok", listingType: "open_pass", name: p.name, detail: p.passTypeName };
   }
   if (l.type === "package") {
     const g = l.groupBookings.find((x) => x.qr === code);
     if (!g) return { kind: "not_found" };
-    if (g.confirmedHeadcount) return { kind: "duplicate", listingType: "package", name: g.name, detail: `Group of ${g.groupSize}` };
-    g.confirmedHeadcount = true; saveListing(l);
+    if (g.confirmedHeadcount)
+      return {
+        kind: "duplicate",
+        listingType: "package",
+        name: g.name,
+        detail: `Group of ${g.groupSize}`,
+      };
+    g.confirmedHeadcount = true;
+    saveListing(l);
     return { kind: "ok", listingType: "package", name: g.name, detail: `Group of ${g.groupSize}` };
   }
   // stay → no QR; front-desk only
@@ -626,83 +893,132 @@ export function checkInReservation(stayId: string, reservationId: string): boole
 export function getProfile(): SpotProfile {
   return read<SpotProfile>(KEY_PROFILE, defaultProfile);
 }
-export function saveProfile(p: SpotProfile) { write(KEY_PROFILE, p); }
-export function setSpotType(t: SpotType) {
-  const p = getProfile(); saveProfile({ ...p, spotType: t });
+export function saveProfile(p: SpotProfile) {
+  write(KEY_PROFILE, p);
 }
-export function login() { saveProfile({ ...getProfile(), loggedIn: true }); }
-export function logout() { saveProfile({ ...getProfile(), loggedIn: false }); }
+export function setSpotType(t: SpotType) {
+  const p = getProfile();
+  saveProfile({ ...p, spotType: t });
+}
+export function login() {
+  saveProfile({ ...getProfile(), loggedIn: true });
+}
+export function logout() {
+  saveProfile({ ...getProfile(), loggedIn: false });
+}
 
 // ---------- payouts ----------
 export function getPayouts(): Payout[] {
   const cached = read<Payout[] | null>(KEY_PAYOUTS, null);
   if (cached) return cached;
-  const seeded = seedPayouts(); write(KEY_PAYOUTS, seeded); return seeded;
+  const seeded = seedPayouts();
+  write(KEY_PAYOUTS, seeded);
+  return seeded;
 }
 
 // ---------- derived totals (per-listing) ----------
 export function listingRevenue(l: Listing): number {
   switch (l.type) {
-    case "event":     return l.tiers.reduce((s, t) => s + t.price * t.sold, 0);
-    case "timeslot":  return l.bookings.reduce((s, b) => {
-      const slot = l.slots.find((x) => x.time === b.slotTime);
-      return s + (slot ? slot.price * b.guests : 0);
-    }, 0);
-    case "stay":      return l.reservations.reduce((s, r) => s + r.total, 0);
-    case "open_pass": return l.passes.reduce((s, p) => {
-      const t = l.passTypes.find((x) => x.id === p.passTypeId);
-      return s + (t ? t.price : 0);
-    }, 0);
-    case "package":   return l.groupBookings.reduce((s, g) => s + g.total, 0);
+    case "event":
+      return l.tiers.reduce((s, t) => s + t.price * t.sold, 0);
+    case "timeslot":
+      return l.bookings.reduce((s, b) => {
+        const slot = l.slots.find((x) => x.time === b.slotTime);
+        return s + (slot ? slot.price * b.guests : 0);
+      }, 0);
+    case "stay":
+      return l.reservations.reduce((s, r) => s + r.total, 0);
+    case "open_pass":
+      return l.passes.reduce((s, p) => {
+        const t = l.passTypes.find((x) => x.id === p.passTypeId);
+        return s + (t ? t.price : 0);
+      }, 0);
+    case "package":
+      return l.groupBookings.reduce((s, g) => s + g.total, 0);
   }
 }
 
 export function listingBookingsCount(l: Listing): number {
   switch (l.type) {
-    case "event":     return l.attendees.length;
-    case "timeslot":  return l.bookings.length;
-    case "stay":      return l.reservations.length;
-    case "open_pass": return l.passes.length;
-    case "package":   return l.groupBookings.length;
+    case "event":
+      return l.attendees.length;
+    case "timeslot":
+      return l.bookings.length;
+    case "stay":
+      return l.reservations.length;
+    case "open_pass":
+      return l.passes.length;
+    case "package":
+      return l.groupBookings.length;
   }
 }
 
 export function listingCapacity(l: Listing): number {
   switch (l.type) {
-    case "event":     return l.tiers.reduce((s, t) => s + t.inventory, 0);
-    case "timeslot":  return l.slots.reduce((s, t) => s + t.capacity, 0) * (l.daysOfWeek.length || 7);
-    case "stay":      return l.rooms.reduce((s, r) => s + r.count, 0);
-    case "open_pass": return l.dailyCap ?? 0;
-    case "package":   return l.maxGroup;
+    case "event":
+      return l.tiers.reduce((s, t) => s + t.inventory, 0);
+    case "timeslot":
+      return l.slots.reduce((s, t) => s + t.capacity, 0) * (l.daysOfWeek.length || 7);
+    case "stay":
+      return l.rooms.reduce((s, r) => s + r.count, 0);
+    case "open_pass":
+      return l.dailyCap ?? 0;
+    case "package":
+      return l.maxGroup;
   }
 }
 
 export function listingCheckedIn(l: Listing): number {
   switch (l.type) {
-    case "event":     return l.attendees.filter((a) => a.checkedIn).length;
-    case "timeslot":  return l.bookings.filter((b) => b.checkedIn).length;
-    case "stay":      return l.reservations.filter((r) => r.checkedIn).length;
-    case "open_pass": return l.passes.filter((p) => p.visited).length;
-    case "package":   return l.groupBookings.filter((g) => g.confirmedHeadcount).length;
+    case "event":
+      return l.attendees.filter((a) => a.checkedIn).length;
+    case "timeslot":
+      return l.bookings.filter((b) => b.checkedIn).length;
+    case "stay":
+      return l.reservations.filter((r) => r.checkedIn).length;
+    case "open_pass":
+      return l.passes.filter((p) => p.visited).length;
+    case "package":
+      return l.groupBookings.filter((g) => g.confirmedHeadcount).length;
   }
 }
 
 export function listingDateLabel(l: Listing): string {
   switch (l.type) {
-    case "event":     return new Date(l.date).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" });
-    case "timeslot":  return `${l.slots.length} slots · ${l.durationMin}min`;
-    case "stay":      return `${l.rooms.length} room types · ${l.minNights}+ nights`;
-    case "open_pass": return `${l.validFrom} → ${l.validTo}`;
-    case "package":   return l.scheduling === "fixed" && l.date ? l.date : `${l.minGroup}–${l.maxGroup} pax · on request`;
+    case "event":
+      return new Date(l.date).toLocaleDateString("en-ZA", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      });
+    case "timeslot":
+      return `${l.slots.length} slots · ${l.durationMin}min`;
+    case "stay":
+      return `${l.rooms.length} room types · ${l.minNights}+ nights`;
+    case "open_pass":
+      return `${l.validFrom} → ${l.validTo}`;
+    case "package":
+      return l.scheduling === "fixed" && l.date
+        ? l.date
+        : `${l.minGroup}–${l.maxGroup} pax · on request`;
   }
 }
 
 export function listingTypeLabel(t: ListingType): string {
-  return ({ event: "Event", timeslot: "Timeslot", stay: "Stay", open_pass: "Open Pass", package: "Package" })[t];
+  return {
+    event: "Event",
+    timeslot: "Timeslot",
+    stay: "Stay",
+    open_pass: "Open Pass",
+    package: "Package",
+  }[t];
 }
 
 export function totals(listings: Listing[]) {
-  let revenue = 0, sold = 0, capacity = 0, checkedIn = 0;
+  let revenue = 0,
+    sold = 0,
+    capacity = 0,
+    checkedIn = 0;
   for (const l of listings) {
     revenue += listingRevenue(l);
     sold += listingBookingsCount(l);
@@ -720,29 +1036,43 @@ export function salesByDay(listings: Listing[], days = 14) {
   type P = { ts: number; revenue: number };
   const purchases: P[] = [];
   for (const l of listings) {
-    if (l.type === "event") for (const a of l.attendees) {
-      const tier = l.tiers.find((t) => t.id === a.tierId);
-      purchases.push({ ts: new Date(a.purchasedAt).getTime(), revenue: tier?.price ?? 0 });
-    }
-    if (l.type === "timeslot") for (const b of l.bookings) {
-      const slot = l.slots.find((s) => s.time === b.slotTime);
-      purchases.push({ ts: new Date(b.purchasedAt).getTime(), revenue: (slot?.price ?? 0) * b.guests });
-    }
-    if (l.type === "stay") for (const r of l.reservations) purchases.push({ ts: new Date(r.purchasedAt).getTime(), revenue: r.total });
-    if (l.type === "open_pass") for (const p of l.passes) {
-      const t = l.passTypes.find((x) => x.id === p.passTypeId);
-      purchases.push({ ts: new Date(p.purchasedAt).getTime(), revenue: t?.price ?? 0 });
-    }
-    if (l.type === "package") for (const g of l.groupBookings) purchases.push({ ts: new Date(g.purchasedAt).getTime(), revenue: g.total });
+    if (l.type === "event")
+      for (const a of l.attendees) {
+        const tier = l.tiers.find((t) => t.id === a.tierId);
+        purchases.push({ ts: new Date(a.purchasedAt).getTime(), revenue: tier?.price ?? 0 });
+      }
+    if (l.type === "timeslot")
+      for (const b of l.bookings) {
+        const slot = l.slots.find((s) => s.time === b.slotTime);
+        purchases.push({
+          ts: new Date(b.purchasedAt).getTime(),
+          revenue: (slot?.price ?? 0) * b.guests,
+        });
+      }
+    if (l.type === "stay")
+      for (const r of l.reservations)
+        purchases.push({ ts: new Date(r.purchasedAt).getTime(), revenue: r.total });
+    if (l.type === "open_pass")
+      for (const p of l.passes) {
+        const t = l.passTypes.find((x) => x.id === p.passTypeId);
+        purchases.push({ ts: new Date(p.purchasedAt).getTime(), revenue: t?.price ?? 0 });
+      }
+    if (l.type === "package")
+      for (const g of l.groupBookings)
+        purchases.push({ ts: new Date(g.purchasedAt).getTime(), revenue: g.total });
   }
 
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(now - i * 86400000);
     const label = d.toLocaleDateString("en-ZA", { month: "short", day: "numeric" });
-    let revenue = 0, tickets = 0;
+    let revenue = 0,
+      tickets = 0;
     for (const p of purchases) {
       const pd = new Date(p.ts);
-      if (pd.toDateString() === d.toDateString()) { tickets++; revenue += p.revenue; }
+      if (pd.toDateString() === d.toDateString()) {
+        tickets++;
+        revenue += p.revenue;
+      }
     }
     out.push({ date: label, revenue, tickets });
   }
@@ -756,26 +1086,48 @@ export function kpisForSpotType(spotType: SpotType | null, listings: Listing[]) 
 
   if (spotType === "resort") {
     const stays = listings.filter((l): l is StayListing => l.type === "stay");
-    const roomNights = stays.reduce((s, st) =>
-      s + st.reservations.reduce((acc, r) => {
-        const nights = Math.max(1, (new Date(r.checkOut).getTime() - new Date(r.checkIn).getTime()) / 86400000);
-        return acc + nights;
-      }, 0), 0);
-    const totalRoomCapacity = stays.reduce((s, st) => s + st.rooms.reduce((a, r) => a + r.count, 0), 0) * 30;
-    const occupancy = totalRoomCapacity > 0 ? Math.round((roomNights / totalRoomCapacity) * 100) : 0;
-    const avgStay = stays.reduce((s, st) => s + st.reservations.length, 0) > 0
-      ? Math.round((roomNights / stays.reduce((s, st) => s + st.reservations.length, 0)) * 10) / 10 : 0;
+    const roomNights = stays.reduce(
+      (s, st) =>
+        s +
+        st.reservations.reduce((acc, r) => {
+          const nights = Math.max(
+            1,
+            (new Date(r.checkOut).getTime() - new Date(r.checkIn).getTime()) / 86400000,
+          );
+          return acc + nights;
+        }, 0),
+      0,
+    );
+    const totalRoomCapacity =
+      stays.reduce((s, st) => s + st.rooms.reduce((a, r) => a + r.count, 0), 0) * 30;
+    const occupancy =
+      totalRoomCapacity > 0 ? Math.round((roomNights / totalRoomCapacity) * 100) : 0;
+    const avgStay =
+      stays.reduce((s, st) => s + st.reservations.length, 0) > 0
+        ? Math.round((roomNights / stays.reduce((s, st) => s + st.reservations.length, 0)) * 10) /
+          10
+        : 0;
     return [
       { label: "Revenue", value: ZAR(t.revenue), delta: "+18%" },
-      { label: "Room-nights", value: Math.round(roomNights).toLocaleString(), delta: `${stays.reduce((s,st)=>s+st.reservations.length,0)} stays` },
+      {
+        label: "Room-nights",
+        value: Math.round(roomNights).toLocaleString(),
+        delta: `${stays.reduce((s, st) => s + st.reservations.length, 0)} stays`,
+      },
       { label: "Occupancy", value: `${occupancy}%`, delta: "30-day" },
       { label: "Avg stay", value: `${avgStay}n`, delta: "nights" },
     ];
   }
   if (spotType === "activity") {
     const ts = listings.filter((l): l is TimeslotListing => l.type === "timeslot");
-    const todayBookings = ts.reduce((s, x) => s + x.bookings.filter((b) => b.date === todayStr).length, 0);
-    const upcoming = ts.reduce((s, x) => s + x.bookings.filter((b) => b.date >= todayStr).length, 0);
+    const todayBookings = ts.reduce(
+      (s, x) => s + x.bookings.filter((b) => b.date === todayStr).length,
+      0,
+    );
+    const upcoming = ts.reduce(
+      (s, x) => s + x.bookings.filter((b) => b.date >= todayStr).length,
+      0,
+    );
     const noShow = t.sold > 0 ? Math.round(((t.sold - t.checkedIn) / t.sold) * 100) : 0;
     return [
       { label: "Revenue", value: ZAR(t.revenue), delta: "+24%" },
@@ -799,8 +1151,17 @@ export function kpisForSpotType(spotType: SpotType | null, listings: Listing[]) 
   if (spotType === "operator") {
     const pkgs = listings.filter((l): l is PackageListing => l.type === "package");
     const groups = pkgs.reduce((s, p) => s + p.groupBookings.length, 0);
-    const avgSize = groups > 0 ? Math.round(pkgs.reduce((s, p) => s + p.groupBookings.reduce((a, g) => a + g.groupSize, 0), 0) / groups) : 0;
-    const pending = pkgs.reduce((s, p) => s + p.groupBookings.filter((g) => !g.confirmedHeadcount).length, 0);
+    const avgSize =
+      groups > 0
+        ? Math.round(
+            pkgs.reduce((s, p) => s + p.groupBookings.reduce((a, g) => a + g.groupSize, 0), 0) /
+              groups,
+          )
+        : 0;
+    const pending = pkgs.reduce(
+      (s, p) => s + p.groupBookings.filter((g) => !g.confirmedHeadcount).length,
+      0,
+    );
     return [
       { label: "Revenue", value: ZAR(t.revenue), delta: "+22%" },
       { label: "Groups booked", value: String(groups), delta: "all-time" },
@@ -812,7 +1173,11 @@ export function kpisForSpotType(spotType: SpotType | null, listings: Listing[]) 
   return [
     { label: "Revenue", value: ZAR(t.revenue), delta: "+18%" },
     { label: "Tickets sold", value: t.sold.toLocaleString(), delta: "+12%" },
-    { label: "Capacity used", value: `${t.capacity > 0 ? Math.round((t.sold / t.capacity) * 100) : 0}%`, delta: `${t.sold}/${t.capacity}` },
+    {
+      label: "Capacity used",
+      value: `${t.capacity > 0 ? Math.round((t.sold / t.capacity) * 100) : 0}%`,
+      delta: `${t.sold}/${t.capacity}`,
+    },
     { label: "Checked in", value: t.checkedIn.toLocaleString(), delta: "live" },
   ];
 }
@@ -842,10 +1207,32 @@ export const ZAR = (n: number) =>
   "R " + n.toLocaleString("en-ZA", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
 export const CATEGORIES = [
-  "Nightlife", "Comedy", "Live Music", "Festival", "Food Fest", "Wine Fest",
-  "Convention", "Expo", "Mega Church", "Workshop", "Sip & Paint", "Fashion",
-  "Spa", "Skydive", "Bungee", "Paintball", "Go-Karting", "Hiking", "Adventure",
-  "Lodge", "Hotel", "Resort", "Glamping", "Gallery", "Museum", "Exhibit",
+  "Nightlife",
+  "Comedy",
+  "Live Music",
+  "Festival",
+  "Food Fest",
+  "Wine Fest",
+  "Convention",
+  "Expo",
+  "Mega Church",
+  "Workshop",
+  "Sip & Paint",
+  "Fashion",
+  "Spa",
+  "Skydive",
+  "Bungee",
+  "Paintball",
+  "Go-Karting",
+  "Hiking",
+  "Adventure",
+  "Lodge",
+  "Hotel",
+  "Resort",
+  "Glamping",
+  "Gallery",
+  "Museum",
+  "Exhibit",
 ];
 
 export const STOCK_COVERS = COVERS;

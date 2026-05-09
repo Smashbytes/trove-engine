@@ -14,7 +14,11 @@ function ListingBookingsPage() {
 
   return (
     <AppShell>
-      <Link to="/listings/$listingId" params={{ listingId }} className="mb-4 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+      <Link
+        to="/listings/$listingId"
+        params={{ listingId }}
+        className="mb-4 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+      >
         <ArrowLeft className="h-3 w-3" /> Back to listing
       </Link>
 
@@ -32,7 +36,9 @@ function ListingBookingsPage() {
       <div className="rounded-2xl border border-border/60 bg-card p-12 text-center shadow-card">
         <Users className="mx-auto h-8 w-8 text-muted-foreground" />
         <h3 className="mt-3 font-display text-lg font-semibold">No bookings yet</h3>
-        <p className="mt-1 text-sm text-muted-foreground">Share your listing to get your first guest in.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Share your listing to get your first guest in.
+        </p>
       </div>
     </AppShell>
   );

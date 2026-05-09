@@ -18,10 +18,22 @@ function SettingsPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card icon={KeyRound}    title="Account & security" sub="Email, password, two-factor (P2)." />
-        <Card icon={ShieldCheck} title="Business verification" sub="CIPC, ID, bank account, payout BAV." />
-        <Card icon={BellIcon}    title="Notification preferences" sub="WhatsApp, email, in-app channel toggles." />
-        <Card icon={SettingsIcon} title="Preferences" sub="Currency (ZAR locked), time format, language (EN locked)." />
+        <Card icon={KeyRound} title="Account & security" sub="Email, password, two-factor (P2)." />
+        <Card
+          icon={ShieldCheck}
+          title="Business verification"
+          sub="CIPC, ID, bank account, payout BAV."
+        />
+        <Card
+          icon={BellIcon}
+          title="Notification preferences"
+          sub="WhatsApp, email, in-app channel toggles."
+        />
+        <Card
+          icon={SettingsIcon}
+          title="Preferences"
+          sub="Currency (ZAR locked), time format, language (EN locked)."
+        />
       </div>
     </AppShell>
   );

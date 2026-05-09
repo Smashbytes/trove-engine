@@ -18,9 +18,13 @@ function TeamPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <RoleCard icon={Shield}    name="Manager"  blurb="Full access to listings, bookings, and team." />
-        <RoleCard icon={Wallet}    name="Finance"  blurb="Payouts, transactions, and reports only." />
-        <RoleCard icon={ScanLine}  name="Scanner"  blurb="Door scan only — no dashboard access." />
+        <RoleCard
+          icon={Shield}
+          name="Manager"
+          blurb="Full access to listings, bookings, and team."
+        />
+        <RoleCard icon={Wallet} name="Finance" blurb="Payouts, transactions, and reports only." />
+        <RoleCard icon={ScanLine} name="Scanner" blurb="Door scan only — no dashboard access." />
       </div>
 
       <div className="mt-6 rounded-2xl border border-border/60 bg-card p-12 text-center shadow-card">
@@ -32,7 +36,15 @@ function TeamPage() {
   );
 }
 
-function RoleCard({ icon: Icon, name, blurb }: { icon: typeof Users; name: string; blurb: string }) {
+function RoleCard({
+  icon: Icon,
+  name,
+  blurb,
+}: {
+  icon: typeof Users;
+  name: string;
+  blurb: string;
+}) {
   return (
     <div className="rounded-2xl card-flat p-5 shadow-card">
       <div className="flex items-center gap-2 text-primary">

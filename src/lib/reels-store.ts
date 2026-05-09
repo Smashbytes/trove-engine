@@ -16,9 +16,9 @@ export type Reel = {
   id: string;
   spotName: string;
   listingId?: string;
-  baseImage: string;        // dataURL or asset path
-  thumbnail: string;        // dataURL
-  videoBlobKey?: string;    // IndexedDB key once exported
+  baseImage: string; // dataURL or asset path
+  thumbnail: string; // dataURL
+  videoBlobKey?: string; // IndexedDB key once exported
   durationMs: number;
   layers: ReelLayer[];
   status: "draft" | "published";
@@ -31,27 +31,39 @@ const KEY = "trove_reels_v1";
 
 function read(): Reel[] {
   if (typeof window === "undefined") return [];
-  try { return JSON.parse(localStorage.getItem(KEY) ?? "[]"); }
-  catch { return []; }
+  try {
+    return JSON.parse(localStorage.getItem(KEY) ?? "[]");
+  } catch {
+    return [];
+  }
 }
 function write(r: Reel[]) {
   localStorage.setItem(KEY, JSON.stringify(r));
   window.dispatchEvent(new CustomEvent("trove-reels"));
 }
 
-export function getReels(): Reel[] { return read(); }
+export function getReels(): Reel[] {
+  return read();
+}
 
 export function saveReel(r: Reel) {
   const all = read();
   const i = all.findIndex((x) => x.id === r.id);
-  if (i >= 0) all[i] = r; else all.unshift(r);
+  if (i >= 0) all[i] = r;
+  else all.unshift(r);
   write(all);
 }
 
 export async function deleteReel(id: string) {
   const all = read();
   const r = all.find((x) => x.id === id);
-  if (r?.videoBlobKey) { try { await delBlob(r.videoBlobKey); } catch {} }
+  if (r?.videoBlobKey) {
+    try {
+      await delBlob(r.videoBlobKey);
+    } catch {
+      // blob may already be gone; deletion is best-effort
+    }
+  }
   write(all.filter((x) => x.id !== id));
 }
 
@@ -65,7 +77,10 @@ export function publishReel(id: string): { ok: boolean; reason?: string } {
   const r = all.find((x) => x.id === id);
   if (!r) return { ok: false, reason: "Reel not found" };
   if (activeReels(all).length >= MAX_ACTIVE_REELS && r.status !== "published") {
-    return { ok: false, reason: `You're at the ${MAX_ACTIVE_REELS}-reel limit. Wait for one to expire or delete one.` };
+    return {
+      ok: false,
+      reason: `You're at the ${MAX_ACTIVE_REELS}-reel limit. Wait for one to expire or delete one.`,
+    };
   }
   r.status = "published";
   r.publishedAt = Date.now();
@@ -91,7 +106,10 @@ export function useReels() {
     window.addEventListener("trove-reels", fn);
     // re-render every 60s for countdowns
     const t = setInterval(fn, 60_000);
-    return () => { window.removeEventListener("trove-reels", fn); clearInterval(t); };
+    return () => {
+      window.removeEventListener("trove-reels", fn);
+      clearInterval(t);
+    };
   }, []);
   return read();
 }

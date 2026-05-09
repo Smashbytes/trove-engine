@@ -1,9 +1,17 @@
-import { Outlet, Link, createRootRoute, HeadContent, Scripts, useNavigate } from "@tanstack/react-router";
+import {
+  HeadContent,
+  Link,
+  Outlet,
+  Scripts,
+  createRootRoute,
+  useNavigate,
+  useRouterState,
+} from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/sonner";
 import { useEffect, useState } from "react";
-import { AuthProvider, useAuth } from "@/lib/auth";
 import { AuthModal } from "@/components/trove/AuthModal";
+import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider, useAuth } from "@/lib/auth";
 
 import appCss from "../styles.css?url";
 
@@ -34,23 +42,36 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Trove Engine — Run your Spot. Sell out your nights." },
-      { name: "description", content: "The all-in-one Spot dashboard for Trove. Publish events, sell tickets, scan guests, get paid." },
+      { title: "Trove Engine - Host workspaces built around how each spot actually runs." },
+      {
+        name: "description",
+        content:
+          "Role-specific workspaces for event organisers, experience providers, accommodation hosts, and venues on Trove Engine.",
+      },
       { name: "author", content: "Trove" },
-      { property: "og:title", content: "Trove Engine — Run your Spot. Sell out your nights." },
-      { property: "og:description", content: "The all-in-one Spot dashboard for Trove. Publish events, sell tickets, scan guests, get paid." },
+      { property: "og:title", content: "Trove Engine - Role-specific host workspaces." },
+      {
+        property: "og:description",
+        content:
+          "A single platform with focused workspaces for organisers, experiences, accommodation, and venues.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:title", content: "Trove Engine — Run your Spot. Sell out your nights." },
-      { name: "twitter:description", content: "The all-in-one Spot dashboard for Trove. Publish events, sell tickets, scan guests, get paid." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/2f9a9525-9bd6-4a03-9a4f-7eddf3389e4f/id-preview-ce8e6f40--68761f42-cc94-47c6-aa6d-c5f0dda2d550.lovable.app-1777511737314.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/2f9a9525-9bd6-4a03-9a4f-7eddf3389e4f/id-preview-ce8e6f40--68761f42-cc94-47c6-aa6d-c5f0dda2d550.lovable.app-1777511737314.png" },
+      { name: "twitter:title", content: "Trove Engine - Role-specific host workspaces." },
+      {
+        name: "twitter:description",
+        content:
+          "Focused host operations for events, experiences, accommodation, and venue partners.",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap",
+      },
     ],
   }),
   shellComponent: RootShell,
@@ -73,16 +94,18 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function EngineAuthGate() {
-  const { isAuthenticated, isLoading, isHost, showAuthModal, profile } = useAuth();
+  const { isAuthenticated, isLoading, isHost, profile, showAuthModal } = useAuth();
   const navigate = useNavigate();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const isPublicRoute = pathname === "/";
 
   useEffect(() => {
     if (isLoading) return;
-    // Authenticated but no host profile → send to onboarding
-    if (isAuthenticated && !isHost && profile && location.pathname !== '/onboarding') {
-      navigate({ to: '/onboarding' });
+
+    if (isAuthenticated && !isHost && profile && pathname !== "/onboarding") {
+      navigate({ to: "/onboarding" });
     }
-  }, [isAuthenticated, isHost, isLoading, profile]);
+  }, [isAuthenticated, isHost, isLoading, navigate, pathname, profile]);
 
   if (isLoading) {
     return (
@@ -92,25 +115,31 @@ function EngineAuthGate() {
     );
   }
 
+  const canRenderOutlet = isAuthenticated || isPublicRoute;
+  const shouldOpenAuthModal = showAuthModal || (!isAuthenticated && !isPublicRoute);
+
   return (
     <>
-      {isAuthenticated && <Outlet />}
-      <AuthModal open={showAuthModal} />
+      {canRenderOutlet && <Outlet />}
+      <AuthModal open={shouldOpenAuthModal} />
       <Toaster theme="dark" position="top-right" richColors />
     </>
   );
 }
 
 function RootComponent() {
-  const [queryClient] = useState(() => new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: 30_000,
-        refetchOnWindowFocus: false,
-        retry: 1,
-      },
-    },
-  }));
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 30_000,
+            refetchOnWindowFocus: false,
+            retry: 1,
+          },
+        },
+      }),
+  );
 
   return (
     <QueryClientProvider client={queryClient}>

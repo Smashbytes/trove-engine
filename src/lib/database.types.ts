@@ -1,23 +1,31 @@
-// Hand-maintained mirror of the Supabase schema after 0002_align_to_prd.sql.
-// Regenerate canonical types with:
-//   supabase gen types typescript --linked > src/lib/database.types.ts
-// (run after applying any new migration; this file will be overwritten)
+// Source of truth for Supabase types is database.types.generated.ts.
+// Regenerate with:
+//   supabase gen types typescript --linked --schema public \
+//     > src/lib/database.types.generated.ts
+//
+// This file layers two things on top of the generated types:
+//   1. Convenient named row aliases (Listing, Booking, …) so call-sites stay
+//      readable instead of using Tables<'listings'> everywhere.
+//   2. Strongly-typed JSONB shapes for listings.metadata, which the generator
+//      flattens to `Json`.
 
-export type Json = string | number | boolean | null | { [key: string]: Json } | Json[];
+import type { Database, Json, Tables } from "./database.types.generated";
+
+export type { Database, Json } from "./database.types.generated";
 
 // ---------------------------------------------------------------------------
-// Enums
+// Enum aliases
 // ---------------------------------------------------------------------------
 
-export type ListingStatus = 'draft' | 'live' | 'paused' | 'archived';
-export type ListingType   = 'venue' | 'event' | 'experience' | 'accommodation';
-export type BookingMode   = 'event' | 'reservation' | 'slot' | 'pass' | 'rsvp';
-export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'refunded';
-export type TicketStatus  = 'valid' | 'used' | 'voided';
-export type KycStatus     = 'pending' | 'submitted' | 'verified' | 'rejected';
-export type HostType      = 'venue' | 'organiser' | 'experience' | 'accommodation';
-export type PayoutStatus  = 'pending' | 'processing' | 'paid' | 'failed';
-export type LedgerKind    = 'charge' | 'fee' | 'payout' | 'refund' | 'adjustment';
+export type ListingStatus = Database["public"]["Enums"]["listing_status"];
+export type ListingType = Database["public"]["Enums"]["listing_type"];
+export type BookingMode = Database["public"]["Enums"]["booking_mode"];
+export type BookingStatus = Database["public"]["Enums"]["booking_status"];
+export type TicketStatus = Database["public"]["Enums"]["ticket_status"];
+export type KycStatus = Database["public"]["Enums"]["kyc_status"];
+export type HostType = Database["public"]["Enums"]["host_type"];
+export type PayoutStatus = Database["public"]["Enums"]["payout_status"];
+export type LedgerKind = Database["public"]["Enums"]["ledger_kind"];
 
 // ---------------------------------------------------------------------------
 // Listing metadata payloads (PRD §5.3.2) — JSONB-shaped per listing_type
@@ -25,7 +33,7 @@ export type LedgerKind    = 'charge' | 'fee' | 'payout' | 'refund' | 'adjustment
 
 export interface VenueMetadata {
   opening_hours?: Record<string, { open: string; close: string }>;
-  price_range?: 'R' | 'RR' | 'RRR' | 'RRRR';
+  price_range?: "R" | "RR" | "RRR" | "RRRR";
   dress_code?: string;
   age_restriction?: number;
   amenities?: string[];
@@ -33,7 +41,7 @@ export interface VenueMetadata {
 }
 
 export interface EventMetadata {
-  date?: string;          // ISO
+  date?: string; // ISO
   doors_open?: string;
   doors_close?: string;
   age_restriction?: number;
@@ -51,7 +59,7 @@ export interface ExperienceMetadata {
 }
 
 export interface AccommodationMetadata {
-  check_in?: string;       // HH:mm
+  check_in?: string; // HH:mm
   check_out?: string;
   star_rating?: number;
   amenities?: string[];
@@ -106,270 +114,71 @@ export interface WaiverEntry {
 }
 
 // ---------------------------------------------------------------------------
-// Tables
+// Convenient named row aliases
 // ---------------------------------------------------------------------------
 
-export interface Profile {
-  id: string;
-  full_name: string | null;
-  avatar_url: string | null;
-  phone: string | null;
-  is_host: boolean;
-  is_admin: boolean;
-  paystack_customer_code: string | null;
-  created_at: string;
-  updated_at: string;
-}
+export type Profile = Tables<"profiles">;
+export type HostProfile = Tables<"host_profiles">;
+export type Category = Tables<"categories">;
+export type ListingMedia = Tables<"listing_media">;
+export type Availability = Tables<"availability">;
+export type TicketType = Tables<"ticket_types">;
+export type Booking = Tables<"bookings">;
+export type BookingGuest = Tables<"booking_guests">;
+export type Ticket = Tables<"tickets">;
+export type Review = Tables<"reviews">;
+export type LedgerEntry = Tables<"ledger">;
+export type Payout = Tables<"payouts">;
+export type DeviceSession = Tables<"device_sessions">;
+export type Notification = Tables<"notifications">;
+export type AuditLogEntry = Tables<"audit_log">;
 
-export interface HostProfile {
-  user_id: string;
-  slug: string;
-  host_type: HostType;
-  bio: string | null;
-  hero_url: string | null;
-  city: string | null;
-  paystack_subaccount_code: string | null;
-  kyc_status: KycStatus;
-  verified: boolean;          // generated column
-  payout_bank_json: Json | null;
-  response_rate: number;
-  verified_at: string | null;
-  created_at: string;
-  updated_at: string;
-}
+// `listings.metadata` is widened to Json by the generator. Narrow it back to
+// our PRD-shaped union so the rest of the codebase keeps autocomplete.
+export type Listing = Omit<Tables<"listings">, "metadata"> & {
+  metadata: ListingMetadata;
+};
 
-export interface Category {
-  id: string;
-  parent_id: string | null;
-  name: string;
-  icon: string | null;
-  sort_order: number;
-  is_active: boolean;
-  template: Json;
-  created_at: string;
-}
-
-export interface Listing {
+// PostgreSQL views always declare every column nullable in introspection,
+// even when the underlying SELECT uses COALESCE. Override here to reflect
+// the actual runtime guarantees from migration 0004 (capacity_booked and
+// checked_in_count are COALESCE'd to 0; the rest inherit listings' NOT NULLs).
+type ListingViewRow = Tables<"listings_with_capacity">;
+export type ListingWithCapacity = Omit<
+  ListingViewRow,
+  | "metadata"
+  | "amenities"
+  | "base_price_kobo"
+  | "blocks"
+  | "capacity_booked"
+  | "checked_in_count"
+  | "compliance"
+  | "created_at"
+  | "currency"
+  | "health_score"
+  | "id"
+  | "host_id"
+  | "listing_type"
+  | "booking_mode"
+  | "status"
+  | "title"
+  | "updated_at"
+> & {
   id: string;
   host_id: string;
-  category_id: string | null;
   title: string;
-  slug: string | null;
-  description: string | null;
-  status: ListingStatus;
-  listing_type: ListingType;
-  booking_mode: BookingMode;
-  base_price_kobo: number;
-  currency: string;
-  capacity: number | null;
-  duration_min: number | null;
-  lat: number | null;
-  lng: number | null;
-  address: string | null;
-  city: string | null;
+  metadata: ListingMetadata;
   amenities: string[];
-  cover_url: string | null;
-  metadata: ListingMetadata;     // renamed from attributes
-  compliance: Json;
+  base_price_kobo: number;
   blocks: Json;
-  health_score: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ListingWithCapacity extends Listing {
   capacity_booked: number;
   checked_in_count: number;
-}
-
-export interface ListingMedia {
-  id: string;
-  listing_id: string;
-  kind: 'image' | 'video';
-  url: string;
-  sort_order: number;
+  compliance: Json;
   created_at: string;
-}
-
-export interface Availability {
-  id: string;
-  listing_id: string;
-  starts_at: string;
-  ends_at: string;
-  capacity_override: number | null;
-  price_override_kobo: number | null;
-  status: 'open' | 'closed' | 'sold_out';
-  created_at: string;
-}
-
-export interface TicketType {
-  id: string;
-  listing_id: string;
-  name: string;
-  description: string | null;
-  price_kobo: number;
-  capacity_total: number | null;
-  capacity_sold: number;
-  sale_starts_at: string | null;
-  sale_ends_at: string | null;
-  perks: string[];
-  age_min: number | null;
-  sort_order: number;
-  transferable: boolean;
-  status: 'active' | 'paused' | 'sold_out';
-  created_at: string;
-}
-
-export interface Booking {
-  id: string;
-  guest_id: string;
-  listing_id: string;
-  slot_id: string | null;
-  ticket_type_id: string | null;
-  party_size: number;
-  subtotal_kobo: number;
-  fee_kobo: number;
-  total_kobo: number;
-  payout_kobo: number;
-  status: BookingStatus;
-  paystack_reference: string | null;
-  paystack_split_code: string | null;
-  attested_age: boolean;
-  attested_age_at: string | null;
-  cancelled_at: string | null;
-  refunded_at: string | null;
-  checked_in_at: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface BookingGuest {
-  id: string;
-  booking_id: string;
-  user_id: string | null;
-  invited_email: string | null;
-  invited_phone: string | null;
-  status: 'invited' | 'going' | 'maybe' | 'declined';
-  created_at: string;
-}
-
-export interface Ticket {
-  id: string;
-  booking_id: string;
-  code: string;              // TRV-XXXXXXXX (PRD BKG-02)
-  jwt_jti: string;           // signing payload for offline verification
-  ticket_type_id: string | null;
-  status: TicketStatus;
-  scanned_at: string | null;
-  scanned_by: string | null;
-  scanned_device_id: string | null;
-  created_at: string;
-}
-
-export interface Review {
-  id: string;
-  booking_id: string;
-  by_user: string;
-  of_listing: string | null;
-  of_host: string | null;
-  rating: number;
-  body: string | null;
-  photos: string[];
-  created_at: string;
-}
-
-export interface LedgerEntry {
-  id: string;
-  owner_user_id: string;
-  kind: LedgerKind;
-  amount_kobo: number;
   currency: string;
-  ref_type: string | null;
-  ref_id: string | null;
-  created_at: string;
-}
-
-export interface Payout {
-  id: string;
-  host_id: string;
-  amount_kobo: number;
-  status: PayoutStatus;
-  paystack_transfer_code: string | null;
-  period_start: string | null;
-  period_end: string | null;
-  created_at: string;
-}
-
-export interface DeviceSession {
-  id: string;
-  user_id: string;
-  device_id: string;
-  app: 'guest' | 'engine';
-  last_seen: string;
-  push_token: string | null;
-}
-
-export interface Notification {
-  id: string;
-  user_id: string;
-  type: string;
-  payload: Json;
-  read_at: string | null;
-  created_at: string;
-}
-
-export interface AuditLogEntry {
-  id: string;
-  actor_id: string | null;
-  action: string;
-  entity: string;
-  entity_id: string | null;
-  diff: Json;
-  created_at: string;
-}
-
-// ---------------------------------------------------------------------------
-// Database type for supabase-js client
-// ---------------------------------------------------------------------------
-
-type Row<T> = { Row: T; Insert: Partial<T>; Update: Partial<T> };
-
-export interface Database {
-  public: {
-    Tables: {
-      profiles:        Row<Profile>;
-      host_profiles:   Row<HostProfile>;
-      categories:      Row<Category>;
-      listings:        Row<Listing>;
-      listing_media:   Row<ListingMedia>;
-      availability:    Row<Availability>;
-      ticket_types:    Row<TicketType>;
-      bookings:        Row<Booking>;
-      booking_guests:  Row<BookingGuest>;
-      tickets:         Row<Ticket>;
-      reviews:         Row<Review>;
-      ledger:          Row<LedgerEntry>;
-      payouts:         Row<Payout>;
-      device_sessions: Row<DeviceSession>;
-      notifications:   Row<Notification>;
-      audit_log:       Row<AuditLogEntry>;
-      saves:           Row<{ user_id: string; listing_id: string; created_at: string }>;
-      follows:         Row<{ user_id: string; host_id: string; created_at: string }>;
-    };
-    Views: {
-      listings_with_capacity: { Row: ListingWithCapacity };
-    };
-    Functions: Record<string, never>;
-    Enums: {
-      listing_status: ListingStatus;
-      listing_type:   ListingType;
-      booking_mode:   BookingMode;
-      booking_status: BookingStatus;
-      ticket_status:  TicketStatus;
-      kyc_status:     KycStatus;
-      host_type:      HostType;
-      payout_status:  PayoutStatus;
-      ledger_kind:    LedgerKind;
-    };
-  };
-}
+  health_score: number;
+  listing_type: ListingType;
+  booking_mode: BookingMode;
+  status: ListingStatus;
+  updated_at: string;
+};

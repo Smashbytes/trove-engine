@@ -1,6 +1,17 @@
 import { createRouter, useRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 
+function DefaultPendingComponent() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex flex-col items-center gap-3">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        <p className="text-xs text-muted-foreground">Loading…</p>
+      </div>
+    </div>
+  );
+}
+
 function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
 
@@ -59,8 +70,16 @@ export const getRouter = () => {
     routeTree,
     context: {},
     scrollRestoration: true,
-    defaultPreloadStaleTime: 0,
+    // Cache route loads for 30s so navigations to a recent page are instant.
+    defaultPreloadStaleTime: 30_000,
+    // Hover-preload chunks so the next click feels instant.
+    defaultPreload: "intent",
+    // Wait 400ms before showing the pending component (most chunk loads
+    // resolve faster than that and we don't want a flash). No min hold —
+    // unmount as soon as the route is ready.
+    defaultPendingMs: 400,
     defaultErrorComponent: DefaultErrorComponent,
+    defaultPendingComponent: DefaultPendingComponent,
   });
 
   return router;

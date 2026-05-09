@@ -1,436 +1,407 @@
-import { createFileRoute, Link, notFound, useParams, useNavigate } from "@tanstack/react-router";
-import { QRCodeSVG } from "qrcode.react";
-import { Calendar, MapPin, Share2, ScanLine, Trash2, Copy, Megaphone, Wallet, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
+import { ArrowLeft, Copy, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/trove/AppShell";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth";
+import type { AccommodationMetadata, VenueMetadata } from "@/lib/database.types";
+import { getHostWorkspace } from "@/lib/host-workspace";
 import {
-  useTroveData, ZAR, deleteListing, listingTypeLabel,
-  listingRevenue, listingBookingsCount, listingCheckedIn, listingCapacity,
-  checkInReservation,
-  type Listing,
-} from "@/lib/trove-store";
-import { toast } from "sonner";
-import { useState } from "react";
+  useDeleteListing,
+  useListing,
+  useListingAvailability,
+  useListingBookings,
+  useListingTicketTypes,
+  useListingTickets,
+  useRealtimeBookings,
+} from "@/lib/queries";
 
 export const Route = createFileRoute("/listings/$listingId")({
   head: () => ({
     meta: [
-      { title: "Listing · Trove Engine" },
-      { name: "description", content: "Manage a single Trove listing — bookings, check-ins, QR codes and promotion." },
+      { title: "Listing Detail - Trove Engine" },
+      {
+        name: "description",
+        content:
+          "Manage a real Trove host listing with live Supabase-backed detail, inventory, bookings, and issued codes.",
+      },
     ],
   }),
-  component: ListingDetail,
+  component: ListingDetailPage,
   notFoundComponent: () => (
     <AppShell>
-      <div className="text-center py-20">
-        <h2 className="font-display text-2xl">Listing not found</h2>
-        <Link to="/listings"><Button className="mt-4">Back to listings</Button></Link>
+      <div className="py-24 text-center">
+        <h2 className="font-display text-3xl font-semibold">Listing not found</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          This listing either does not exist or is not available to the signed-in host.
+        </p>
+        <Link to="/listings">
+          <Button className="mt-5">Back to listings</Button>
+        </Link>
       </div>
     </AppShell>
   ),
 });
 
-function typeColor(t: Listing["type"]) {
-  return ({
-    event:     "from-pink-500 to-fuchsia-500",
-    timeslot:  "from-emerald-500 to-teal-500",
-    stay:      "from-cyan-500 to-blue-500",
-    open_pass: "from-amber-500 to-orange-500",
-    package:   "from-violet-500 to-purple-500",
-  } as const)[t];
-}
-
-function ListingDetail() {
-  const { listingId } = useParams({ from: "/listings/$listingId" });
-  const { listings } = useTroveData();
+function ListingDetailPage() {
   const navigate = useNavigate();
-  const l = listings.find((x) => x.id === listingId);
-  const [tab, setTab] = useState<"overview" | "inventory" | "bookings" | "qr" | "promote">("overview");
+  const { hostProfile } = useAuth();
+  const workspace = getHostWorkspace(hostProfile?.host_type);
+  const { listingId } = Route.useParams();
 
-  if (!l) throw notFound();
+  const listingQuery = useListing(listingId);
+  const bookingsQuery = useListingBookings(listingId);
+  const ticketTypesQuery = useListingTicketTypes(listingId);
+  const availabilityQuery = useListingAvailability(listingId);
+  const ticketsQuery = useListingTickets(listingId);
+  const deleteListing = useDeleteListing();
 
-  const revenue = listingRevenue(l);
-  const sold = listingBookingsCount(l);
-  const cap = listingCapacity(l);
-  const checkedIn = listingCheckedIn(l);
-  const shareUrl = `https://welovetrove.co.za/${l.type}/${l.id}`;
+  useRealtimeBookings(listingId);
 
-  const onDelete = () => {
-    if (!confirm("Delete this listing?")) return;
-    deleteListing(l.id); navigate({ to: "/listings" });
+  if (!listingQuery.isLoading && !listingQuery.data) {
+    throw notFound();
+  }
+
+  const listing = listingQuery.data;
+  if (!listing) {
+    return (
+      <AppShell>
+        <div className="py-24 text-center text-muted-foreground">Loading listing…</div>
+      </AppShell>
+    );
+  }
+
+  const shareUrl = `https://www.welovetrove.co.za/host/${hostProfile?.slug ?? "trove"}/${listing.slug ?? listing.id}`;
+  const bookings = bookingsQuery.data ?? [];
+  const ticketTypes = ticketTypesQuery.data ?? [];
+  const availability = availabilityQuery.data ?? [];
+  const tickets = ticketsQuery.data ?? [];
+
+  const handleDelete = async () => {
+    const confirmed = window.confirm("Delete this listing?");
+    if (!confirmed) return;
+
+    try {
+      await deleteListing.mutateAsync(listing.id);
+      toast.success("Listing removed.");
+      navigate({ to: "/listings" });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not delete listing.");
+    }
   };
-
-  // Tab labels per type
-  const TABS: Array<{ id: typeof tab; label: string }> = [
-    { id: "overview", label: "Overview" },
-    {
-      id: "inventory",
-      label:
-        l.type === "event" ? "Tiers" :
-        l.type === "timeslot" ? "Slots" :
-        l.type === "stay" ? "Rooms" :
-        l.type === "open_pass" ? "Pass types" : "Add-ons",
-    },
-    {
-      id: "bookings",
-      label:
-        l.type === "event" ? "Attendees" :
-        l.type === "timeslot" ? "Bookings" :
-        l.type === "stay" ? "Reservations" :
-        l.type === "open_pass" ? "Passes" : "Groups",
-    },
-    ...(l.type !== "stay" ? [{ id: "qr" as const, label: "QR codes" }] : []),
-    { id: "promote", label: "Promote" },
-  ];
 
   return (
     <AppShell>
-      <Link to="/listings" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-4 w-4" /> All listings
+      <Link
+        to="/listings"
+        className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to {workspace.shortLabel.toLowerCase()}
       </Link>
 
-      {/* Hero */}
-      <div className="mb-6 overflow-hidden rounded-3xl border border-border/60 shadow-card">
-        <div className="relative aspect-[21/8]">
-          <img src={l.cover} alt={l.title} className="h-full w-full object-cover" />
+      <div className="overflow-hidden rounded-[2rem] border border-border/60 shadow-card">
+        <div className="relative aspect-[21/8] overflow-hidden">
+          {listing.cover_url ? (
+            <img
+              src={listing.cover_url}
+              alt={listing.title}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="h-full w-full bg-[linear-gradient(135deg,rgba(255,0,115,0.22),rgba(121,57,255,0.18),rgba(255,255,255,0.02))]" />
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-card via-card/60 to-card/10" />
           <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
             <div className="flex flex-wrap gap-2">
-              <span className={`rounded-full bg-gradient-to-r ${typeColor(l.type)} px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white`}>
-                {listingTypeLabel(l.type)}
+              <span className="rounded-full border border-white/12 bg-black/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/75 backdrop-blur">
+                {workspace.singularLabel}
               </span>
-              <span className="rounded-full bg-primary/90 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary-foreground">{l.category}</span>
+              <span
+                className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${statusTone(listing.status)}`}
+              >
+                {listing.status}
+              </span>
             </div>
-            <h1 className="mt-3 font-display text-3xl font-bold md:text-5xl">{l.title}</h1>
-            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-              {l.type === "event" && (
-                <span className="flex items-center gap-1"><Calendar className="h-4 w-4" />{new Date(l.date).toLocaleString("en-ZA", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
-              )}
-              {l.type === "timeslot" && <span className="flex items-center gap-1"><Calendar className="h-4 w-4" />{l.slots.length} slots · {l.durationMin}min</span>}
-              {l.type === "stay" && <span className="flex items-center gap-1"><Calendar className="h-4 w-4" />Min {l.minNights}n · check-in {l.checkInTime}</span>}
-              {l.type === "open_pass" && <span className="flex items-center gap-1"><Calendar className="h-4 w-4" />{l.validFrom} → {l.validTo}</span>}
-              {l.type === "package" && <span className="flex items-center gap-1"><Calendar className="h-4 w-4" />{l.minGroup}–{l.maxGroup} pax · {l.scheduling.replace("_", " ")}</span>}
-              <span className="flex items-center gap-1"><MapPin className="h-4 w-4" />{l.venue} · {l.city}</span>
-            </div>
+            <h1 className="mt-4 font-display text-3xl font-bold tracking-[-0.03em] md:text-5xl">
+              {listing.title}
+            </h1>
+            <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
+              {listing.city || "City not set"} · Updated{" "}
+              {new Date(listing.updated_at).toLocaleDateString("en-ZA")}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* KPI strip */}
-      <div className="mb-6 grid gap-3 sm:grid-cols-4">
-        {[
-          { l: l.type === "stay" ? "Reservations" : l.type === "package" ? "Groups" : "Bookings", v: cap > 0 ? `${sold}/${cap}` : `${sold}` },
-          { l: "Revenue", v: ZAR(revenue) },
-          { l: l.type === "stay" ? "Checked in" : l.type === "open_pass" ? "Visited" : "Confirmed", v: `${checkedIn}` },
-          { l: "Fill rate", v: cap > 0 ? `${Math.min(100, Math.round((sold / cap) * 100))}%` : "—" },
-        ].map((k) => (
-          <div key={k.l} className="rounded-xl border border-border/60 bg-card p-4 shadow-card">
-            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{k.l}</p>
-            <p className="mt-1 font-display text-xl font-bold text-gradient">{k.v}</p>
+      <div className="mt-6 flex flex-wrap gap-2">
+        <Button
+          variant="outline"
+          onClick={() => {
+            navigator.clipboard.writeText(shareUrl);
+            toast.success("Share link copied.");
+          }}
+        >
+          <Copy className="mr-1.5 h-4 w-4" />
+          Copy share link
+        </Button>
+        <Button
+          variant="ghost"
+          className="text-destructive hover:text-destructive"
+          onClick={handleDelete}
+        >
+          <Trash2 className="mr-1.5 h-4 w-4" />
+          Delete listing
+        </Button>
+      </div>
+
+      <div className="mt-6 grid gap-3 md:grid-cols-4">
+        <MetricTile label="Booked" value={listing.capacity_booked.toString()} />
+        <MetricTile label="Capacity" value={listing.capacity?.toString() ?? "Open"} />
+        <MetricTile label="Check-ins" value={listing.checked_in_count.toString()} />
+        <MetricTile
+          label="Base price"
+          value={listing.base_price_kobo > 0 ? formatZar(listing.base_price_kobo) : "TBC"}
+        />
+      </div>
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+          <h2 className="font-display text-2xl font-semibold">Overview</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            {listing.description ||
+              `This ${workspace.singularLabel.toLowerCase()} is now a real record in the host workspace and can be iterated without relying on mock seed data.`}
+          </p>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            <InfoCard label="Address" value={listing.address || "Not set"} />
+            <InfoCard label="City" value={listing.city || "Not set"} />
+            <InfoCard
+              label="Amenities"
+              value={listing.amenities.length ? listing.amenities.join(", ") : "Not set"}
+            />
+            <InfoCard label="Health score" value={listing.health_score.toString()} />
           </div>
-        ))}
+        </section>
+
+        <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+          <h2 className="font-display text-2xl font-semibold">Operations snapshot</h2>
+          <div className="mt-5 space-y-3">
+            <SummaryRow label="Bookings" value={bookings.length.toString()} />
+            <SummaryRow label="Issued codes" value={tickets.length.toString()} />
+            <SummaryRow
+              label={workspace.inventoryLabel}
+              value={(workspace.hostType === "experience"
+                ? availability.length
+                : ticketTypes.length
+              ).toString()}
+            />
+            <SummaryRow label="Publish state" value={listing.status} />
+          </div>
+        </section>
       </div>
 
-      {/* Action buttons */}
-      <div className="mb-6 flex flex-wrap gap-2">
-        {l.type !== "stay" && <Link to="/scanner"><Button variant="outline"><ScanLine className="mr-1.5 h-4 w-4" />Check-in</Button></Link>}
-        <Link to="/promote"><Button variant="outline"><Megaphone className="mr-1.5 h-4 w-4" />Promote</Button></Link>
-        <Link to="/payments"><Button variant="outline"><Wallet className="mr-1.5 h-4 w-4" />Payments</Button></Link>
-        <Button variant="outline" onClick={() => { navigator.clipboard.writeText(shareUrl); toast.success("Share link copied"); }}>
-          <Share2 className="mr-1.5 h-4 w-4" />Copy share link
-        </Button>
-        <Button variant="ghost" className="text-destructive hover:text-destructive" onClick={onDelete}>
-          <Trash2 className="mr-1.5 h-4 w-4" />Delete
-        </Button>
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+        <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+          <h2 className="font-display text-2xl font-semibold">Inventory</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            The inventory block shifts with the host type and reads from the real backing tables or
+            metadata.
+          </p>
+
+          {workspace.hostType === "organiser" && (
+            <InventoryTable
+              head={["Tier", "Price", "Sold", "Capacity"]}
+              rows={ticketTypes.map((tier) => [
+                tier.name,
+                formatZar(tier.price_kobo),
+                tier.capacity_sold.toString(),
+                tier.capacity_total?.toString() ?? "Open",
+              ])}
+              empty="No ticket tiers yet."
+            />
+          )}
+
+          {workspace.hostType === "experience" && (
+            <InventoryTable
+              head={["Starts", "Ends", "Capacity", "Price"]}
+              rows={availability.map((slot) => [
+                new Date(slot.starts_at).toLocaleString("en-ZA"),
+                new Date(slot.ends_at).toLocaleString("en-ZA"),
+                slot.capacity_override?.toString() ?? "Open",
+                slot.price_override_kobo ? formatZar(slot.price_override_kobo) : "TBC",
+              ])}
+              empty="No availability slots yet."
+            />
+          )}
+
+          {workspace.hostType === "accommodation" &&
+            (() => {
+              const metadata = (listing.metadata ?? {}) as AccommodationMetadata;
+              const rooms = metadata.rooms ?? [];
+              return (
+                <InventoryTable
+                  head={["Room", "Capacity", "Price", "Notes"]}
+                  rows={rooms.map((room) => [
+                    room.name ?? "Room",
+                    room.capacity?.toString() ?? "—",
+                    room.price_kobo ? formatZar(room.price_kobo) : "TBC",
+                    room.description ?? "—",
+                  ])}
+                  empty="No room metadata yet."
+                />
+              );
+            })()}
+
+          {workspace.hostType === "venue" &&
+            (() => {
+              const metadata = (listing.metadata ?? {}) as VenueMetadata;
+              return (
+                <div className="mt-5 grid gap-3 md:grid-cols-2">
+                  <InfoCard label="Capacity" value={listing.capacity?.toString() ?? "Open"} />
+                  <InfoCard label="Dress code" value={metadata.dress_code || "Not set"} />
+                  <InfoCard
+                    label="Age restriction"
+                    value={
+                      metadata.age_restriction != null
+                        ? String(metadata.age_restriction)
+                        : "Not set"
+                    }
+                  />
+                  <InfoCard label="Amenity count" value={listing.amenities.length.toString()} />
+                </div>
+              );
+            })()}
+        </section>
+
+        <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+          <h2 className="font-display text-2xl font-semibold">Bookings</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Every row here comes from `bookings`, scoped by the signed-in host account.
+          </p>
+          <InventoryTable
+            head={["Booking", "Status", "Party", "Total"]}
+            rows={bookings.map((booking) => [
+              `#${booking.id.slice(0, 8)}`,
+              booking.status,
+              booking.party_size.toString(),
+              formatZar(booking.total_kobo),
+            ])}
+            empty="No bookings yet."
+          />
+        </section>
       </div>
 
-      {/* Tabs */}
-      <div className="mb-4 flex gap-1 overflow-x-auto border-b border-border/60">
-        {TABS.map((t) => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium capitalize transition ${
-              tab === t.id ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"
-            }`}>{t.label}</button>
-        ))}
-      </div>
-
-      {tab === "overview" && <OverviewTab l={l} />}
-      {tab === "inventory" && <InventoryTab l={l} />}
-      {tab === "bookings" && <BookingsTab l={l} />}
-      {tab === "qr" && <QRTab l={l} />}
-      {tab === "promote" && <PromoteTab l={l} shareUrl={shareUrl} />}
+      {workspace.hostType !== "accommodation" && (
+        <section className="mt-6 rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+          <h2 className="font-display text-2xl font-semibold">Issued codes</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Scanner flows now inspect real issued codes instead of generated fake QR records.
+          </p>
+          <InventoryTable
+            head={["Code", "Status", "Party", "Issued"]}
+            rows={tickets.map((ticket) => [
+              ticket.code,
+              ticket.status,
+              ticket.booking_party_size.toString(),
+              new Date(ticket.booking_created_at).toLocaleDateString("en-ZA"),
+            ])}
+            empty="No ticket codes issued yet."
+          />
+        </section>
+      )}
     </AppShell>
   );
 }
 
-// ---------- Tabs ----------
-function OverviewTab({ l }: { l: Listing }) {
+function MetricTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
-      <div className="rounded-2xl card-flat p-5 shadow-card lg:col-span-2">
-        <h3 className="mb-3 font-display text-lg font-semibold">About</h3>
-        <p className="text-sm leading-relaxed text-muted-foreground">{l.description || "No description yet."}</p>
-        {l.type === "stay" && (
-          <>
-            <h4 className="mt-5 mb-2 text-sm font-semibold">Amenities</h4>
-            <div className="flex flex-wrap gap-2">
-              {l.amenities.map((a) => <span key={a} className="rounded-full border border-border/60 bg-background/40 px-3 py-1 text-xs">{a}</span>)}
-            </div>
-          </>
-        )}
-        {l.type === "package" && (
-          <>
-            <h4 className="mt-5 mb-2 text-sm font-semibold">What's included</h4>
-            <ul className="space-y-1.5 text-sm">
-              {l.includes.map((i) => <li key={i} className="flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5 text-primary" />{i}</li>)}
-            </ul>
-          </>
-        )}
-        {l.type === "open_pass" && (
-          <p className="mt-5 text-sm"><span className="text-muted-foreground">Hours:</span> {l.hours}</p>
-        )}
-      </div>
-      <div className="rounded-2xl card-flat p-5 shadow-card">
-        <h3 className="mb-3 font-display text-lg font-semibold">Quick stats</h3>
-        <div className="space-y-3 text-sm">
-          <div className="flex justify-between"><span className="text-muted-foreground">Type</span><span className="font-semibold">{listingTypeLabel(l.type)}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">Status</span><span className="font-semibold capitalize">{l.status.replace("_", " ")}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">Created</span><span className="font-semibold">{new Date(l.createdAt).toLocaleDateString()}</span></div>
-        </div>
-      </div>
+    <div className="rounded-[1.5rem] border border-border/60 bg-card p-4 shadow-card">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-2 font-display text-2xl font-bold">{value}</p>
     </div>
   );
 }
 
-function InventoryTab({ l }: { l: Listing }) {
-  if (l.type === "event") {
-    return (
-      <Table head={["Tier", "Price", "Sold", "Inventory", "Revenue"]}>
-        {l.tiers.map((t) => (
-          <tr key={t.id} className="border-t border-border/40">
-            <td className="px-5 py-3 font-medium">{t.name}</td>
-            <td className="px-5 py-3 text-right">{ZAR(t.price)}</td>
-            <td className="px-5 py-3 text-right">{t.sold}</td>
-            <td className="px-5 py-3 text-right">{t.inventory}</td>
-            <td className="px-5 py-3 text-right font-semibold text-gradient">{ZAR(t.sold * t.price)}</td>
-          </tr>
-        ))}
-      </Table>
-    );
-  }
-  if (l.type === "timeslot") {
-    return (
-      <Table head={["Time", "Capacity / day", "Price", "Booked"]}>
-        {l.slots.map((s) => {
-          const booked = l.bookings.filter((b) => b.slotTime === s.time).reduce((sum, b) => sum + b.guests, 0);
-          return (
-            <tr key={s.time} className="border-t border-border/40">
-              <td className="px-5 py-3 font-medium">{s.time}</td>
-              <td className="px-5 py-3 text-right">{s.capacity}</td>
-              <td className="px-5 py-3 text-right">{ZAR(s.price)}</td>
-              <td className="px-5 py-3 text-right font-semibold text-gradient">{booked}</td>
-            </tr>
-          );
-        })}
-      </Table>
-    );
-  }
-  if (l.type === "stay") {
-    return (
-      <Table head={["Room type", "Count", "Price/night", "Max guests", "Booked"]}>
-        {l.rooms.map((r) => {
-          const booked = l.reservations.filter((res) => res.roomId === r.id).length;
-          return (
-            <tr key={r.id} className="border-t border-border/40">
-              <td className="px-5 py-3 font-medium">{r.name}</td>
-              <td className="px-5 py-3 text-right">{r.count}</td>
-              <td className="px-5 py-3 text-right">{ZAR(r.price)}</td>
-              <td className="px-5 py-3 text-right">{r.maxGuests}</td>
-              <td className="px-5 py-3 text-right font-semibold text-gradient">{booked}</td>
-            </tr>
-          );
-        })}
-      </Table>
-    );
-  }
-  if (l.type === "open_pass") {
-    return (
-      <Table head={["Pass type", "Price", "Issued"]}>
-        {l.passTypes.map((pt) => (
-          <tr key={pt.id} className="border-t border-border/40">
-            <td className="px-5 py-3 font-medium">{pt.name}</td>
-            <td className="px-5 py-3 text-right">{ZAR(pt.price)}</td>
-            <td className="px-5 py-3 text-right font-semibold text-gradient">{l.passes.filter((p) => p.passTypeId === pt.id).length}</td>
-          </tr>
-        ))}
-      </Table>
-    );
-  }
-  // package
+function InfoCard({ label, value }: { label: string; value: string }) {
   return (
-    <Table head={["Add-on", "Price", "Selected by"]}>
-      {l.addons.map((a) => (
-        <tr key={a.id} className="border-t border-border/40">
-          <td className="px-5 py-3 font-medium">{a.name}</td>
-          <td className="px-5 py-3 text-right">{ZAR(a.price)}</td>
-          <td className="px-5 py-3 text-right font-semibold text-gradient">{l.groupBookings.filter((g) => g.addons.includes(a.id)).length}</td>
-        </tr>
-      ))}
-    </Table>
-  );
-}
-
-function BookingsTab({ l }: { l: Listing }) {
-  if (l.type === "event") {
-    return (
-      <Table head={["Attendee", "Tier", "QR", "Status"]}>
-        {l.attendees.length === 0 && <Empty cols={4} text="No tickets sold yet." />}
-        {l.attendees.map((a) => (
-          <tr key={a.id} className="border-t border-border/40">
-            <td className="px-5 py-3"><div className="font-medium">{a.name}</div><div className="text-xs text-muted-foreground">{a.email}</div></td>
-            <td className="px-5 py-3">{a.tierName}</td>
-            <td className="px-5 py-3 font-mono text-xs">{a.qr}</td>
-            <td className="px-5 py-3 text-right">{a.checkedIn ? <Pill kind="ok">Checked in</Pill> : <Pill kind="muted">Awaiting</Pill>}</td>
-          </tr>
-        ))}
-      </Table>
-    );
-  }
-  if (l.type === "timeslot") {
-    return (
-      <Table head={["Guest", "Date · Slot", "Pax", "QR", "Status"]}>
-        {l.bookings.length === 0 && <Empty cols={5} text="No bookings yet." />}
-        {l.bookings.map((b) => (
-          <tr key={b.id} className="border-t border-border/40">
-            <td className="px-5 py-3"><div className="font-medium">{b.name}</div><div className="text-xs text-muted-foreground">{b.email}</div></td>
-            <td className="px-5 py-3">{b.date} · {b.slotTime}</td>
-            <td className="px-5 py-3 text-center">{b.guests}</td>
-            <td className="px-5 py-3 font-mono text-xs">{b.qr}</td>
-            <td className="px-5 py-3 text-right">{b.checkedIn ? <Pill kind="ok">Arrived</Pill> : <Pill kind="muted">Pending</Pill>}</td>
-          </tr>
-        ))}
-      </Table>
-    );
-  }
-  if (l.type === "stay") {
-    return (
-      <Table head={["Guest", "Room", "Check-in → Check-out", "Total", "Front desk"]}>
-        {l.reservations.length === 0 && <Empty cols={5} text="No reservations yet." />}
-        {l.reservations.map((r) => (
-          <tr key={r.id} className="border-t border-border/40">
-            <td className="px-5 py-3"><div className="font-medium">{r.name}</div><div className="text-xs text-muted-foreground">{r.email}</div></td>
-            <td className="px-5 py-3">{r.roomName} · {r.guests}p</td>
-            <td className="px-5 py-3 text-xs">{r.checkIn} → {r.checkOut}</td>
-            <td className="px-5 py-3 text-right font-semibold text-gradient">{ZAR(r.total)}</td>
-            <td className="px-5 py-3 text-right">
-              {r.checkedIn ? <Pill kind="ok">Checked in</Pill> : (
-                <Button size="sm" variant="outline" onClick={() => { checkInReservation(l.id, r.id); toast.success(`${r.name} checked in`); }}>
-                  Check in
-                </Button>
-              )}
-            </td>
-          </tr>
-        ))}
-      </Table>
-    );
-  }
-  if (l.type === "open_pass") {
-    return (
-      <Table head={["Pass holder", "Pass type", "QR", "Status"]}>
-        {l.passes.length === 0 && <Empty cols={4} text="No passes issued yet." />}
-        {l.passes.map((p) => (
-          <tr key={p.id} className="border-t border-border/40">
-            <td className="px-5 py-3"><div className="font-medium">{p.name}</div><div className="text-xs text-muted-foreground">{p.email}</div></td>
-            <td className="px-5 py-3">{p.passTypeName}</td>
-            <td className="px-5 py-3 font-mono text-xs">{p.qr}</td>
-            <td className="px-5 py-3 text-right">{p.visited ? <Pill kind="ok">Visited</Pill> : <Pill kind="muted">Unused</Pill>}</td>
-          </tr>
-        ))}
-      </Table>
-    );
-  }
-  // package
-  return (
-    <Table head={["Group lead", "Size", "Date", "Total", "Status"]}>
-      {l.groupBookings.length === 0 && <Empty cols={5} text="No groups booked yet." />}
-      {l.groupBookings.map((g) => (
-        <tr key={g.id} className="border-t border-border/40">
-          <td className="px-5 py-3"><div className="font-medium">{g.name}</div><div className="text-xs text-muted-foreground">{g.email}</div></td>
-          <td className="px-5 py-3 text-center">{g.groupSize}p</td>
-          <td className="px-5 py-3 text-xs">{g.date ?? "On request"}</td>
-          <td className="px-5 py-3 text-right font-semibold text-gradient">{ZAR(g.total)}</td>
-          <td className="px-5 py-3 text-right">{g.confirmedHeadcount ? <Pill kind="ok">Confirmed</Pill> : <Pill kind="muted">Pending</Pill>}</td>
-        </tr>
-      ))}
-    </Table>
-  );
-}
-
-function QRTab({ l }: { l: Listing }) {
-  if (l.type === "stay") return null;
-  let codes: Array<{ id: string; qr: string; name: string; sub: string }> = [];
-  if (l.type === "event") codes = l.attendees.map((a) => ({ id: a.id, qr: a.qr, name: a.name, sub: a.tierName }));
-  if (l.type === "timeslot") codes = l.bookings.map((b) => ({ id: b.id, qr: b.qr, name: b.name, sub: `${b.date} · ${b.slotTime}` }));
-  if (l.type === "open_pass") codes = l.passes.map((p) => ({ id: p.id, qr: p.qr, name: p.name, sub: p.passTypeName }));
-  if (l.type === "package") codes = l.groupBookings.map((g) => ({ id: g.id, qr: g.qr, name: g.name, sub: `Group of ${g.groupSize}` }));
-
-  return (
-    <div>
-      <p className="mb-4 text-sm text-muted-foreground">Every booking gets a unique, tamper-proof QR. These would be emailed automatically.</p>
-      <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-        {codes.slice(0, 12).map((c) => (
-          <div key={c.id} className="rounded-2xl card-flat p-4 shadow-card text-center">
-            <div className="rounded-xl bg-white p-3"><QRCodeSVG value={c.qr} size={140} className="mx-auto" /></div>
-            <p className="mt-3 truncate text-sm font-medium">{c.name}</p>
-            <p className="text-xs text-muted-foreground">{c.sub}</p>
-            <button onClick={() => { navigator.clipboard.writeText(c.qr); toast.success("QR copied"); }}
-              className="mt-1 inline-flex items-center gap-1 text-[10px] font-mono text-primary hover:underline">
-              <Copy className="h-3 w-3" />{c.qr}
-            </button>
-          </div>
-        ))}
-        {codes.length === 0 && <p className="col-span-full text-center text-sm text-muted-foreground py-8">No bookings yet.</p>}
-      </div>
+    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-2 text-sm leading-6">{value}</p>
     </div>
   );
 }
 
-function PromoteTab({ l, shareUrl }: { l: Listing; shareUrl: string }) {
+function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl card-flat p-6 shadow-card">
-      <h3 className="font-display text-lg font-semibold">Share {l.title}</h3>
-      <p className="mt-1 text-sm text-muted-foreground">Drop this link anywhere. Goes straight into the Trove Seekers app.</p>
-      <div className="mt-4 flex gap-2">
-        <input readOnly value={shareUrl} className="flex-1 rounded-md border border-border/60 bg-background/40 px-3 py-2 text-sm font-mono" />
-        <Button onClick={() => { navigator.clipboard.writeText(shareUrl); toast.success("Copied"); }}><Copy className="mr-1.5 h-4 w-4" /> Copy</Button>
-      </div>
-      <Link to="/promote" className="mt-4 inline-flex items-center gap-1 text-sm text-primary hover:underline">
-        Open full promo kit →
-      </Link>
+    <div className="flex items-center justify-between rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className="font-display text-lg font-bold">{value}</span>
     </div>
   );
 }
 
-// ---------- helpers ----------
-function Table({ head, children }: { head: string[]; children: React.ReactNode }) {
+function InventoryTable({
+  head,
+  rows,
+  empty,
+}: {
+  head: string[];
+  rows: string[][];
+  empty: string;
+}) {
   return (
-    <div className="overflow-hidden rounded-2xl card-flat shadow-card">
+    <div className="mt-5 overflow-hidden rounded-2xl border border-border/60">
       <table className="w-full text-sm">
-        <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
-          <tr>{head.map((h, i) => <th key={h} className={`px-5 py-3 ${i === 0 ? "text-left" : "text-right"}`}>{h}</th>)}</tr>
+        <thead className="bg-muted/35 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+          <tr>
+            {head.map((column, index) => (
+              <th key={column} className={`px-4 py-3 ${index === 0 ? "text-left" : "text-right"}`}>
+                {column}
+              </th>
+            ))}
+          </tr>
         </thead>
-        <tbody>{children}</tbody>
+        <tbody>
+          {rows.length === 0 && (
+            <tr>
+              <td colSpan={head.length} className="px-4 py-8 text-center text-muted-foreground">
+                {empty}
+              </td>
+            </tr>
+          )}
+          {rows.map((row, rowIndex) => (
+            <tr key={`${row[0]}-${rowIndex}`} className="border-t border-border/60">
+              {row.map((cell, cellIndex) => (
+                <td
+                  key={`${cell}-${cellIndex}`}
+                  className={`px-4 py-3 ${cellIndex === 0 ? "text-left font-medium" : "text-right"}`}
+                >
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
       </table>
     </div>
   );
 }
-function Empty({ cols, text }: { cols: number; text: string }) {
-  return <tr><td colSpan={cols} className="px-5 py-8 text-center text-muted-foreground">{text}</td></tr>;
+
+function formatZar(kobo: number) {
+  return new Intl.NumberFormat("en-ZA", {
+    style: "currency",
+    currency: "ZAR",
+    maximumFractionDigits: 0,
+  }).format(kobo / 100);
 }
-function Pill({ kind, children }: { kind: "ok" | "muted"; children: React.ReactNode }) {
-  return (
-    <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-      kind === "ok" ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"
-    }`}>{children}</span>
-  );
+
+function statusTone(status: string) {
+  if (status === "live") return "bg-success/12 text-success";
+  if (status === "draft") return "bg-white/12 text-white/75";
+  if (status === "paused") return "bg-warning/12 text-warning";
+  return "bg-muted/35 text-muted-foreground";
 }

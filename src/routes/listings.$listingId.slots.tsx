@@ -14,7 +14,11 @@ function ListingSlotsPage() {
 
   return (
     <AppShell>
-      <Link to="/listings/$listingId" params={{ listingId }} className="mb-4 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+      <Link
+        to="/listings/$listingId"
+        params={{ listingId }}
+        className="mb-4 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+      >
         <ArrowLeft className="h-3 w-3" /> Back to listing
       </Link>
 

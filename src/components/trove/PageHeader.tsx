@@ -1,5 +1,8 @@
 export function PageHeader({
-  eyebrow, title, subtitle, actions,
+  eyebrow,
+  title,
+  subtitle,
+  actions,
 }: {
   eyebrow?: string;
   title: string;
@@ -15,7 +18,9 @@ export function PageHeader({
           </p>
         )}
         <h1 className="font-display text-3xl font-bold leading-tight md:text-4xl">{title}</h1>
-        {subtitle && <p className="mt-2 max-w-2xl text-sm text-muted-foreground md:text-base">{subtitle}</p>}
+        {subtitle && (
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground md:text-base">{subtitle}</p>
+        )}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </div>

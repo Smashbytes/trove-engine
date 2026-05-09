@@ -21,7 +21,8 @@ function AnalyticsPage() {
         <BarChart3 className="mx-auto h-8 w-8 text-muted-foreground" />
         <h3 className="mt-3 font-display text-lg font-semibold">Analytics coming in Phase 5</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Once you have a few completed bookings, we'll surface revenue trends, fill rates, and repeat-guest cohorts here.
+          Once you have a few completed bookings, we'll surface revenue trends, fill rates, and
+          repeat-guest cohorts here.
         </p>
       </div>
     </AppShell>

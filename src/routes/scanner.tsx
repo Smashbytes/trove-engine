@@ -1,195 +1,347 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ScanLine, CheckCircle2, XCircle, AlertCircle, Camera, Hotel } from "lucide-react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/trove/AppShell";
 import { PageHeader } from "@/components/trove/PageHeader";
+import { QrScanner } from "@/components/trove/QrScanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/lib/auth";
+import type { Booking } from "@/lib/database.types";
+import { getHostWorkspace } from "@/lib/host-workspace";
 import {
-  useTroveData, scanQR, checkInReservation, listingTypeLabel,
-  type Listing, type ScanResult,
-} from "@/lib/trove-store";
-import { toast } from "sonner";
+  useCheckInBooking,
+  useHostListings,
+  useListingBookings,
+  useListingTickets,
+} from "@/lib/queries";
 
 export const Route = createFileRoute("/scanner")({
   head: () => ({
     meta: [
-      { title: "Check-in · Trove Engine" },
-      { name: "description", content: "Scan QR codes or check guests in at the front desk." },
+      { title: "Scanner - Trove Engine" },
+      {
+        name: "description",
+        content:
+          "Inspect real issued codes and booking activity from the signed-in Trove host account.",
+      },
     ],
   }),
-  component: Scanner,
+  component: ScannerPage,
 });
 
-type LogEntry = ScanResult & { ts: number };
+function ScannerPage() {
+  const { hostProfile } = useAuth();
+  const workspace = getHostWorkspace(hostProfile?.host_type);
+  const listingsQuery = useHostListings();
+  const listings = listingsQuery.data ?? [];
 
-function Scanner() {
-  const { listings } = useTroveData();
-  const scannable = listings.filter((l) => l.status === "live" || l.status === "sold_out");
-  const [listingId, setListingId] = useState(scannable[0]?.id ?? "");
+  const [listingId, setListingId] = useState("");
   const [code, setCode] = useState("");
-  const [results, setResults] = useState<LogEntry[]>([]);
+  const [lookupValue, setLookupValue] = useState("");
 
-  const l = listings.find((x) => x.id === listingId);
+  const activeListingId = listingId || listings[0]?.id;
+  const selectedListing = listings.find((listing) => listing.id === activeListingId);
 
-  const scan = (qr: string) => {
-    if (!listingId || !qr) return;
-    const r = scanQR(listingId, qr.trim());
-    setResults((rs) => [{ ...r, ts: Date.now() }, ...rs].slice(0, 8));
-    setCode("");
+  const ticketsQuery = useListingTickets(activeListingId);
+  const bookingsQuery = useListingBookings(activeListingId);
+  const checkIn = useCheckInBooking();
+
+  const matchingTicket = useMemo(() => {
+    if (!lookupValue.trim()) return null;
+    return (
+      (ticketsQuery.data ?? []).find(
+        (ticket) => ticket.code.toLowerCase() === lookupValue.trim().toLowerCase(),
+      ) ?? null
+    );
+  }, [lookupValue, ticketsQuery.data]);
+
+  const handleScanned = (rawCode: string) => {
+    const trimmed = rawCode.trim();
+    if (!trimmed) return;
+    setCode(trimmed);
+    setLookupValue(trimmed);
+    toast.success("Code captured.");
   };
 
-  const simulate = () => {
-    if (!l) return;
-    if (l.type === "event") {
-      const next = l.attendees.find((a) => !a.checkedIn);
-      if (next) scan(next.qr);
-    } else if (l.type === "timeslot") {
-      const next = l.bookings.find((b) => !b.checkedIn);
-      if (next) scan(next.qr);
-    } else if (l.type === "open_pass") {
-      const next = l.passes.find((p) => !p.visited);
-      if (next) scan(next.qr);
-    } else if (l.type === "package") {
-      const next = l.groupBookings.find((g) => !g.confirmedHeadcount);
-      if (next) scan(next.qr);
+  const handleCheckIn = async (bookingId: string) => {
+    if (!activeListingId) return;
+    try {
+      await checkIn.mutateAsync({ bookingId, listingId: activeListingId });
+      toast.success("Guest checked in.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not check guest in.");
     }
   };
 
   return (
     <AppShell>
       <PageHeader
-        eyebrow="At the door"
-        title="Check-in"
-        subtitle="QR scanning for events, slots, passes and groups · front desk check-in for stays."
+        eyebrow={workspace.scannerLabel}
+        title={workspace.hostType === "accommodation" ? "Reservation desk" : "Code desk"}
+        subtitle="This area now reads real booking and ticket data. It no longer simulates fake scan results or seeded guest lists."
       />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 rounded-2xl card-flat p-6 shadow-card">
-          <label className="text-sm font-medium">Checking in for</label>
-          <select value={listingId} onChange={(e) => setListingId(e.target.value)}
-            className="mt-2 flex h-11 w-full rounded-md border border-input bg-input px-3 text-sm">
-            {scannable.map((x) => (
-              <option key={x.id} value={x.id}>[{listingTypeLabel(x.type)}] {x.title}</option>
+      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+          <LabelRow label={`Select ${workspace.singularLabel.toLowerCase()}`} />
+          <select
+            value={activeListingId ?? ""}
+            onChange={(event) => setListingId(event.target.value)}
+            className="mt-2 flex h-11 w-full rounded-md border border-input bg-input px-3 text-sm"
+          >
+            {listings.map((listing) => (
+              <option key={listing.id} value={listing.id}>
+                {listing.title}
+              </option>
             ))}
           </select>
 
-          {l?.type === "stay" ? (
-            <StayFrontDesk l={l} />
+          {workspace.hostType === "accommodation" ? (
+            <div className="mt-6 rounded-[1.5rem] border border-white/8 bg-white/[0.03] p-5">
+              <p className="font-display text-2xl font-semibold">Reservation desk</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Mark a guest as arrived directly against their booking. The check-in stamp is
+                written to the live booking record.
+              </p>
+            </div>
           ) : (
-            <>
-              <div className="mt-6 rounded-2xl border-2 border-dashed border-primary/40 bg-gradient-brand-soft p-8 text-center">
-                <div className="mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-brand shadow-glow">
-                  <Camera className="h-10 w-10 text-primary-foreground" />
-                </div>
-                <p className="font-display text-lg font-semibold">Camera ready</p>
-                <p className="text-xs text-muted-foreground">In production this would activate the device camera.</p>
-                <Button onClick={simulate} className="mt-4 bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95">
-                  <ScanLine className="mr-1.5 h-4 w-4" /> Simulate scan (next booking)
-                </Button>
+            <div className="mt-6 rounded-[1.5rem] border border-white/8 bg-white/[0.03] p-5">
+              <p className="font-display text-2xl font-semibold">Look up a Trove code</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Scan a ticket QR with the device camera or paste a TRV- code. Match is checked
+                against real issued tickets for this listing.
+              </p>
+              <div className="mt-4">
+                <QrScanner onDetected={handleScanned} />
               </div>
-
-              <form onSubmit={(e) => { e.preventDefault(); scan(code); }} className="mt-5">
-                <label className="text-sm font-medium">Or enter QR code manually</label>
-                <div className="mt-2 flex gap-2">
-                  <Input placeholder="e.g. TRV-AB12-CD34" value={code} onChange={(e) => setCode(e.target.value)} />
-                  <Button type="submit">Check in</Button>
-                </div>
-              </form>
-            </>
+              <div className="mt-4 flex gap-2">
+                <Input
+                  placeholder="TRV-AB12CD34"
+                  value={code}
+                  onChange={(event) => setCode(event.target.value)}
+                />
+                <Button onClick={() => setLookupValue(code)}>Inspect</Button>
+              </div>
+            </div>
           )}
-        </div>
 
-        <div className="rounded-2xl card-flat p-6 shadow-card">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Recent activity</p>
-          <div className="mt-4 space-y-2">
-            <AnimatePresence>
-              {results.length === 0 && <p className="text-xs text-muted-foreground">No scans yet.</p>}
-              {results.map((r, i) => (
-                <motion.div key={r.ts + "_" + i}
-                  initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}
-                  className={`flex items-start gap-3 rounded-xl border p-3 ${
-                    r.kind === "ok" ? "border-success/40 bg-success/10" :
-                    r.kind === "duplicate" ? "border-warning/40 bg-warning/10" :
-                    "border-destructive/40 bg-destructive/10"
-                  }`}>
-                  {r.kind === "ok" && <CheckCircle2 className="h-5 w-5 flex-none text-success" />}
-                  {r.kind === "duplicate" && <AlertCircle className="h-5 w-5 flex-none text-warning" />}
-                  {r.kind === "not_found" && <XCircle className="h-5 w-5 flex-none text-destructive" />}
-                  <div className="text-xs">
-                    <p className="font-semibold">
-                      {r.kind === "ok" && "Welcome in"}
-                      {r.kind === "duplicate" && "Already checked in"}
-                      {r.kind === "not_found" && "Invalid code"}
-                    </p>
-                    {r.kind !== "not_found" && (
-                      <p className="text-muted-foreground">{r.name} · {r.detail}</p>
-                    )}
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
+          <div className="mt-6 grid gap-3 md:grid-cols-3">
+            <MetricCard label="Bookings" value={String(bookingsQuery.data?.length ?? 0)} />
+            <MetricCard label="Issued codes" value={String(ticketsQuery.data?.length ?? 0)} />
+            <MetricCard
+              label="Used codes"
+              value={String(
+                (ticketsQuery.data ?? []).filter((ticket) => ticket.status === "used").length,
+              )}
+            />
           </div>
-        </div>
+        </section>
+
+        <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+          <h2 className="font-display text-2xl font-semibold">Lookup result</h2>
+          {!lookupValue && workspace.hostType !== "accommodation" && (
+            <p className="mt-3 text-sm text-muted-foreground">
+              Enter a ticket code to inspect a real issued record.
+            </p>
+          )}
+          {workspace.hostType !== "accommodation" && lookupValue && !matchingTicket && (
+            <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/10 p-4">
+              <p className="font-semibold text-destructive">Code not found</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                No issued code matched `{lookupValue}` on the selected listing.
+              </p>
+            </div>
+          )}
+          {matchingTicket && (
+            <div className="mt-4 space-y-3">
+              <ResultRow label="Code" value={matchingTicket.code} />
+              <ResultRow label="Status" value={matchingTicket.status} />
+              <ResultRow label="Party size" value={matchingTicket.booking_party_size.toString()} />
+              <ResultRow
+                label="Issued"
+                value={new Date(matchingTicket.booking_created_at).toLocaleString("en-ZA")}
+              />
+              <ResultRow
+                label="Scanned at"
+                value={
+                  matchingTicket.scanned_at
+                    ? new Date(matchingTicket.scanned_at).toLocaleString("en-ZA")
+                    : "Not used yet"
+                }
+              />
+            </div>
+          )}
+
+          {workspace.hostType === "accommodation" && (
+            <p className="mt-3 text-sm text-muted-foreground">
+              Use the reservation table below to mark a guest as checked in. The arrival timestamp
+              writes to the live booking record.
+            </p>
+          )}
+        </section>
       </div>
+
+      <section className="mt-6 rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+        <h2 className="font-display text-2xl font-semibold">
+          {workspace.hostType === "accommodation" ? "Reservation records" : "Issued ticket records"}
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {selectedListing
+            ? `Reading activity for ${selectedListing.title}.`
+            : "Choose a listing to inspect activity."}
+        </p>
+
+        {workspace.hostType === "accommodation" ? (
+          <CheckInTable
+            bookings={bookingsQuery.data ?? []}
+            isPendingId={
+              checkIn.isPending && checkIn.variables ? checkIn.variables.bookingId : null
+            }
+            onCheckIn={handleCheckIn}
+          />
+        ) : (
+          <RecordsTable
+            head={["Code", "Status", "Party", "Created"]}
+            rows={(ticketsQuery.data ?? []).map((ticket) => [
+              ticket.code,
+              ticket.status,
+              ticket.booking_party_size.toString(),
+              new Date(ticket.booking_created_at).toLocaleDateString("en-ZA"),
+            ])}
+            empty="No issued ticket records yet."
+          />
+        )}
+      </section>
     </AppShell>
   );
 }
 
-function StayFrontDesk({ l }: { l: Extract<Listing, { type: "stay" }> }) {
-  const today = new Date().toISOString().slice(0, 10);
-  const arrivals = l.reservations.filter((r) => r.checkIn <= today && !r.checkedIn);
-  const inHouse = l.reservations.filter((r) => r.checkedIn && r.checkOut > today);
+function LabelRow({ label }: { label: string }) {
+  return <p className="text-sm font-medium">{label}</p>;
+}
+
+function MetricCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-2 font-display text-2xl font-bold">{value}</p>
+    </div>
+  );
+}
+
+function ResultRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className="text-sm font-semibold">{value}</span>
+    </div>
+  );
+}
+
+function CheckInTable({
+  bookings,
+  isPendingId,
+  onCheckIn,
+}: {
+  bookings: Booking[];
+  isPendingId: string | null;
+  onCheckIn: (bookingId: string) => void;
+}) {
+  if (bookings.length === 0) {
+    return (
+      <div className="mt-5 overflow-hidden rounded-2xl border border-border/60">
+        <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+          No reservation records yet.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div className="mt-6 space-y-6">
-      <div className="rounded-2xl border border-primary/30 bg-gradient-brand-soft p-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-brand text-primary-foreground">
-            <Hotel className="h-6 w-6" />
-          </div>
-          <div>
-            <p className="font-display text-lg font-semibold">Front desk mode</p>
-            <p className="text-xs text-muted-foreground">Stays don't use QR. Look up the guest and confirm arrival.</p>
-          </div>
-        </div>
-      </div>
+    <div className="mt-5 overflow-hidden rounded-2xl border border-border/60">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/35 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+          <tr>
+            <th className="px-4 py-3 text-left">Booking</th>
+            <th className="px-4 py-3 text-right">Status</th>
+            <th className="px-4 py-3 text-right">Party</th>
+            <th className="px-4 py-3 text-right">Checked in</th>
+            <th className="px-4 py-3 text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {bookings.map((booking) => {
+            const checkedIn = !!booking.checked_in_at;
+            const disabled =
+              checkedIn ||
+              isPendingId === booking.id ||
+              booking.status === "cancelled" ||
+              booking.status === "refunded";
+            return (
+              <tr key={booking.id} className="border-t border-border/60">
+                <td className="px-4 py-3 text-left font-medium">#{booking.id.slice(0, 8)}</td>
+                <td className="px-4 py-3 text-right">{booking.status}</td>
+                <td className="px-4 py-3 text-right">{booking.party_size}</td>
+                <td className="px-4 py-3 text-right text-muted-foreground">
+                  {checkedIn ? new Date(booking.checked_in_at!).toLocaleString("en-ZA") : "—"}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <Button
+                    size="sm"
+                    variant={checkedIn ? "ghost" : "outline"}
+                    disabled={disabled}
+                    onClick={() => onCheckIn(booking.id)}
+                  >
+                    {checkedIn ? "Checked in" : isPendingId === booking.id ? "Saving…" : "Check in"}
+                  </Button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
-      <div>
-        <h4 className="mb-2 text-sm font-semibold">Today's arrivals ({arrivals.length})</h4>
-        <div className="space-y-2">
-          {arrivals.length === 0 && <p className="text-xs text-muted-foreground">No arrivals today.</p>}
-          {arrivals.map((r) => (
-            <div key={r.id} className="flex items-center justify-between rounded-xl border border-border/60 bg-background/40 p-3">
-              <div>
-                <p className="text-sm font-medium">{r.name}</p>
-                <p className="text-xs text-muted-foreground">{r.roomName} · {r.guests}p · {r.checkIn} → {r.checkOut}</p>
-              </div>
-              <Button size="sm" onClick={() => { checkInReservation(l.id, r.id); toast.success(`${r.name} checked in`); }}
-                className="bg-gradient-brand text-primary-foreground">
-                Check in
-              </Button>
-            </div>
+function RecordsTable({ head, rows, empty }: { head: string[]; rows: string[][]; empty: string }) {
+  return (
+    <div className="mt-5 overflow-hidden rounded-2xl border border-border/60">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/35 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+          <tr>
+            {head.map((column, index) => (
+              <th key={column} className={`px-4 py-3 ${index === 0 ? "text-left" : "text-right"}`}>
+                {column}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 && (
+            <tr>
+              <td colSpan={head.length} className="px-4 py-8 text-center text-muted-foreground">
+                {empty}
+              </td>
+            </tr>
+          )}
+          {rows.map((row, index) => (
+            <tr key={`${row[0]}-${index}`} className="border-t border-border/60">
+              {row.map((cell, cellIndex) => (
+                <td
+                  key={`${cell}-${cellIndex}`}
+                  className={`px-4 py-3 ${cellIndex === 0 ? "text-left font-medium" : "text-right"}`}
+                >
+                  {cell}
+                </td>
+              ))}
+            </tr>
           ))}
-        </div>
-      </div>
-
-      <div>
-        <h4 className="mb-2 text-sm font-semibold">In-house ({inHouse.length})</h4>
-        <div className="space-y-2">
-          {inHouse.length === 0 && <p className="text-xs text-muted-foreground">No guests in-house.</p>}
-          {inHouse.map((r) => (
-            <div key={r.id} className="flex items-center justify-between rounded-xl border border-success/30 bg-success/5 p-3">
-              <div>
-                <p className="text-sm font-medium">{r.name}</p>
-                <p className="text-xs text-muted-foreground">{r.roomName} · departing {r.checkOut}</p>
-              </div>
-              <span className="rounded-full bg-success/20 px-2.5 py-0.5 text-[11px] font-semibold text-success">Checked in</span>
-            </div>
-          ))}
-        </div>
-      </div>
+        </tbody>
+      </table>
     </div>
   );
 }
