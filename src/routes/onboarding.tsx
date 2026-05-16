@@ -16,6 +16,8 @@ import {
   Plus,
   Trash2,
   ChevronRight,
+  Loader2,
+  Search,
   UserRound,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -26,7 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth";
-import type { HostType } from "@/lib/database.types";
+import type { HostType, Json } from "@/lib/database.types";
 import { useCreateHostProfile } from "@/lib/queries";
 
 export const Route = createFileRoute("/onboarding")({
@@ -116,6 +118,17 @@ function slugify(s: string) {
 type GlobalStep = 1 | 2 | 3 | 4 | 5;
 type SubStepProps = { step: number; onNext: () => void; onBack: () => void };
 
+type AddressSelection = {
+  label: string;
+  address: string;
+  addressNumber: string;
+  city: string;
+  lat: number;
+  lng: number;
+  placeId: string;
+  raw: Json;
+};
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 function Onboarding() {
@@ -132,6 +145,7 @@ function Onboarding() {
   const [hostType, setHostType] = useState<HostType | null>(null);
   const [businessName, setBusinessName] = useState(profile?.full_name ?? "");
   const [city, setCity] = useState("");
+  const [selectedAddress, setSelectedAddress] = useState<AddressSelection | null>(null);
   const [slug, setSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
   const [contactPerson, setContactPerson] = useState(profile?.full_name ?? "");
@@ -164,12 +178,15 @@ function Onboarding() {
       if (
         !businessName.trim() ||
         !city.trim() ||
+        !selectedAddress ||
         !companyReg.trim() ||
-        !bank.trim() ||
-        !accountNumber.trim() ||
         !contactPerson.trim()
       ) {
-        toast.error("Please fill in all required fields before continuing.");
+        toast.error("Please choose a searchable address and fill in the required fields.");
+        return;
+      }
+      if ((bank.trim() && !accountNumber.trim()) || (!bank.trim() && accountNumber.trim())) {
+        toast.error("Add both bank and account number, or skip banking for now.");
         return;
       }
     }
@@ -189,20 +206,34 @@ function Onboarding() {
       toast.error("Host type is required.");
       return;
     }
+    if (!selectedAddress) {
+      toast.error("Please choose a searchable address before submitting.");
+      setGlobalStep(3);
+      return;
+    }
     try {
       await createHostProfile.mutateAsync({
         hostType,
         slug: slug.trim() || slugify(businessName),
         city: city.trim(),
+        address: selectedAddress.address,
+        addressNumber: selectedAddress.addressNumber,
+        lat: selectedAddress.lat,
+        lng: selectedAddress.lng,
+        locationPlaceId: selectedAddress.placeId,
+        locationJson: selectedAddress.raw,
         displayName: businessName.trim(),
         phone: phone.trim() || undefined,
         legalName: businessName.trim(),
         registration: companyReg.trim(),
-        bankAccount: {
-          bank: bank.trim(),
-          account_number: accountNumber.trim(),
-          account_type: accountType,
-        },
+        bankAccount:
+          bank.trim() && accountNumber.trim()
+            ? {
+                bank: bank.trim(),
+                account_number: accountNumber.trim(),
+                account_type: accountType,
+              }
+            : undefined,
       });
       setGlobalStep(5);
     } catch (err) {
@@ -292,6 +323,8 @@ function Onboarding() {
                 setBusinessName={setBusinessName}
                 city={city}
                 setCity={setCity}
+                selectedAddress={selectedAddress}
+                setSelectedAddress={setSelectedAddress}
                 contactPerson={contactPerson}
                 setContactPerson={setContactPerson}
                 phone={phone}
@@ -317,6 +350,7 @@ function Onboarding() {
                 selectedType={HOST_TYPES.find((t) => t.id === hostType) ?? null}
                 businessName={businessName}
                 city={city}
+                selectedAddress={selectedAddress}
                 contactPerson={contactPerson}
                 phone={phone}
                 companyReg={companyReg}
@@ -546,7 +580,7 @@ function WelcomeStep({ userEmail, onNext }: { userEmail: string; onNext: () => v
         Get Started <ArrowRight className="ml-2 h-5 w-5" />
       </Button>
       <p className="mt-3 text-center text-xs text-muted-foreground">
-        Takes about 3 minutes · Have your bank details ready
+        Takes about 3 minutes · Banking can be added later
       </p>
     </div>
   );
@@ -635,6 +669,8 @@ interface VerificationStepProps {
   setBusinessName: (v: string) => void;
   city: string;
   setCity: (v: string) => void;
+  selectedAddress: AddressSelection | null;
+  setSelectedAddress: (v: AddressSelection | null) => void;
   contactPerson: string;
   setContactPerson: (v: string) => void;
   phone: string;
@@ -660,6 +696,8 @@ function VerificationStep({
   setBusinessName,
   city,
   setCity,
+  selectedAddress,
+  setSelectedAddress,
   contactPerson,
   setContactPerson,
   phone,
@@ -703,13 +741,12 @@ function VerificationStep({
           />
         </Field>
 
-        <Field label="City / Area *">
-          <Input
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            placeholder="Braamfontein, Johannesburg"
-          />
-        </Field>
+        <AddressSearchField
+          city={city}
+          setCity={setCity}
+          selectedAddress={selectedAddress}
+          setSelectedAddress={setSelectedAddress}
+        />
 
         <Field label="Company Registration No. *">
           <Input
@@ -720,15 +757,21 @@ function VerificationStep({
         </Field>
 
         <div className="rounded-2xl border border-border/60 bg-card/40 p-4 space-y-3">
-          <p className="text-sm font-semibold">Bank Account Details</p>
-          <Field label="Bank *">
+          <div>
+            <p className="text-sm font-semibold">Bank Account Details</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Optional for now. You can submit without banking, but payouts stay paused until it is
+              added in Settings.
+            </p>
+          </div>
+          <Field label="Bank">
             <Input
               value={bank}
               onChange={(e) => setBank(e.target.value)}
               placeholder="Standard Bank"
             />
           </Field>
-          <Field label="Account Number *">
+          <Field label="Account Number">
             <Input
               value={accountNumber}
               onChange={(e) => setAccountNumber(e.target.value)}
@@ -823,10 +866,186 @@ function VerificationStep({
 
 // ─── Step 4 — Review & Submit ─────────────────────────────────────────────────
 
+type NominatimResult = {
+  place_id: number | string;
+  display_name: string;
+  lat: string;
+  lon: string;
+  address?: Record<string, string | undefined>;
+};
+
+function AddressSearchField({
+  city,
+  setCity,
+  selectedAddress,
+  setSelectedAddress,
+}: {
+  city: string;
+  setCity: (v: string) => void;
+  selectedAddress: AddressSelection | null;
+  setSelectedAddress: (v: AddressSelection | null) => void;
+}) {
+  const [query, setQuery] = useState(selectedAddress?.label ?? city);
+  const [manualNumber, setManualNumber] = useState(selectedAddress?.addressNumber ?? "");
+  const [results, setResults] = useState<NominatimResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (query.trim().length < 3) {
+      setResults([]);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({
+          q: query,
+          format: "jsonv2",
+          addressdetails: "1",
+          limit: "6",
+          countrycodes: "za",
+        });
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+          signal: controller.signal,
+          headers: { Accept: "application/json" },
+        });
+        if (!response.ok) throw new Error("Address search failed");
+        setResults((await response.json()) as NominatimResult[]);
+        setOpen(true);
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          console.error("[onboarding] address search failed:", error);
+          setResults([]);
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }, 350);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [query]);
+
+  const applySelection = (result: NominatimResult, numberOverride = manualNumber) => {
+    const address = result.address ?? {};
+    const cityName =
+      address.city ??
+      address.town ??
+      address.village ??
+      address.suburb ??
+      address.municipality ??
+      address.county ??
+      "";
+    const houseNumber = numberOverride.trim() || address.house_number || "";
+    const street = address.road ?? address.pedestrian ?? address.neighbourhood ?? "";
+    const composedAddress =
+      houseNumber && street
+        ? `${houseNumber} ${street}, ${result.display_name}`
+        : result.display_name;
+
+    const selection: AddressSelection = {
+      label: result.display_name,
+      address: composedAddress,
+      addressNumber: houseNumber,
+      city: cityName || result.display_name.split(",").slice(-3, -2)[0]?.trim() || "",
+      lat: Number(result.lat),
+      lng: Number(result.lon),
+      placeId: String(result.place_id),
+      raw: result as unknown as Json,
+    };
+
+    setSelectedAddress(selection);
+    setCity(selection.city);
+    setQuery(selection.label);
+    setManualNumber(selection.addressNumber);
+    setOpen(false);
+  };
+
+  const updateManualNumber = (value: string) => {
+    setManualNumber(value);
+    if (!selectedAddress) return;
+    const existingNumber = selectedAddress.addressNumber.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const withoutNumber = existingNumber
+      ? selectedAddress.address.replace(new RegExp(`^${existingNumber}\\s*`), "")
+      : selectedAddress.address;
+    setSelectedAddress({
+      ...selectedAddress,
+      addressNumber: value.trim(),
+      address: value.trim() ? `${value.trim()} ${withoutNumber}` : withoutNumber,
+    });
+  };
+
+  return (
+    <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+      <Field label="Searchable Address *">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <Input
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setSelectedAddress(null);
+            }}
+            onFocus={() => setOpen(results.length > 0)}
+            placeholder="Search street, venue, suburb, or area"
+            className="pl-9"
+          />
+          {loading && (
+            <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+          )}
+          {open && results.length > 0 && (
+            <div className="absolute left-0 right-0 top-full z-30 mt-2 max-h-72 overflow-y-auto rounded-xl border border-border/70 bg-popover p-1 shadow-card">
+              {results.map((result) => (
+                <button
+                  key={result.place_id}
+                  type="button"
+                  onClick={() => applySelection(result)}
+                  className="w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-muted"
+                >
+                  <span className="line-clamp-2">{result.display_name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </Field>
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-[0.45fr_1fr]">
+        <Field label="Street number">
+          <Input
+            value={manualNumber}
+            onChange={(e) => updateManualNumber(e.target.value)}
+            placeholder="Add manually"
+          />
+        </Field>
+        <Field label="City / Area">
+          <Input
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            placeholder="Auto-filled from address"
+          />
+        </Field>
+      </div>
+
+      <p className="mt-3 text-xs leading-5 text-muted-foreground">
+        {selectedAddress
+          ? `Coordinates captured: ${selectedAddress.lat.toFixed(5)}, ${selectedAddress.lng.toFixed(5)}`
+          : "Choose a result so Trove can store coordinates for maps, HQ, and guest discovery."}
+      </p>
+    </div>
+  );
+}
+
 interface ReviewStepProps {
   selectedType: (typeof HOST_TYPES)[number] | null;
   businessName: string;
   city: string;
+  selectedAddress: AddressSelection | null;
   contactPerson: string;
   phone: string;
   companyReg: string;
@@ -846,6 +1065,7 @@ function ReviewStep({
   selectedType,
   businessName,
   city,
+  selectedAddress,
   contactPerson,
   phone,
   companyReg,
@@ -876,7 +1096,13 @@ function ReviewStep({
           onEdit={() => onEdit(3)}
           rows={[
             { label: "Legal name", value: businessName || "—" },
-            { label: "Location", value: city || "—" },
+            { label: "Location", value: selectedAddress?.address || city || "—" },
+            {
+              label: "Coordinates",
+              value: selectedAddress
+                ? `${selectedAddress.lat.toFixed(5)}, ${selectedAddress.lng.toFixed(5)}`
+                : "—",
+            },
             { label: "Reg. No.", value: companyReg || "—" },
             { label: "Host type", value: selectedType?.label ?? "—" },
           ]}
@@ -887,7 +1113,7 @@ function ReviewStep({
           rows={[
             { label: "Bank", value: bank || "—" },
             { label: "Account", value: accountNumber ? `****${accountNumber.slice(-4)}` : "—" },
-            { label: "Type", value: accountType },
+            { label: "Type", value: bank ? accountType : "Skipped for now" },
           ]}
         />
         <ReviewCard
@@ -912,7 +1138,11 @@ function ReviewStep({
       <button
         type="button"
         onClick={() => setConfirmed(!confirmed)}
-        className="flex items-start gap-3 mb-6 w-full text-left"
+        className={`mb-6 flex w-full items-start gap-3 rounded-2xl border p-4 text-left transition ${
+          confirmed
+            ? "border-primary/60 bg-primary/10"
+            : "border-warning/45 bg-warning/10 hover:border-warning/70"
+        }`}
       >
         <div
           className={`mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded transition-all ${
@@ -921,8 +1151,9 @@ function ReviewStep({
         >
           {confirmed && <CheckCircle2 className="h-3.5 w-3.5 text-white" />}
         </div>
-        <span className="text-sm text-muted-foreground leading-relaxed">
-          I confirm all details are correct and accurate.
+        <span className="text-sm leading-relaxed text-foreground">
+          I have reviewed the business, address, contact, and payout details above. I understand
+          skipped banking details must be added before payouts can run.
         </span>
       </button>
 
@@ -2232,7 +2463,9 @@ function ConfirmCheck({
     <button
       type="button"
       onClick={() => setConfirmed(!confirmed)}
-      className="flex items-start gap-3 mb-5 w-full text-left"
+      className={`mb-5 flex w-full items-start gap-3 rounded-2xl border p-4 text-left transition ${
+        confirmed ? "border-primary/60 bg-primary/10" : "border-border/70 bg-card/50"
+      }`}
     >
       <div
         className={`mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded transition-all ${
@@ -2241,8 +2474,8 @@ function ConfirmCheck({
       >
         {confirmed && <CheckCircle2 className="h-3.5 w-3.5 text-white" />}
       </div>
-      <span className="text-sm text-muted-foreground leading-relaxed">
-        I confirm all details are correct and accurate.
+      <span className="text-sm text-foreground leading-relaxed">
+        I confirm these details are accurate and ready to publish.
       </span>
     </button>
   );

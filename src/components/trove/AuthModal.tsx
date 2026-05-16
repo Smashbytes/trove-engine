@@ -45,7 +45,7 @@ function AuthFormPanel() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
+  const [spotName, setSpotName] = useState("");
 
   function switchTab(v: "signin" | "signup") {
     setTab(v);
@@ -64,7 +64,7 @@ function AuthFormPanel() {
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
-    const { error } = await signUpWithEmail(email, password, fullName);
+    const { error } = await signUpWithEmail(email, password, spotName);
     setBusy(false);
     if (error) toast.error(error);
     else toast.success("Check your email to confirm your account.");
@@ -87,197 +87,197 @@ function AuthFormPanel() {
       <div className="grid-bg pointer-events-none absolute inset-0 opacity-25" />
 
       <div className="relative mx-auto w-full max-w-[360px]">
-          {/* Logo */}
-          <div className="mb-10 flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-brand shadow-glow-sm">
-              <Sparkles className="h-[18px] w-[18px] text-white" />
-            </div>
-            <span className="font-display text-xl font-bold tracking-tight">
-              TROVE <span className="text-gradient">Engine</span>
-            </span>
+        {/* Logo */}
+        <div className="mb-10 flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-brand shadow-glow-sm">
+            <Sparkles className="h-[18px] w-[18px] text-white" />
           </div>
+          <span className="font-display text-xl font-bold tracking-tight">
+            TROVE <span className="text-gradient">Engine</span>
+          </span>
+        </div>
 
-          <AnimatePresence mode="wait">
-            {/* ── Forgot password view ── */}
-            {view === "forgot" && (
-              <motion.div
-                key="forgot"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.22, ease: "easeOut" }}
-              >
-                <p className="eyebrow text-primary mb-1">Account recovery</p>
-                <h1 className="mb-1 font-display text-3xl font-bold">Reset password</h1>
-                <p className="mb-7 text-sm text-muted-foreground">
-                  Enter your email and we'll send you a reset link instantly.
-                </p>
-                <form onSubmit={handleForgot} className="space-y-4">
-                  <AuthField
-                    id="fp-email"
-                    label="Email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@email.com"
-                    required
-                  />
-                  <GradientButton busy={busy} label="Send reset link" busyLabel="Sending…" />
+        <AnimatePresence mode="wait">
+          {/* ── Forgot password view ── */}
+          {view === "forgot" && (
+            <motion.div
+              key="forgot"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+            >
+              <p className="eyebrow text-primary mb-1">Account recovery</p>
+              <h1 className="mb-1 font-display text-3xl font-bold">Reset password</h1>
+              <p className="mb-7 text-sm text-muted-foreground">
+                Enter your email and we'll send you a reset link instantly.
+              </p>
+              <form onSubmit={handleForgot} className="space-y-4">
+                <AuthField
+                  id="fp-email"
+                  label="Email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@email.com"
+                  required
+                />
+                <GradientButton busy={busy} label="Send reset link" busyLabel="Sending…" />
+                <button
+                  type="button"
+                  onClick={() => setView("signin")}
+                  className="w-full text-center text-xs text-muted-foreground transition-colors hover:text-foreground hover:underline underline-offset-4"
+                >
+                  ← Back to sign in
+                </button>
+              </form>
+            </motion.div>
+          )}
+
+          {/* ── Sign in / Sign up tabs ── */}
+          {view !== "forgot" && (
+            <motion.div
+              key="tabs"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+            >
+              <p className="eyebrow text-primary mb-1">
+                {tab === "signin" ? "Welcome back" : "Get started free"}
+              </p>
+              <h1 className="mb-7 font-display text-3xl font-bold leading-tight">
+                {tab === "signin" ? "Sign in to your Engine" : "Start your Spot"}
+              </h1>
+
+              {/* Tab pill switcher */}
+              <div className="mb-6 flex gap-1 rounded-xl bg-surface-1 p-1">
+                {(["signin", "signup"] as const).map((t) => (
                   <button
+                    key={t}
                     type="button"
-                    onClick={() => setView("signin")}
-                    className="w-full text-center text-xs text-muted-foreground transition-colors hover:text-foreground hover:underline underline-offset-4"
+                    onClick={() => switchTab(t)}
+                    className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-all duration-200 ${
+                      tab === t
+                        ? "bg-gradient-brand text-primary-foreground shadow-glow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
                   >
-                    ← Back to sign in
+                    {t === "signin" ? "Sign in" : "New account"}
                   </button>
-                </form>
-              </motion.div>
-            )}
+                ))}
+              </div>
 
-            {/* ── Sign in / Sign up tabs ── */}
-            {view !== "forgot" && (
-              <motion.div
-                key="tabs"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.22, ease: "easeOut" }}
-              >
-                <p className="eyebrow text-primary mb-1">
-                  {tab === "signin" ? "Welcome back" : "Get started free"}
-                </p>
-                <h1 className="mb-7 font-display text-3xl font-bold leading-tight">
-                  {tab === "signin" ? "Sign in to your Engine" : "Start your Spot"}
-                </h1>
-
-                {/* Tab pill switcher */}
-                <div className="mb-6 flex gap-1 rounded-xl bg-surface-1 p-1">
-                  {(["signin", "signup"] as const).map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => switchTab(t)}
-                      className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-all duration-200 ${
-                        tab === t
-                          ? "bg-gradient-brand text-primary-foreground shadow-glow-sm"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {t === "signin" ? "Sign in" : "New account"}
-                    </button>
-                  ))}
-                </div>
-
-                <AnimatePresence mode="wait">
-                  {tab === "signin" && (
-                    <motion.form
-                      key="signin"
-                      onSubmit={handleSignIn}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.18 }}
-                      className="space-y-4"
-                    >
-                      <AuthField
-                        id="si-email"
-                        label="Email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="you@email.com"
-                        required
-                      />
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="si-pw" className="text-sm font-medium">
-                            Password
-                          </Label>
-                          <button
-                            type="button"
-                            onClick={() => setView("forgot")}
-                            className="text-xs text-primary transition-opacity hover:opacity-75"
-                          >
-                            Forgot password?
-                          </button>
-                        </div>
-                        <PwInput
-                          id="si-pw"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          show={showPw}
-                          onToggle={() => setShowPw((s) => !s)}
-                        />
-                      </div>
-                      <GradientButton busy={busy} label="Sign in" busyLabel="Signing in…" />
-                    </motion.form>
-                  )}
-
-                  {tab === "signup" && (
-                    <motion.form
-                      key="signup"
-                      onSubmit={handleSignUp}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.18 }}
-                      className="space-y-4"
-                    >
-                      <AuthField
-                        id="su-name"
-                        label="Full name"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        placeholder="Your full name"
-                        required
-                      />
-                      <AuthField
-                        id="su-email"
-                        label="Email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="you@email.com"
-                        required
-                      />
-                      <div className="space-y-1.5">
-                        <Label htmlFor="su-pw" className="text-sm font-medium">
+              <AnimatePresence mode="wait">
+                {tab === "signin" && (
+                  <motion.form
+                    key="signin"
+                    onSubmit={handleSignIn}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.18 }}
+                    className="space-y-4"
+                  >
+                    <AuthField
+                      id="si-email"
+                      label="Email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@email.com"
+                      required
+                    />
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="si-pw" className="text-sm font-medium">
                           Password
                         </Label>
-                        <PwInput
-                          id="su-pw"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          show={showPw}
-                          onToggle={() => setShowPw((s) => !s)}
-                          placeholder="Min. 8 characters"
-                          minLength={8}
-                        />
+                        <button
+                          type="button"
+                          onClick={() => setView("forgot")}
+                          className="text-xs text-primary transition-opacity hover:opacity-75"
+                        >
+                          Forgot password?
+                        </button>
                       </div>
-                      <GradientButton
-                        busy={busy}
-                        label="Create account & continue"
-                        busyLabel="Creating account…"
+                      <PwInput
+                        id="si-pw"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        show={showPw}
+                        onToggle={() => setShowPw((s) => !s)}
                       />
-                      <p className="text-center text-xs text-muted-foreground">
-                        By continuing you agree to TROVE's{" "}
-                        <span className="cursor-pointer text-primary hover:underline underline-offset-4">
-                          Terms
-                        </span>{" "}
-                        and{" "}
-                        <span className="cursor-pointer text-primary hover:underline underline-offset-4">
-                          Privacy Policy
-                        </span>
-                        .
-                      </p>
-                    </motion.form>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+                    </div>
+                    <GradientButton busy={busy} label="Sign in" busyLabel="Signing in…" />
+                  </motion.form>
+                )}
+
+                {tab === "signup" && (
+                  <motion.form
+                    key="signup"
+                    onSubmit={handleSignUp}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.18 }}
+                    className="space-y-4"
+                  >
+                    <AuthField
+                      id="su-name"
+                      label="Spot Name"
+                      value={spotName}
+                      onChange={(e) => setSpotName(e.target.value)}
+                      placeholder="Your spot or business name"
+                      required
+                    />
+                    <AuthField
+                      id="su-email"
+                      label="Email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@email.com"
+                      required
+                    />
+                    <div className="space-y-1.5">
+                      <Label htmlFor="su-pw" className="text-sm font-medium">
+                        Password
+                      </Label>
+                      <PwInput
+                        id="su-pw"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        show={showPw}
+                        onToggle={() => setShowPw((s) => !s)}
+                        placeholder="Min. 8 characters"
+                        minLength={8}
+                      />
+                    </div>
+                    <GradientButton
+                      busy={busy}
+                      label="Create account & continue"
+                      busyLabel="Creating account…"
+                    />
+                    <p className="text-center text-xs text-muted-foreground">
+                      By continuing you agree to TROVE's{" "}
+                      <span className="cursor-pointer text-primary hover:underline underline-offset-4">
+                        Terms
+                      </span>{" "}
+                      and{" "}
+                      <span className="cursor-pointer text-primary hover:underline underline-offset-4">
+                        Privacy Policy
+                      </span>
+                      .
+                    </p>
+                  </motion.form>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
+    </div>
   );
 }
 

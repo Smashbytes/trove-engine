@@ -22,7 +22,7 @@ interface AuthContextValue {
   signUpWithEmail: (
     email: string,
     password: string,
-    fullName: string,
+    spotName: string,
   ) => Promise<{ error: string | null }>;
   resetPassword: (email: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -127,13 +127,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error?.message ?? null };
   };
 
-  const signUpWithEmail = async (email: string, password: string, fullName: string) => {
+  const signUpWithEmail = async (email: string, password: string, spotName: string) => {
+    const trimmedSpotName = spotName.trim();
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { full_name: fullName },
-        emailRedirectTo: window.location.origin,
+        data: { full_name: trimmedSpotName, spot_name: trimmedSpotName },
+        emailRedirectTo: `${window.location.origin}/onboarding`,
       },
     });
     return { error: error?.message ?? null };

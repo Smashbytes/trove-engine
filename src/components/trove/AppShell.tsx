@@ -1,6 +1,7 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { LogOut, Menu, Sparkles, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { getHostWorkspace, getVerificationCopy } from "@/lib/host-workspace";
@@ -14,11 +15,44 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const workspace = getHostWorkspace(hostProfile?.host_type);
   const verification = getVerificationCopy(hostProfile?.kyc_status);
+  const bankProfile =
+    hostProfile?.payout_bank_json &&
+    typeof hostProfile.payout_bank_json === "object" &&
+    !Array.isArray(hostProfile.payout_bank_json)
+      ? (hostProfile.payout_bank_json as Record<string, unknown>)
+      : null;
+  const hasBankDetails = !!(
+    typeof bankProfile?.bank === "string" &&
+    bankProfile.bank.trim() &&
+    typeof bankProfile?.account_number === "string" &&
+    bankProfile.account_number.trim()
+  );
 
   const handleLogout = async () => {
     await signOut();
     navigate({ to: "/" });
   };
+
+  useEffect(() => {
+    if (!hostProfile || hasBankDetails || path === "/settings") return;
+
+    const prompt = () => {
+      const lastPrompt = Number(localStorage.getItem("trove:last-bank-prompt") ?? "0");
+      if (Date.now() - lastPrompt < 5 * 60 * 1000) return;
+      localStorage.setItem("trove:last-bank-prompt", String(Date.now()));
+      toast.warning("Add banking details to unlock payouts.", {
+        duration: 12_000,
+        action: {
+          label: "Settings",
+          onClick: () => navigate({ to: "/settings" }),
+        },
+      });
+    };
+
+    prompt();
+    const interval = window.setInterval(prompt, 5 * 60 * 1000);
+    return () => window.clearInterval(interval);
+  }, [hasBankDetails, hostProfile, navigate, path]);
 
   const initials = (profile?.full_name ?? "TR")
     .split(" ")
@@ -54,7 +88,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <div className="mt-3 flex items-start justify-between gap-3">
                 <div>
                   <p className="font-display text-lg font-semibold text-white">{workspace.label}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-white/65">{verification.message}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-white/65">
+                    {verification.message}
+                  </p>
                 </div>
                 <span
                   className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${

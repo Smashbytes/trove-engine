@@ -7,6 +7,7 @@ import type {
   Category,
   Database,
   HostType,
+  Json,
   Listing,
   ListingMedia,
   ListingWithCapacity,
@@ -373,6 +374,12 @@ export interface CreateHostProfileInput {
   hostType: HostType;
   slug: string;
   city: string;
+  address?: string;
+  addressNumber?: string;
+  lat?: number | null;
+  lng?: number | null;
+  locationPlaceId?: string;
+  locationJson?: Json;
   bio?: string;
   displayName?: string;
   phone?: string;
@@ -393,14 +400,16 @@ export function useCreateHostProfile() {
     mutationFn: async (input: CreateHostProfileInput) => {
       if (!user) throw new Error("Not authenticated");
 
-      const submittedVerification = !!(input.legalName && input.registration && input.bankAccount);
-      const payoutProfile = submittedVerification
-        ? {
-            legal_name: input.legalName,
-            registration: input.registration,
-            ...input.bankAccount,
-          }
-        : (input.bankAccount ?? null);
+      const hasBankAccount = !!(
+        input.bankAccount?.bank?.trim() && input.bankAccount?.account_number?.trim()
+      );
+      const submittedVerification = !!(input.legalName && input.registration);
+      const payoutProfile = {
+        legal_name: input.legalName ?? null,
+        registration: input.registration ?? null,
+        status: hasBankAccount ? "provided" : "missing",
+        ...(hasBankAccount ? input.bankAccount : {}),
+      };
 
       const { error: hostError } = await supabase.from("host_profiles").upsert(
         {
@@ -408,6 +417,12 @@ export function useCreateHostProfile() {
           slug: input.slug,
           host_type: input.hostType,
           city: input.city,
+          address: input.address?.trim() || null,
+          address_number: input.addressNumber?.trim() || null,
+          lat: input.lat ?? null,
+          lng: input.lng ?? null,
+          location_place_id: input.locationPlaceId?.trim() || null,
+          location_json: input.locationJson ?? {},
           bio: input.bio ?? null,
           kyc_status: submittedVerification ? "submitted" : "pending",
           payout_bank_json: payoutProfile,
@@ -447,6 +462,13 @@ export interface UpdateWorkspaceProfileInput {
   heroUrl: string;
 }
 
+export interface UpdateBankingDetailsInput {
+  bank: string;
+  accountNumber: string;
+  accountType: string;
+  accountName?: string;
+}
+
 export function useUpdateWorkspaceProfile() {
   const { user, refreshProfile } = useAuth();
   const queryClient = useQueryClient();
@@ -481,6 +503,45 @@ export function useUpdateWorkspaceProfile() {
         queryClient.invalidateQueries({ queryKey: ["notifications"] }),
         queryClient.invalidateQueries({ queryKey: listingQueryKeys.all }),
       ]);
+    },
+  });
+}
+
+export function useUpdateBankingDetails() {
+  const { user, hostProfile, refreshProfile } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: UpdateBankingDetailsInput) => {
+      if (!user) throw new Error("Not authenticated");
+
+      const existing =
+        hostProfile?.payout_bank_json &&
+        typeof hostProfile.payout_bank_json === "object" &&
+        !Array.isArray(hostProfile.payout_bank_json)
+          ? hostProfile.payout_bank_json
+          : {};
+
+      const { error } = await supabase
+        .from("host_profiles")
+        .update({
+          payout_bank_json: {
+            ...existing,
+            status: "provided",
+            bank: input.bank.trim(),
+            account_number: input.accountNumber.trim(),
+            account_type: input.accountType,
+            account_name: input.accountName?.trim() || null,
+            updated_at: new Date().toISOString(),
+          },
+        })
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await refreshProfile();
+      await queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 }

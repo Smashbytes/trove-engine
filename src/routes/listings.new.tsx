@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Plus, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/trove/AppShell";
 import { ImageUpload } from "@/components/trove/ImageUpload";
@@ -37,7 +37,7 @@ function NewListing() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [city, setCity] = useState(hostProfile?.city ?? "");
-  const [address, setAddress] = useState("");
+  const [address, setAddress] = useState(hostProfile?.address ?? "");
   const [categoryId, setCategoryId] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
   const [amenities, setAmenities] = useState("");
@@ -78,6 +78,12 @@ function NewListing() {
   const saveLabel = hostProfile?.verified
     ? `Create live ${workspace.singularLabel.toLowerCase()}`
     : "Create draft";
+
+  useEffect(() => {
+    if (!hostProfile) return;
+    setCity((current) => current || hostProfile.city || "");
+    setAddress((current) => current || hostProfile.address || "");
+  }, [hostProfile]);
 
   const handleSubmit = async () => {
     if (!hostProfile) return;
@@ -123,6 +129,8 @@ function NewListing() {
             capacity: normalizedTiers.reduce((sum, tier) => sum + tier.capacity, 0),
             address: address.trim() || null,
             city: city.trim() || null,
+            lat: hostProfile.lat,
+            lng: hostProfile.lng,
             amenities: trimmedAmenities,
             cover_url: coverUrl.trim() || null,
             metadata: {
@@ -170,6 +178,8 @@ function NewListing() {
             capacity: normalizedAvailability.reduce((sum, slot) => sum + slot.capacity, 0),
             address: address.trim() || null,
             city: city.trim() || null,
+            lat: hostProfile.lat,
+            lng: hostProfile.lng,
             amenities: trimmedAmenities,
             cover_url: coverUrl.trim() || null,
             duration_min: Number(durationMinutes) || null,
@@ -222,6 +232,8 @@ function NewListing() {
             capacity: normalizedRooms.reduce((sum, room) => sum + room.capacity, 0),
             address: address.trim() || null,
             city: city.trim() || null,
+            lat: hostProfile.lat,
+            lng: hostProfile.lng,
             amenities: trimmedAmenities,
             cover_url: coverUrl.trim() || null,
             metadata: {
@@ -252,6 +264,8 @@ function NewListing() {
           capacity: Number(venueCapacity) || null,
           address: address.trim() || null,
           city: city.trim() || null,
+          lat: hostProfile.lat,
+          lng: hostProfile.lng,
           amenities: trimmedAmenities,
           cover_url: coverUrl.trim() || null,
           metadata: {
