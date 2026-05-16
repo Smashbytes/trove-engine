@@ -9,11 +9,13 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth";
 import type { Booking } from "@/lib/database.types";
 import { getHostWorkspace } from "@/lib/host-workspace";
+import { useDevice } from "@/hooks/use-device";
 import {
   useCheckInBooking,
   useHostListings,
   useListingBookings,
   useListingTickets,
+  type HostTicket,
 } from "@/lib/queries";
 
 export const Route = createFileRoute("/scanner")({
@@ -32,6 +34,7 @@ export const Route = createFileRoute("/scanner")({
 
 function ScannerPage() {
   const { hostProfile } = useAuth();
+  const device = useDevice();
   const workspace = getHostWorkspace(hostProfile?.host_type);
   const listingsQuery = useHostListings();
   const listings = listingsQuery.data ?? [];
@@ -73,6 +76,30 @@ function ScannerPage() {
       toast.error(error instanceof Error ? error.message : "Could not check guest in.");
     }
   };
+
+  if (device === "smartphone") {
+    return (
+      <AppShell>
+        <SmartphoneScannerView
+          workspace={workspace}
+          listings={listings}
+          activeListingId={activeListingId}
+          selectedListing={selectedListing}
+          setListingId={setListingId}
+          code={code}
+          setCode={setCode}
+          lookupValue={lookupValue}
+          setLookupValue={setLookupValue}
+          matchingTicket={matchingTicket}
+          bookings={bookingsQuery.data ?? []}
+          tickets={ticketsQuery.data ?? []}
+          checkIn={checkIn}
+          handleScanned={handleScanned}
+          handleCheckIn={handleCheckIn}
+        />
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell>
@@ -217,6 +244,168 @@ function ScannerPage() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Smartphone-optimised layout
+// ---------------------------------------------------------------------------
+
+interface SmartphoneScannerViewProps {
+  workspace: ReturnType<typeof getHostWorkspace>;
+  listings: Array<{ id: string; title: string }>;
+  activeListingId: string | undefined;
+  selectedListing: { id: string; title: string } | undefined;
+  setListingId: (id: string) => void;
+  code: string;
+  setCode: (code: string) => void;
+  lookupValue: string;
+  setLookupValue: (v: string) => void;
+  matchingTicket: HostTicket | null;
+  bookings: Booking[];
+  tickets: HostTicket[];
+  checkIn: ReturnType<typeof useCheckInBooking>;
+  handleScanned: (raw: string) => void;
+  handleCheckIn: (bookingId: string) => void;
+}
+
+function SmartphoneScannerView({
+  workspace,
+  listings,
+  activeListingId,
+  selectedListing,
+  setListingId,
+  code,
+  setCode,
+  lookupValue,
+  setLookupValue,
+  matchingTicket,
+  bookings,
+  tickets,
+  checkIn,
+  handleScanned,
+  handleCheckIn,
+}: SmartphoneScannerViewProps) {
+  const isAccommodation = workspace.hostType === "accommodation";
+
+  return (
+    <div className="flex flex-col gap-4 pb-8">
+      {/* Compact header row */}
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          {workspace.scannerLabel}
+        </p>
+        <select
+          value={activeListingId ?? ""}
+          onChange={(e) => setListingId(e.target.value)}
+          className="h-8 max-w-[160px] rounded-md border border-input bg-input px-2 text-xs"
+        >
+          {listings.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.title}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Camera scanner — full width, tall */}
+      {!isAccommodation && (
+        <div className="rounded-[1.75rem] border border-border/60 bg-card p-4 shadow-card">
+          <p className="mb-3 font-display text-lg font-semibold">Scan QR code</p>
+          <QrScanner
+            onDetected={handleScanned}
+            autoStart
+            videoClassName="h-[52vw] min-h-[220px] max-h-[340px]"
+          />
+          <div className="mt-3 flex gap-2">
+            <Input
+              placeholder="TRV-AB12CD34"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              className="h-10 text-sm"
+            />
+            <Button size="sm" onClick={() => setLookupValue(code)}>
+              Inspect
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Result card */}
+      {!isAccommodation && (
+        <div className="rounded-[1.75rem] border border-border/60 bg-card p-4 shadow-card">
+          <p className="font-display text-lg font-semibold">Result</p>
+          {!lookupValue && (
+            <p className="mt-2 text-sm text-muted-foreground">Scan or type a code above.</p>
+          )}
+          {lookupValue && !matchingTicket && (
+            <div className="mt-3 rounded-2xl border border-destructive/30 bg-destructive/10 p-3">
+              <p className="text-sm font-semibold text-destructive">Code not found</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                No match for <span className="font-mono">{lookupValue}</span>.
+              </p>
+            </div>
+          )}
+          {matchingTicket && (
+            <div className="mt-3 space-y-2">
+              <ResultRow label="Code" value={matchingTicket.code} />
+              <ResultRow label="Status" value={matchingTicket.status} />
+              <ResultRow label="Party" value={matchingTicket.booking_party_size.toString()} />
+              <ResultRow
+                label="Scanned"
+                value={
+                  matchingTicket.scanned_at
+                    ? new Date(matchingTicket.scanned_at).toLocaleString("en-ZA")
+                    : "Not used yet"
+                }
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Metric strip */}
+      <div className="grid grid-cols-3 gap-2">
+        <MetricCard label="Bookings" value={String(bookings.length)} />
+        <MetricCard label="Issued" value={String(tickets.length)} />
+        <MetricCard
+          label="Used"
+          value={String(tickets.filter((t) => t.status === "used").length)}
+        />
+      </div>
+
+      {/* Records */}
+      <div className="rounded-[1.75rem] border border-border/60 bg-card p-4 shadow-card">
+        <p className="font-display text-lg font-semibold">
+          {isAccommodation ? "Reservations" : "Ticket records"}
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {selectedListing ? selectedListing.title : "Select a listing above."}
+        </p>
+        {isAccommodation ? (
+          <CheckInTable
+            bookings={bookings}
+            isPendingId={checkIn.isPending && checkIn.variables ? checkIn.variables.bookingId : null}
+            onCheckIn={handleCheckIn}
+          />
+        ) : (
+          <RecordsTable
+            head={["Code", "Status", "Party", "Created"]}
+            rows={tickets.map((t) => [
+              t.code,
+              t.status,
+              t.booking_party_size.toString(),
+              new Date(t.booking_created_at).toLocaleDateString("en-ZA"),
+            ])}
+            empty="No issued ticket records yet."
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Shared sub-components
+// ---------------------------------------------------------------------------
+
 function LabelRow({ label }: { label: string }) {
   return <p className="text-sm font-medium">{label}</p>;
 }
@@ -261,7 +450,7 @@ function CheckInTable({
   }
 
   return (
-    <div className="mt-5 overflow-hidden rounded-2xl border border-border/60">
+    <div className="mt-5 overflow-x-auto rounded-2xl border border-border/60">
       <table className="w-full text-sm">
         <thead className="bg-muted/35 text-xs uppercase tracking-[0.18em] text-muted-foreground">
           <tr>
@@ -309,7 +498,7 @@ function CheckInTable({
 
 function RecordsTable({ head, rows, empty }: { head: string[]; rows: string[][]; empty: string }) {
   return (
-    <div className="mt-5 overflow-hidden rounded-2xl border border-border/60">
+    <div className="mt-5 overflow-x-auto rounded-2xl border border-border/60">
       <table className="w-full text-sm">
         <thead className="bg-muted/35 text-xs uppercase tracking-[0.18em] text-muted-foreground">
           <tr>
