@@ -44,6 +44,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
+    // Tracks which user we've already fetched the profile for, so that
+    // background auth events (TOKEN_REFRESHED, USER_UPDATED, focus-triggered
+    // re-emits) don't re-toggle the global loader and blank the page.
+    let loadedForUserId: string | null = null;
 
     // Safety net: if Supabase never resolves (cold network, broken cookie,
     // service down), stop showing the loader after 8s so the user at least
@@ -58,7 +62,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (cancelled) return;
         setSession(session);
         if (session) {
-          fetchProfile(session.user.id);
+          loadedForUserId = session.user.id;
+          fetchProfile(session.user.id, { showLoader: true });
         } else {
           setIsLoading(false);
           setShowAuthModal(false);
@@ -72,17 +77,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (cancelled) return;
       setSession(session);
-      if (session) {
+
+      // Recovery: Supabase fires PASSWORD_RECOVERY when the user lands on
+      // the app via a reset-password email. Route them to the form.
+      if (event === "PASSWORD_RECOVERY") {
         setShowAuthModal(false);
-        await fetchProfile(session.user.id);
-      } else {
+        setIsLoading(false);
+        if (typeof window !== "undefined" && window.location.pathname !== "/reset-password") {
+          window.location.replace("/reset-password");
+        }
+        return;
+      }
+
+      if (!session) {
         setProfile(null);
         setHostProfile(null);
         setIsLoading(false);
         setShowAuthModal(false);
+        loadedForUserId = null;
+        return;
+      }
+
+      setShowAuthModal(false);
+
+      // Re-fetch the profile only when the user identity actually changes
+      // (sign in / account switch). TOKEN_REFRESHED, USER_UPDATED, and
+      // tab-focus re-emits keep the same user id, and refetching there
+      // was flipping `isLoading` back on and blanking the page with a
+      // spinner every time the tab refocused.
+      if (session.user.id !== loadedForUserId) {
+        loadedForUserId = session.user.id;
+        void fetchProfile(session.user.id, { showLoader: true });
       }
     });
 
@@ -93,8 +121,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  async function fetchProfile(userId: string) {
-    setIsLoading(true);
+  async function fetchProfile(userId: string, opts: { showLoader?: boolean } = {}) {
+    if (opts.showLoader) setIsLoading(true);
     try {
       const { data: p, error: pErr } = await supabase
         .from("profiles")
@@ -118,7 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("[auth] fetchProfile threw:", error);
     } finally {
-      setIsLoading(false);
+      if (opts.showLoader) setIsLoading(false);
     }
   }
 
@@ -152,6 +180,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refreshProfile = async () => {
+    // Caller-triggered refresh (e.g. after onboarding submit) — don't
+    // toggle the global loader; let the caller manage its own UI.
     if (session) await fetchProfile(session.user.id);
   };
 

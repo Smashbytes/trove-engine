@@ -13,6 +13,7 @@ import { Route as TeamRouteImport } from './routes/team'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ScannerRouteImport } from './routes/scanner'
 import { Route as ReviewsRouteImport } from './routes/reviews'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PayoutsRouteImport } from './routes/payouts'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
@@ -44,6 +45,11 @@ const ScannerRoute = ScannerRouteImport.update({
 const ReviewsRoute = ReviewsRouteImport.update({
   id: '/reviews',
   path: '/reviews',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfileRoute = ProfileRouteImport.update({
@@ -116,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/payouts': typeof PayoutsRoute
   '/profile': typeof ProfileRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/reviews': typeof ReviewsRoute
   '/scanner': typeof ScannerRoute
   '/settings': typeof SettingsRoute
@@ -134,6 +141,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/payouts': typeof PayoutsRoute
   '/profile': typeof ProfileRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/reviews': typeof ReviewsRoute
   '/scanner': typeof ScannerRoute
   '/settings': typeof SettingsRoute
@@ -153,6 +161,7 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/payouts': typeof PayoutsRoute
   '/profile': typeof ProfileRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/reviews': typeof ReviewsRoute
   '/scanner': typeof ScannerRoute
   '/settings': typeof SettingsRoute
@@ -173,6 +182,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/payouts'
     | '/profile'
+    | '/reset-password'
     | '/reviews'
     | '/scanner'
     | '/settings'
@@ -191,6 +201,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/payouts'
     | '/profile'
+    | '/reset-password'
     | '/reviews'
     | '/scanner'
     | '/settings'
@@ -209,6 +220,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/payouts'
     | '/profile'
+    | '/reset-password'
     | '/reviews'
     | '/scanner'
     | '/settings'
@@ -228,6 +240,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   PayoutsRoute: typeof PayoutsRoute
   ProfileRoute: typeof ProfileRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   ReviewsRoute: typeof ReviewsRoute
   ScannerRoute: typeof ScannerRoute
   SettingsRoute: typeof SettingsRoute
@@ -265,6 +278,13 @@ declare module '@tanstack/react-router' {
       path: '/reviews'
       fullPath: '/reviews'
       preLoaderRoute: typeof ReviewsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profile': {
@@ -375,6 +395,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   PayoutsRoute: PayoutsRoute,
   ProfileRoute: ProfileRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   ReviewsRoute: ReviewsRoute,
   ScannerRoute: ScannerRoute,
   SettingsRoute: SettingsRoute,

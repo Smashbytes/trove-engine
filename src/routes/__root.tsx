@@ -97,10 +97,16 @@ function EngineAuthGate() {
   const { isAuthenticated, isLoading, isHost, profile, showAuthModal } = useAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const isPublicRoute = pathname === "/";
+  // /reset-password must be reachable without a full session: Supabase drops
+  // the user there from an email link with a one-shot recovery token, and
+  // we need to render the form even while the auth listener is still settling.
+  const isPublicRoute = pathname === "/" || pathname === "/reset-password";
 
   useEffect(() => {
     if (isLoading) return;
+    // Don't redirect away from the password reset page — users land here
+    // mid-recovery and must complete the form before we route them anywhere.
+    if (pathname === "/reset-password") return;
 
     if (isAuthenticated && !isHost && profile && pathname !== "/onboarding") {
       navigate({ to: "/onboarding" });
