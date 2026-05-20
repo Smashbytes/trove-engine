@@ -26,38 +26,60 @@ function ResetPasswordPage() {
   const [showPw, setShowPw] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  // Supabase sends users here from the recovery email. The URL carries the
-  // recovery credential in one of two shapes:
-  //   • PKCE flow → `?code=<uuid>` (default for @supabase/ssr)
-  //   • Implicit  → `#access_token=…&type=recovery` (legacy)
-  // The browser client does NOT auto-exchange `?code=` for a session in this
-  // setup, so we have to call exchangeCodeForSession ourselves. The hash
-  // flow IS auto-detected by supabase-js on construction.
+  // Supabase sends users here from the recovery email. We support three URL
+  // shapes, in order of preference:
+  //   1. `?token_hash=…&type=recovery` — the token-hash OTP flow. The email
+  //      template uses this so reset works across browsers/devices without
+  //      needing a PKCE cookie. Most reliable.
+  //   2. `?code=…` — legacy PKCE flow. Requires the verifier cookie set
+  //      when resetPasswordForEmail was called. Fragile if user opens email
+  //      in a different browser or requests multiple resets in a row.
+  //   3. `#access_token=…&type=recovery` — implicit flow (auto-handled by
+  //      supabase-js on construction; we just watch for PASSWORD_RECOVERY).
   useEffect(() => {
     let cancelled = false;
 
     const run = async () => {
       try {
-        // 1. PKCE: pull ?code from the URL and exchange it.
         const url = new URL(window.location.href);
+        const tokenHash = url.searchParams.get("token_hash");
         const code = url.searchParams.get("code");
-        if (code) {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+        if (tokenHash) {
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: "recovery",
+          });
           if (cancelled) return;
           if (error) {
+            console.error("[reset-password] verifyOtp failed:", error);
             setErrorMsg(error.message);
             setPhase("invalid");
             return;
           }
-          // Strip the one-shot code from the URL so a reload doesn't try to
-          // exchange it again (and so the user can't share a leaky link).
+          url.searchParams.delete("token_hash");
+          url.searchParams.delete("type");
+          window.history.replaceState({}, "", url.pathname + url.search);
+          setPhase("ready");
+          return;
+        }
+
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (cancelled) return;
+          if (error) {
+            console.error("[reset-password] exchangeCodeForSession failed:", error);
+            setErrorMsg(error.message);
+            setPhase("invalid");
+            return;
+          }
           url.searchParams.delete("code");
           window.history.replaceState({}, "", url.pathname + url.search);
           setPhase("ready");
           return;
         }
 
-        // 2. Implicit flow or already-exchanged session: just check.
+        // Already-exchanged or implicit-flow session: just check.
         const { data, error } = await supabase.auth.getSession();
         if (cancelled) return;
         if (error) {
@@ -70,10 +92,10 @@ function ResetPasswordPage() {
           return;
         }
 
-        // No code, no session — link was never valid or was used already.
         setPhase("invalid");
       } catch (e) {
         if (cancelled) return;
+        console.error("[reset-password] unexpected error:", e);
         setErrorMsg(e instanceof Error ? e.message : "Unable to verify reset link.");
         setPhase("invalid");
       }
@@ -81,8 +103,8 @@ function ResetPasswordPage() {
 
     void run();
 
-    // Cover the implicit (#access_token) flow: supabase-js parses the hash
-    // during construction and fires PASSWORD_RECOVERY shortly after.
+    // Implicit flow (#access_token) — supabase-js parses the hash on
+    // construction and fires PASSWORD_RECOVERY shortly after.
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {

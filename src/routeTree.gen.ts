@@ -24,6 +24,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ListingsIndexRouteImport } from './routes/listings.index'
 import { Route as ListingsNewRouteImport } from './routes/listings.new'
 import { Route as ListingsListingIdRouteImport } from './routes/listings.$listingId'
+import { Route as AuthConfirmRouteImport } from './routes/auth.confirm'
 import { Route as ListingsListingIdSlotsRouteImport } from './routes/listings.$listingId.slots'
 import { Route as ListingsListingIdBookingsRouteImport } from './routes/listings.$listingId.bookings'
 
@@ -102,6 +103,11 @@ const ListingsListingIdRoute = ListingsListingIdRouteImport.update({
   path: '/listings/$listingId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthConfirmRoute = AuthConfirmRouteImport.update({
+  id: '/auth/confirm',
+  path: '/auth/confirm',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ListingsListingIdSlotsRoute = ListingsListingIdSlotsRouteImport.update({
   id: '/slots',
   path: '/slots',
@@ -127,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/scanner': typeof ScannerRoute
   '/settings': typeof SettingsRoute
   '/team': typeof TeamRoute
+  '/auth/confirm': typeof AuthConfirmRoute
   '/listings/$listingId': typeof ListingsListingIdRouteWithChildren
   '/listings/new': typeof ListingsNewRoute
   '/listings/': typeof ListingsIndexRoute
@@ -146,6 +153,7 @@ export interface FileRoutesByTo {
   '/scanner': typeof ScannerRoute
   '/settings': typeof SettingsRoute
   '/team': typeof TeamRoute
+  '/auth/confirm': typeof AuthConfirmRoute
   '/listings/$listingId': typeof ListingsListingIdRouteWithChildren
   '/listings/new': typeof ListingsNewRoute
   '/listings': typeof ListingsIndexRoute
@@ -166,6 +174,7 @@ export interface FileRoutesById {
   '/scanner': typeof ScannerRoute
   '/settings': typeof SettingsRoute
   '/team': typeof TeamRoute
+  '/auth/confirm': typeof AuthConfirmRoute
   '/listings/$listingId': typeof ListingsListingIdRouteWithChildren
   '/listings/new': typeof ListingsNewRoute
   '/listings/': typeof ListingsIndexRoute
@@ -187,6 +196,7 @@ export interface FileRouteTypes {
     | '/scanner'
     | '/settings'
     | '/team'
+    | '/auth/confirm'
     | '/listings/$listingId'
     | '/listings/new'
     | '/listings/'
@@ -206,6 +216,7 @@ export interface FileRouteTypes {
     | '/scanner'
     | '/settings'
     | '/team'
+    | '/auth/confirm'
     | '/listings/$listingId'
     | '/listings/new'
     | '/listings'
@@ -225,6 +236,7 @@ export interface FileRouteTypes {
     | '/scanner'
     | '/settings'
     | '/team'
+    | '/auth/confirm'
     | '/listings/$listingId'
     | '/listings/new'
     | '/listings/'
@@ -245,6 +257,7 @@ export interface RootRouteChildren {
   ScannerRoute: typeof ScannerRoute
   SettingsRoute: typeof SettingsRoute
   TeamRoute: typeof TeamRoute
+  AuthConfirmRoute: typeof AuthConfirmRoute
   ListingsListingIdRoute: typeof ListingsListingIdRouteWithChildren
   ListingsNewRoute: typeof ListingsNewRoute
   ListingsIndexRoute: typeof ListingsIndexRoute
@@ -357,6 +370,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ListingsListingIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/confirm': {
+      id: '/auth/confirm'
+      path: '/auth/confirm'
+      fullPath: '/auth/confirm'
+      preLoaderRoute: typeof AuthConfirmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/listings/$listingId/slots': {
       id: '/listings/$listingId/slots'
       path: '/slots'
@@ -400,6 +420,7 @@ const rootRouteChildren: RootRouteChildren = {
   ScannerRoute: ScannerRoute,
   SettingsRoute: SettingsRoute,
   TeamRoute: TeamRoute,
+  AuthConfirmRoute: AuthConfirmRoute,
   ListingsListingIdRoute: ListingsListingIdRouteWithChildren,
   ListingsNewRoute: ListingsNewRoute,
   ListingsIndexRoute: ListingsIndexRoute,
