@@ -27,21 +27,39 @@ function ResetPasswordPage() {
   const [busy, setBusy] = useState(false);
 
   // Supabase sends users here from the recovery email. The URL carries the
-  // recovery token in either the query string (PKCE flow, ?code=…) or the
-  // hash (legacy implicit flow, #access_token=…&type=recovery). The
-  // @supabase/ssr browser client auto-handles both on mount, then fires a
-  // PASSWORD_RECOVERY event once a recovery session is active. We watch for
-  // that and flip into the form. If no recovery session arrives within a
-  // short window, we treat the link as invalid/expired.
+  // recovery credential in one of two shapes:
+  //   • PKCE flow → `?code=<uuid>` (default for @supabase/ssr)
+  //   • Implicit  → `#access_token=…&type=recovery` (legacy)
+  // The browser client does NOT auto-exchange `?code=` for a session in this
+  // setup, so we have to call exchangeCodeForSession ourselves. The hash
+  // flow IS auto-detected by supabase-js on construction.
   useEffect(() => {
-    let timedOut = false;
+    let cancelled = false;
 
-    // Verify a usable session is live (works for both flows once supabase-js
-    // has parsed the URL).
-    const verify = async () => {
+    const run = async () => {
       try {
+        // 1. PKCE: pull ?code from the URL and exchange it.
+        const url = new URL(window.location.href);
+        const code = url.searchParams.get("code");
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (cancelled) return;
+          if (error) {
+            setErrorMsg(error.message);
+            setPhase("invalid");
+            return;
+          }
+          // Strip the one-shot code from the URL so a reload doesn't try to
+          // exchange it again (and so the user can't share a leaky link).
+          url.searchParams.delete("code");
+          window.history.replaceState({}, "", url.pathname + url.search);
+          setPhase("ready");
+          return;
+        }
+
+        // 2. Implicit flow or already-exchanged session: just check.
         const { data, error } = await supabase.auth.getSession();
-        if (timedOut) return;
+        if (cancelled) return;
         if (error) {
           setErrorMsg(error.message);
           setPhase("invalid");
@@ -49,35 +67,34 @@ function ResetPasswordPage() {
         }
         if (data.session) {
           setPhase("ready");
+          return;
         }
+
+        // No code, no session — link was never valid or was used already.
+        setPhase("invalid");
       } catch (e) {
-        if (timedOut) return;
+        if (cancelled) return;
         setErrorMsg(e instanceof Error ? e.message : "Unable to verify reset link.");
         setPhase("invalid");
       }
     };
 
-    // First check — might already have a session.
-    void verify();
+    void run();
 
+    // Cover the implicit (#access_token) flow: supabase-js parses the hash
+    // during construction and fires PASSWORD_RECOVERY shortly after.
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (timedOut) return;
+      if (cancelled) return;
       if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
         setPhase("ready");
       }
     });
 
-    // If nothing has resolved after 6s the link is almost certainly bad.
-    const fallback = setTimeout(() => {
-      timedOut = true;
-      setPhase((p) => (p === "verifying" ? "invalid" : p));
-    }, 6000);
-
     return () => {
+      cancelled = true;
       subscription.unsubscribe();
-      clearTimeout(fallback);
     };
   }, []);
 

@@ -38,3 +38,4 @@ dist-vercel/
 # Claude Code agent files
 .agents/
 skills-lock.json
+dist-pages
