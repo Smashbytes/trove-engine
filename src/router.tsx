@@ -1,12 +1,84 @@
 import { createRouter, useRouter } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { routeTree } from "./routeTree.gen";
 
+// Auto-recover from stale chunk references after a deploy.
+// When users have a tab open during a deploy, their HTML still references
+// the previous chunk hashes; the next client-side navigation tries to fetch
+// those old chunks, the CDN 404s them, and TanStack Router sits on the
+// pending spinner indefinitely. The reload pulls fresh HTML + new hashes.
+// Guarded by a sessionStorage timestamp so we don't get into a reload loop
+// if the failure is something other than stale chunks. Wrapped in a
+// typeof-window check so this is a no-op during SSR.
+if (typeof window !== "undefined") {
+  let reloading = false;
+  const STALE_CHUNK_PATTERNS = [
+    /Failed to fetch dynamically imported module/i,
+    /error loading dynamically imported module/i,
+    /Importing a module script failed/i,
+    /Loading chunk \d+ failed/i,
+    /ChunkLoadError/i,
+  ];
+
+  const looksLikeStaleChunk = (message: string) =>
+    STALE_CHUNK_PATTERNS.some((p) => p.test(message));
+
+  const tryRecover = (err: unknown) => {
+    if (reloading) return;
+    const message =
+      err instanceof Error
+        ? `${err.name}: ${err.message}`
+        : typeof err === "string"
+          ? err
+          : String((err as { message?: string } | null)?.message ?? err);
+    if (!looksLikeStaleChunk(message)) return;
+
+    const lastReload = Number(sessionStorage.getItem("__engine_chunk_reload_at") ?? 0);
+    if (Date.now() - lastReload < 30_000) {
+      console.error(
+        "[engine] stale chunk reload already attempted recently — not retrying",
+        err,
+      );
+      return;
+    }
+
+    reloading = true;
+    sessionStorage.setItem("__engine_chunk_reload_at", String(Date.now()));
+    console.warn("[engine] stale chunk detected, reloading for fresh HTML", err);
+    window.location.reload();
+  };
+
+  window.addEventListener("unhandledrejection", (event) => tryRecover(event.reason));
+  window.addEventListener("error", (event) => tryRecover(event.error ?? event.message));
+}
+
+// Pending UI for slow route transitions. After ~6 seconds we surface an
+// escape hatch: a reload button so users never feel trapped if a chunk
+// download has wedged (slow network, stale hash from before a deploy, etc.).
 function DefaultPendingComponent() {
+  const [stalled, setStalled] = useState(false);
+  useEffect(() => {
+    const id = setTimeout(() => setStalled(true), 6000);
+    return () => clearTimeout(id);
+  }, []);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="flex flex-col items-center gap-3">
+    <div className="flex min-h-screen items-center justify-center bg-background px-6">
+      <div className="flex flex-col items-center gap-4 text-center">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         <p className="text-xs text-muted-foreground">Loading…</p>
+        {stalled && (
+          <div className="mt-4 flex flex-col items-center gap-2">
+            <p className="text-xs text-muted-foreground">Taking longer than expected.</p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent"
+            >
+              Reload page
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

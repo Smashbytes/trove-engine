@@ -13,6 +13,36 @@ import { AuthModal } from "@/components/trove/AuthModal";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/lib/auth";
 
+// Auth-gate loader with an escape hatch: if the supabase session check is
+// still running after ~6s (cold network, broken cookie, etc.), surface a
+// reload button so users aren't stuck staring at a spinner.
+function AuthGateLoader() {
+  const [stalled, setStalled] = useState(false);
+  useEffect(() => {
+    const id = setTimeout(() => setStalled(true), 6000);
+    return () => clearTimeout(id);
+  }, []);
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-6">
+      <div className="flex flex-col items-center gap-4 text-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        {stalled && (
+          <div className="mt-2 flex flex-col items-center gap-2">
+            <p className="text-xs text-muted-foreground">Taking longer than expected.</p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent"
+            >
+              Reload page
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 import appCss from "../styles.css?url";
 
 function NotFoundComponent() {
@@ -116,11 +146,7 @@ function EngineAuthGate() {
   }, [isAuthenticated, isHost, isLoading, navigate, pathname, profile]);
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-      </div>
-    );
+    return <AuthGateLoader />;
   }
 
   const canRenderOutlet = isAuthenticated || isPublicRoute;
