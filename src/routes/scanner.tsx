@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth";
 import type { Booking } from "@/lib/database.types";
 import { getHostWorkspace } from "@/lib/host-workspace";
 import { useDevice } from "@/hooks/use-device";
+import { cn } from "@/lib/utils";
 import {
   useCheckInBooking,
   useHostListings,
@@ -105,62 +106,91 @@ function ScannerPage() {
     <AppShell>
       <PageHeader
         eyebrow={workspace.scannerLabel}
-        title={workspace.hostType === "accommodation" ? "Reservation desk" : "Code desk"}
-        subtitle="This area now reads real booking and ticket data. It no longer simulates fake scan results or seeded guest lists."
+        title={workspace.hostType === "accommodation" ? "Reservation desk" : "Entry desk"}
+        subtitle={
+          workspace.hostType === "accommodation"
+            ? "Stamp guest arrivals against live reservation records."
+            : "Aim a QR at the frame or upload a photo to verify a ticket."
+        }
       />
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
-          <LabelRow label={`Select ${workspace.singularLabel.toLowerCase()}`} />
-          <select
-            value={activeListingId ?? ""}
-            onChange={(event) => setListingId(event.target.value)}
-            className="mt-2 flex h-11 w-full rounded-md border border-input bg-input px-3 text-sm"
+        <section
+          className="overflow-hidden rounded-[1.75rem] border bg-card shadow-card"
+          style={{ borderColor: "var(--hairline-strong, rgba(255,255,255,0.10))" }}
+        >
+          {/* Instrument header: monospace eyebrow + the listing picker, side by side */}
+          <div
+            className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3"
+            style={{ borderColor: "var(--hairline, rgba(255,255,255,0.06))" }}
           >
-            {listings.map((listing) => (
-              <option key={listing.id} value={listing.id}>
-                {listing.title}
-              </option>
-            ))}
-          </select>
+            <p className="font-mono text-[10px] uppercase tracking-[0.32em] text-muted-foreground">
+              {workspace.scannerLabel}
+            </p>
+            <select
+              value={activeListingId ?? ""}
+              onChange={(event) => setListingId(event.target.value)}
+              className="h-9 max-w-[260px] rounded-md border bg-transparent px-2.5 text-xs"
+              style={{
+                borderColor: "var(--hairline-strong, rgba(255,255,255,0.10))",
+                colorScheme: "dark",
+              }}
+            >
+              {listings.length === 0 && <option value="">No listings yet</option>}
+              {listings.map((listing) => (
+                <option key={listing.id} value={listing.id}>
+                  {listing.title}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {workspace.hostType === "accommodation" ? (
-            <div className="mt-6 rounded-[1.5rem] border border-white/8 bg-white/[0.03] p-5">
-              <p className="font-display text-2xl font-semibold">Reservation desk</p>
+            <div className="p-5">
+              <p className="font-display text-2xl font-semibold">Mark arrivals as they walk in</p>
               <p className="mt-2 text-sm text-muted-foreground">
-                Mark a guest as arrived directly against their booking. The check-in stamp is
-                written to the live booking record.
+                The check-in stamp writes directly to the live booking record below.
               </p>
             </div>
           ) : (
-            <div className="mt-6 rounded-[1.5rem] border border-white/8 bg-white/[0.03] p-5">
-              <p className="font-display text-2xl font-semibold">Look up a Trove code</p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Scan a ticket QR with the device camera or paste a TRV- code. Match is checked
-                against real issued tickets for this listing.
-              </p>
-              <div className="mt-4">
-                <QrScanner onDetected={handleScanned} />
-              </div>
-              <div className="mt-4 flex gap-2">
+            <div className="p-5">
+              <QrScanner onDetected={handleScanned} />
+              <div className="mt-4 flex items-stretch gap-2">
                 <Input
                   placeholder="TRV-AB12CD34"
                   value={code}
                   onChange={(event) => setCode(event.target.value)}
+                  className="h-11 font-mono uppercase tracking-[0.12em]"
                 />
-                <Button onClick={() => setLookupValue(code)}>Inspect</Button>
+                <Button
+                  onClick={() => setLookupValue(code)}
+                  disabled={!code.trim()}
+                  className="h-11 px-5"
+                >
+                  Inspect
+                </Button>
               </div>
+              <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                Camera, image upload, or manual code · all read the same ticket table
+              </p>
             </div>
           )}
 
-          <div className="mt-6 grid gap-3 md:grid-cols-3">
-            <MetricCard label="Bookings" value={String(bookingsQuery.data?.length ?? 0)} />
-            <MetricCard label="Issued codes" value={String(ticketsQuery.data?.length ?? 0)} />
-            <MetricCard
-              label="Used codes"
-              value={String(
-                (ticketsQuery.data ?? []).filter((ticket) => ticket.status === "used").length,
-              )}
+          {/* Telemetry row — nixie-style numerals */}
+          <div
+            className="grid grid-cols-3 border-t"
+            style={{ borderColor: "var(--hairline, rgba(255,255,255,0.06))" }}
+          >
+            <Telemetry label="Bookings" value={bookingsQuery.data?.length ?? 0} />
+            <Telemetry
+              label="Issued"
+              value={ticketsQuery.data?.length ?? 0}
+              divider
+            />
+            <Telemetry
+              label="Used"
+              value={(ticketsQuery.data ?? []).filter((t) => t.status === "used").length}
+              divider
             />
           </div>
         </section>
@@ -287,16 +317,24 @@ function SmartphoneScannerView({
 
   return (
     <div className="flex flex-col gap-4 pb-8">
-      {/* Compact header row */}
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+      {/* Compact instrument header */}
+      <div
+        className="flex items-center justify-between gap-2 rounded-2xl border bg-card px-3 py-2"
+        style={{ borderColor: "var(--hairline-strong, rgba(255,255,255,0.10))" }}
+      >
+        <p className="font-mono text-[10px] uppercase tracking-[0.32em] text-muted-foreground">
           {workspace.scannerLabel}
         </p>
         <select
           value={activeListingId ?? ""}
           onChange={(e) => setListingId(e.target.value)}
-          className="h-8 max-w-[160px] rounded-md border border-input bg-input px-2 text-xs"
+          className="h-8 max-w-[180px] truncate rounded-md border bg-transparent px-2 text-xs"
+          style={{
+            borderColor: "var(--hairline-strong, rgba(255,255,255,0.10))",
+            colorScheme: "dark",
+          }}
         >
+          {listings.length === 0 && <option value="">No listings yet</option>}
           {listings.map((l) => (
             <option key={l.id} value={l.id}>
               {l.title}
@@ -305,25 +343,36 @@ function SmartphoneScannerView({
         </select>
       </div>
 
-      {/* Camera scanner — full width, tall */}
+      {/* Camera scanner — full width, square viewfinder */}
       {!isAccommodation && (
-        <div className="rounded-[1.75rem] border border-border/60 bg-card p-4 shadow-card">
-          <p className="mb-3 font-display text-lg font-semibold">Scan QR code</p>
-          <QrScanner
-            onDetected={handleScanned}
-            autoStart
-            videoClassName="h-[52vw] min-h-[220px] max-h-[340px]"
-          />
-          <div className="mt-3 flex gap-2">
-            <Input
-              placeholder="TRV-AB12CD34"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              className="h-10 text-sm"
-            />
-            <Button size="sm" onClick={() => setLookupValue(code)}>
-              Inspect
-            </Button>
+        <div
+          className="overflow-hidden rounded-[1.75rem] border bg-card shadow-card"
+          style={{ borderColor: "var(--hairline-strong, rgba(255,255,255,0.10))" }}
+        >
+          <div
+            className="flex items-center justify-between border-b px-4 py-2.5"
+            style={{ borderColor: "var(--hairline, rgba(255,255,255,0.06))" }}
+          >
+            <p className="font-mono text-[10px] uppercase tracking-[0.32em] text-muted-foreground">
+              Scan
+            </p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              Camera or image
+            </p>
+          </div>
+          <div className="p-4">
+            <QrScanner onDetected={handleScanned} />
+            <div className="mt-3 flex items-stretch gap-2">
+              <Input
+                placeholder="TRV-AB12CD34"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                className="h-11 font-mono uppercase tracking-[0.12em] text-sm"
+              />
+              <Button size="sm" onClick={() => setLookupValue(code)} disabled={!code.trim()} className="h-11 px-4">
+                Inspect
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -361,13 +410,18 @@ function SmartphoneScannerView({
         </div>
       )}
 
-      {/* Metric strip */}
-      <div className="grid grid-cols-3 gap-2">
-        <MetricCard label="Bookings" value={String(bookings.length)} />
-        <MetricCard label="Issued" value={String(tickets.length)} />
-        <MetricCard
+      {/* Telemetry strip — instrument-style, monospace counters */}
+      <div
+        className="grid grid-cols-3 overflow-hidden rounded-[1.5rem] border bg-card shadow-card"
+        style={{ borderColor: "var(--hairline-strong, rgba(255,255,255,0.10))" }}
+      >
+        <Telemetry label="Bookings" value={bookings.length} compact />
+        <Telemetry label="Issued" value={tickets.length} divider compact />
+        <Telemetry
           label="Used"
-          value={String(tickets.filter((t) => t.status === "used").length)}
+          value={tickets.filter((t) => t.status === "used").length}
+          divider
+          compact
         />
       </div>
 
@@ -406,17 +460,39 @@ function SmartphoneScannerView({
 // Shared sub-components
 // ---------------------------------------------------------------------------
 
-function LabelRow({ label }: { label: string }) {
-  return <p className="text-sm font-medium">{label}</p>;
-}
-
-function MetricCard({ label, value }: { label: string; value: string }) {
+function Telemetry({
+  label,
+  value,
+  divider,
+  compact,
+}: {
+  label: string;
+  value: number;
+  divider?: boolean;
+  compact?: boolean;
+}) {
   return (
-    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+    <div
+      className={cn("px-4 py-4", compact ? "py-3" : undefined)}
+      style={
+        divider
+          ? { borderLeft: "1px solid var(--hairline, rgba(255,255,255,0.06))" }
+          : undefined
+      }
+    >
+      <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
         {label}
       </p>
-      <p className="mt-2 font-display text-2xl font-bold">{value}</p>
+      <p
+        className={cn(
+          "mt-2 tabular-nums",
+          compact ? "text-2xl" : "text-3xl",
+          "font-display font-semibold",
+        )}
+        style={{ letterSpacing: "-0.02em" }}
+      >
+        {value.toString().padStart(2, "0")}
+      </p>
     </div>
   );
 }

@@ -1,0 +1,18 @@
+{
+  "name": "TROVE Engine",
+  "short_name": "TROVE",
+  "description": "Run your Spot. Sell out your nights.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d0a10",
+  "theme_color": "#0d0a10",
+  "icons": [
+    {
+      "src": "/trove-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

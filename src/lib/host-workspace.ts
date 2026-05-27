@@ -5,6 +5,7 @@ import {
   Building2,
   CalendarDays,
   LayoutDashboard,
+  LifeBuoy,
   ScanLine,
   Settings,
   Sparkles,
@@ -50,6 +51,7 @@ const SHARED_NAV = [
   { to: "/payouts", label: "Payouts", icon: Wallet },
   { to: "/reviews", label: "Reviews", icon: Star },
   { to: "/notifications", label: "Inbox", icon: Bell },
+  { to: "/support", label: "Support", icon: LifeBuoy },
   { to: "/profile", label: "Profile", icon: Store },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;

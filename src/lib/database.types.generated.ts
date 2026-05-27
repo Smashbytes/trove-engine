@@ -1,3 +1,11 @@
+﻿supabase.exe : Using workdir c:\Users\User\Documents\TROVE OFFICIAL APPS
+At line:1 char:142
++ ... abase.exe"; & $supa gen types typescript --linked --workdir "c:\Users ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Using workdir c...E OFFICIAL APPS:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Initialising login role...
 export type Json =
   | string
   | number
@@ -11,31 +19,6 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
-  }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
   }
   public: {
     Tables: {
@@ -575,9 +558,14 @@ export type Database = {
           location_json: Json
           location_place_id: string | null
           payout_bank_json: Json | null
+          payouts_frozen: boolean
+          payouts_frozen_at: string | null
           paystack_subaccount_code: string | null
           response_rate: number
           slug: string
+          suspended: boolean
+          suspended_at: string | null
+          suspended_reason: string | null
           updated_at: string
           user_id: string
           verified: boolean | null
@@ -597,9 +585,14 @@ export type Database = {
           location_json?: Json
           location_place_id?: string | null
           payout_bank_json?: Json | null
+          payouts_frozen?: boolean
+          payouts_frozen_at?: string | null
           paystack_subaccount_code?: string | null
           response_rate?: number
           slug: string
+          suspended?: boolean
+          suspended_at?: string | null
+          suspended_reason?: string | null
           updated_at?: string
           user_id: string
           verified?: boolean | null
@@ -619,9 +612,14 @@ export type Database = {
           location_json?: Json
           location_place_id?: string | null
           payout_bank_json?: Json | null
+          payouts_frozen?: boolean
+          payouts_frozen_at?: string | null
           paystack_subaccount_code?: string | null
           response_rate?: number
           slug?: string
+          suspended?: boolean
+          suspended_at?: string | null
+          suspended_reason?: string | null
           updated_at?: string
           user_id?: string
           verified?: boolean | null
@@ -1178,6 +1176,7 @@ export type Database = {
       }
       support_notes: {
         Row: {
+          attachment_urls: string[]
           author_id: string
           content: string
           created_at: string
@@ -1186,6 +1185,7 @@ export type Database = {
           ticket_id: string
         }
         Insert: {
+          attachment_urls?: string[]
           author_id: string
           content: string
           created_at?: string
@@ -1194,6 +1194,7 @@ export type Database = {
           ticket_id: string
         }
         Update: {
+          attachment_urls?: string[]
           author_id?: string
           content?: string
           created_at?: string
@@ -1221,6 +1222,7 @@ export type Database = {
       support_tickets: {
         Row: {
           assignee_id: string | null
+          attachment_urls: string[]
           category: string
           created_at: string
           created_by: string | null
@@ -1237,6 +1239,7 @@ export type Database = {
         }
         Insert: {
           assignee_id?: string | null
+          attachment_urls?: string[]
           category?: string
           created_at?: string
           created_by?: string | null
@@ -1253,6 +1256,7 @@ export type Database = {
         }
         Update: {
           assignee_id?: string | null
+          attachment_urls?: string[]
           category?: string
           created_at?: string
           created_by?: string | null
@@ -1625,9 +1629,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       booking_mode: ["event", "reservation", "slot", "pass", "rsvp"],
@@ -1648,3 +1649,7 @@ export const Constants = {
     },
   },
 } as const
+<claude-code-hint v="1" type="plugin" value="supabase@claude-plugins-official" />
+A new version of Supabase CLI is available: v2.101.0 (currently installed v2.98.1)
+We recommend updating regularly for new features and bug fixes: 
+https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

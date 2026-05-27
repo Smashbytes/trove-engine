@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { LogOut, Menu, Sparkles, X } from "lucide-react";
+import { AlertOctagon, LogOut, Menu, Snowflake, Sparkles, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -197,7 +197,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
         </header>
-        <main className="flex-1 px-4 py-6 lg:px-8 lg:py-8">{children}</main>
+        <main className="flex-1 space-y-4 px-4 py-6 lg:px-8 lg:py-8">
+          {hostProfile?.suspended && (
+            <div className="flex items-start gap-3 rounded-2xl border border-destructive/35 bg-destructive/8 p-4">
+              <AlertOctagon className="mt-0.5 size-5 shrink-0 text-destructive" />
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-destructive">
+                  Account suspended by TROVE HQ
+                </p>
+                <p className="text-xs leading-5 text-destructive/80">
+                  {hostProfile.suspended_reason
+                    ? hostProfile.suspended_reason
+                    : "Your account is currently suspended. New bookings cannot be accepted while this is in place."}
+                  {" "}Reach out to TROVE support to resolve.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {hostProfile?.payouts_frozen && (
+            <div className="flex items-start gap-3 rounded-2xl border border-warning/35 bg-warning/8 p-4">
+              <Snowflake className="mt-0.5 size-5 shrink-0 text-warning" />
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-warning">Payouts frozen</p>
+                <p className="text-xs leading-5 text-warning/80">
+                  Any pending payouts have been cancelled and no new payouts will be queued
+                  until TROVE HQ lifts the freeze.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {children}
+        </main>
       </div>
     </div>
   );

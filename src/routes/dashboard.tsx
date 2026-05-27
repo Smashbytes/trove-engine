@@ -300,6 +300,36 @@ function Dashboard() {
                   <span className="capitalize">{booking.status}</span>
                   <span>{new Date(booking.created_at).toLocaleDateString("en-ZA")}</span>
                 </div>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  <Link
+                    to="/support/new"
+                    search={{ category: "refund", bookingId: booking.id }}
+                    className="rounded-full border border-border/60 bg-white/[0.03] px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground hover:border-primary/40 hover:text-primary"
+                  >
+                    Refund
+                  </Link>
+                  <Link
+                    to="/support/new"
+                    search={{ category: "cancellation", bookingId: booking.id }}
+                    className="rounded-full border border-border/60 bg-white/[0.03] px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground hover:border-warning/40 hover:text-warning"
+                  >
+                    Cancel
+                  </Link>
+                  <Link
+                    to="/support/new"
+                    search={{ category: "complaint", bookingId: booking.id }}
+                    className="rounded-full border border-border/60 bg-white/[0.03] px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground hover:border-destructive/40 hover:text-destructive"
+                  >
+                    Complaint
+                  </Link>
+                  <Link
+                    to="/support/new"
+                    search={{ category: "flag", bookingId: booking.id }}
+                    className="rounded-full border border-border/60 bg-white/[0.03] px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground hover:border-destructive/40 hover:text-destructive"
+                  >
+                    Flag
+                  </Link>
+                </div>
               </motion.div>
             ))}
           </div>
