@@ -11,6 +11,7 @@ import {
   Sparkles,
   Star,
   Store,
+  Users,
   Wallet,
 } from "lucide-react";
 import type { HostType, KycStatus, ListingType } from "./database.types";
@@ -47,6 +48,8 @@ export const HOST_TO_LISTING_TYPE: Record<HostType, ListingType> = {
 
 const SHARED_NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/audience", label: "Audience", icon: Users },
+  { to: "/calendar", label: "Calendar", icon: CalendarDays },
   { to: "/scanner", label: "Scanner", icon: ScanLine },
   { to: "/payouts", label: "Payouts", icon: Wallet },
   { to: "/reviews", label: "Reviews", icon: Star },

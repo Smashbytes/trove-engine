@@ -1,12 +1,4 @@
-﻿supabase.exe : Using workdir c:\Users\User\Documents\TROVE OFFICIAL APPS
-At line:1 char:142
-+ ... abase.exe"; & $supa gen types typescript --linked --workdir "c:\Users ...
-+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : NotSpecified: (Using workdir c...E OFFICIAL APPS:String) [], RemoteException
-    + FullyQualifiedErrorId : NativeCommandError
- 
-Initialising login role...
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -168,6 +160,7 @@ export type Database = {
           payout_kobo: number
           paystack_reference: string | null
           paystack_split_code: string | null
+          pending_expires_at: string | null
           refunded_at: string | null
           slot_id: string | null
           status: Database["public"]["Enums"]["booking_status"]
@@ -190,6 +183,7 @@ export type Database = {
           payout_kobo?: number
           paystack_reference?: string | null
           paystack_split_code?: string | null
+          pending_expires_at?: string | null
           refunded_at?: string | null
           slot_id?: string | null
           status?: Database["public"]["Enums"]["booking_status"]
@@ -212,6 +206,7 @@ export type Database = {
           payout_kobo?: number
           paystack_reference?: string | null
           paystack_split_code?: string | null
+          pending_expires_at?: string | null
           refunded_at?: string | null
           slot_id?: string | null
           status?: Database["public"]["Enums"]["booking_status"]
@@ -535,6 +530,13 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
           {
+            foreignKeyName: "follows_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "public_host_profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
             foreignKeyName: "follows_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -543,6 +545,76 @@ export type Database = {
           },
         ]
       }
+      friends: {
+        Row: {
+          created_at: string
+          requested_by: string
+          status: Database["public"]["Enums"]["friend_status"]
+          user_a: string
+          user_b: string
+        }
+        Insert: {
+          created_at?: string
+          requested_by: string
+          status?: Database["public"]["Enums"]["friend_status"]
+          user_a: string
+          user_b: string
+        }
+        Update: {
+          created_at?: string
+          requested_by?: string
+          status?: Database["public"]["Enums"]["friend_status"]
+          user_a?: string
+          user_b?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "friends_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friends_user_a_fkey"
+            columns: ["user_a"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friends_user_b_fkey"
+            columns: ["user_b"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guest_notes: {
+        Row: {
+          body: string
+          created_at: string
+          guest_id: string
+          host_id: string
+          id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          guest_id: string
+          host_id: string
+          id?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          guest_id?: string
+          host_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
       host_profiles: {
         Row: {
           address: string | null
@@ -550,6 +622,7 @@ export type Database = {
           bio: string | null
           city: string | null
           created_at: string
+          display_name: string | null
           hero_url: string | null
           host_type: Database["public"]["Enums"]["host_type"]
           kyc_status: Database["public"]["Enums"]["kyc_status"]
@@ -557,12 +630,14 @@ export type Database = {
           lng: number | null
           location_json: Json
           location_place_id: string | null
+          notification_prefs: Json
           payout_bank_json: Json | null
           payouts_frozen: boolean
           payouts_frozen_at: string | null
           paystack_subaccount_code: string | null
           response_rate: number
           slug: string
+          social_links: Json
           suspended: boolean
           suspended_at: string | null
           suspended_reason: string | null
@@ -577,6 +652,7 @@ export type Database = {
           bio?: string | null
           city?: string | null
           created_at?: string
+          display_name?: string | null
           hero_url?: string | null
           host_type: Database["public"]["Enums"]["host_type"]
           kyc_status?: Database["public"]["Enums"]["kyc_status"]
@@ -584,12 +660,14 @@ export type Database = {
           lng?: number | null
           location_json?: Json
           location_place_id?: string | null
+          notification_prefs?: Json
           payout_bank_json?: Json | null
           payouts_frozen?: boolean
           payouts_frozen_at?: string | null
           paystack_subaccount_code?: string | null
           response_rate?: number
           slug: string
+          social_links?: Json
           suspended?: boolean
           suspended_at?: string | null
           suspended_reason?: string | null
@@ -604,6 +682,7 @@ export type Database = {
           bio?: string | null
           city?: string | null
           created_at?: string
+          display_name?: string | null
           hero_url?: string | null
           host_type?: Database["public"]["Enums"]["host_type"]
           kyc_status?: Database["public"]["Enums"]["kyc_status"]
@@ -611,12 +690,14 @@ export type Database = {
           lng?: number | null
           location_json?: Json
           location_place_id?: string | null
+          notification_prefs?: Json
           payout_bank_json?: Json | null
           payouts_frozen?: boolean
           payouts_frozen_at?: string | null
           paystack_subaccount_code?: string | null
           response_rate?: number
           slug?: string
+          social_links?: Json
           suspended?: boolean
           suspended_at?: string | null
           suspended_reason?: string | null
@@ -663,6 +744,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      hq_users: {
+        Row: {
+          created_at: string
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          role?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       ledger: {
         Row: {
@@ -853,6 +955,13 @@ export type Database = {
             referencedRelation: "host_profiles"
             referencedColumns: ["user_id"]
           },
+          {
+            foreignKeyName: "listings_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "public_host_profiles"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       notifications: {
@@ -886,6 +995,86 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_webhook_events: {
+        Row: {
+          created_at: string
+          error: string | null
+          event_id: string
+          event_type: string
+          id: string
+          payload: Json
+          processed_at: string | null
+          provider: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          event_id: string
+          event_type: string
+          id?: string
+          payload: Json
+          processed_at?: string | null
+          provider?: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          event_id?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+          processed_at?: string | null
+          provider?: string
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount_kobo: number
+          booking_id: string
+          created_at: string
+          currency: string
+          id: string
+          metadata: Json
+          provider: string
+          provider_reference: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_kobo: number
+          booking_id: string
+          created_at?: string
+          currency?: string
+          id?: string
+          metadata?: Json
+          provider?: string
+          provider_reference: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_kobo?: number
+          booking_id?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          metadata?: Json
+          provider?: string
+          provider_reference?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
         ]
@@ -927,6 +1116,13 @@ export type Database = {
             columns: ["host_id"]
             isOneToOne: false
             referencedRelation: "host_profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "payouts_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "public_host_profiles"
             referencedColumns: ["user_id"]
           },
         ]
@@ -998,6 +1194,63 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      refunds: {
+        Row: {
+          amount_kobo: number
+          approved_by: string | null
+          booking_id: string
+          created_at: string
+          id: string
+          payment_id: string
+          provider_reference: string | null
+          reason: string | null
+          requested_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_kobo: number
+          approved_by?: string | null
+          booking_id: string
+          created_at?: string
+          id?: string
+          payment_id: string
+          provider_reference?: string | null
+          reason?: string | null
+          requested_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_kobo?: number
+          approved_by?: string | null
+          booking_id?: string
+          created_at?: string
+          id?: string
+          payment_id?: string
+          provider_reference?: string | null
+          reason?: string | null
+          requested_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refunds_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reports: {
         Row: {
@@ -1116,6 +1369,13 @@ export type Database = {
             columns: ["of_host"]
             isOneToOne: false
             referencedRelation: "host_profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "reviews_of_host_fkey"
+            columns: ["of_host"]
+            isOneToOne: false
+            referencedRelation: "public_host_profiles"
             referencedColumns: ["user_id"]
           },
           {
@@ -1480,10 +1740,114 @@ export type Database = {
             referencedRelation: "host_profiles"
             referencedColumns: ["user_id"]
           },
+          {
+            foreignKeyName: "listings_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "public_host_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      public_host_profiles: {
+        Row: {
+          address: string | null
+          bio: string | null
+          city: string | null
+          created_at: string | null
+          display_name: string | null
+          hero_url: string | null
+          host_type: Database["public"]["Enums"]["host_type"] | null
+          lat: number | null
+          lng: number | null
+          response_rate: number | null
+          slug: string | null
+          social_links: Json | null
+          user_id: string | null
+          verified: boolean | null
+          verified_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          bio?: string | null
+          city?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          hero_url?: string | null
+          host_type?: Database["public"]["Enums"]["host_type"] | null
+          lat?: number | null
+          lng?: number | null
+          response_rate?: number | null
+          slug?: string | null
+          social_links?: Json | null
+          user_id?: string | null
+          verified?: boolean | null
+          verified_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          bio?: string | null
+          city?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          hero_url?: string | null
+          host_type?: Database["public"]["Enums"]["host_type"] | null
+          lat?: number | null
+          lng?: number | null
+          response_rate?: number | null
+          slug?: string | null
+          social_links?: Json | null
+          user_id?: string | null
+          verified?: boolean | null
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "host_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Functions: {
+      find_guest_by_email: {
+        Args: { p_email: string }
+        Returns: {
+          avatar_url: string
+          full_name: string
+          id: string
+        }[]
+      }
+      friends_going: {
+        Args: { p_listing_id: string }
+        Returns: {
+          avatar_url: string
+          full_name: string
+          id: string
+        }[]
+      }
+      host_audience_profiles: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          full_name: string
+          id: string
+          phone: string
+        }[]
+      }
+      my_friends: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          friend_id: string
+          full_name: string
+          requested_by: string
+          status: Database["public"]["Enums"]["friend_status"]
+        }[]
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       trove_generate_slug: { Args: { input: string }; Returns: string }
@@ -1497,13 +1861,28 @@ export type Database = {
         | "cancelled"
         | "completed"
         | "refunded"
+        | "pending_payment"
+        | "payment_failed"
+        | "refund_requested"
+        | "refund_processing"
+        | "partially_refunded"
+        | "no_show"
+      friend_status: "pending" | "accepted" | "declined"
       host_type: "venue" | "organiser" | "experience" | "accommodation"
       kyc_status: "pending" | "submitted" | "verified" | "rejected"
-      ledger_kind: "charge" | "fee" | "payout" | "refund" | "adjustment"
+      ledger_kind:
+        | "charge"
+        | "fee"
+        | "payout"
+        | "refund"
+        | "adjustment"
+        | "host_credit"
+        | "refund_reversal"
+        | "platform_fee"
       listing_status: "draft" | "live" | "paused" | "archived"
       listing_type: "venue" | "event" | "experience" | "accommodation"
       payout_status: "pending" | "processing" | "paid" | "failed"
-      ticket_status: "valid" | "used" | "voided"
+      ticket_status: "valid" | "used" | "voided" | "refunded" | "transferred"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1638,18 +2017,30 @@ export const Constants = {
         "cancelled",
         "completed",
         "refunded",
+        "pending_payment",
+        "payment_failed",
+        "refund_requested",
+        "refund_processing",
+        "partially_refunded",
+        "no_show",
       ],
+      friend_status: ["pending", "accepted", "declined"],
       host_type: ["venue", "organiser", "experience", "accommodation"],
       kyc_status: ["pending", "submitted", "verified", "rejected"],
-      ledger_kind: ["charge", "fee", "payout", "refund", "adjustment"],
+      ledger_kind: [
+        "charge",
+        "fee",
+        "payout",
+        "refund",
+        "adjustment",
+        "host_credit",
+        "refund_reversal",
+        "platform_fee",
+      ],
       listing_status: ["draft", "live", "paused", "archived"],
       listing_type: ["venue", "event", "experience", "accommodation"],
       payout_status: ["pending", "processing", "paid", "failed"],
-      ticket_status: ["valid", "used", "voided"],
+      ticket_status: ["valid", "used", "voided", "refunded", "transferred"],
     },
   },
 } as const
-<claude-code-hint v="1" type="plugin" value="supabase@claude-plugins-official" />
-A new version of Supabase CLI is available: v2.101.0 (currently installed v2.98.1)
-We recommend updating regularly for new features and bug fixes: 
-https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

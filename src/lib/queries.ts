@@ -460,6 +460,7 @@ export interface UpdateWorkspaceProfileInput {
   city: string;
   bio: string;
   heroUrl: string;
+  socialLinks?: Record<string, string>;
 }
 
 export interface UpdateBankingDetailsInput {
@@ -486,6 +487,12 @@ export function useUpdateWorkspaceProfile() {
         .eq("id", user.id);
       if (profileError) throw profileError;
 
+      const socialLinks = Object.fromEntries(
+        Object.entries(input.socialLinks ?? {})
+          .map(([key, value]) => [key, value.trim()])
+          .filter(([, value]) => value.length > 0),
+      );
+
       const { error: hostError } = await supabase
         .from("host_profiles")
         .update({
@@ -493,6 +500,7 @@ export function useUpdateWorkspaceProfile() {
           city: input.city.trim() || null,
           bio: input.bio.trim() || null,
           hero_url: input.heroUrl.trim() || null,
+          social_links: socialLinks,
         })
         .eq("user_id", user.id);
       if (hostError) throw hostError;
@@ -725,6 +733,146 @@ export function useRealtimeBookings(listingId: string | undefined) {
       supabase.removeChannel(channel);
     };
   }, [listingId, queryClient]);
+}
+
+// ---------------------------------------------------------------------------
+// Availability (calendar) management
+// ---------------------------------------------------------------------------
+
+export interface AddAvailabilityInput {
+  listingId: string;
+  startsAt: string; // ISO
+  endsAt: string; // ISO
+  capacityOverride?: number | null;
+  priceOverrideKobo?: number | null;
+}
+
+export function useAddAvailability() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: AddAvailabilityInput) => {
+      const row: AvailabilityInsert = {
+        listing_id: input.listingId,
+        starts_at: input.startsAt,
+        ends_at: input.endsAt,
+        capacity_override: input.capacityOverride ?? null,
+        price_override_kobo: input.priceOverrideKobo ?? null,
+        status: "open",
+      };
+      const { data, error } = await supabase.from("availability").insert(row).select("*").single();
+      if (error) throw error;
+      return data as Availability;
+    },
+    onSuccess: async (_data, vars) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: listingQueryKeys.availability(vars.listingId) }),
+        queryClient.invalidateQueries({ queryKey: ["host-upcoming-availability"] }),
+      ]);
+    },
+  });
+}
+
+export function useDeleteAvailability() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id }: { id: string; listingId: string }) => {
+      const { error } = await supabase.from("availability").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: async (_data, vars) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: listingQueryKeys.availability(vars.listingId) }),
+        queryClient.invalidateQueries({ queryKey: ["host-upcoming-availability"] }),
+      ]);
+    },
+  });
+}
+
+export interface HostAvailabilitySlot extends Availability {
+  listing_title: string;
+  listing_id: string;
+}
+
+export function useHostUpcomingAvailability() {
+  const { user } = useAuth();
+  return useQuery<HostAvailabilitySlot[]>({
+    queryKey: ["host-upcoming-availability", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const nowIso = new Date().toISOString();
+      const { data, error } = await supabase
+        .from("availability")
+        .select("*, listings!inner(title, host_id)")
+        .eq("listings.host_id", user!.id)
+        .gte("starts_at", nowIso)
+        .order("starts_at", { ascending: true });
+      if (error) throw error;
+      type Row = Availability & { listings?: { title: string | null; host_id: string } | null };
+      return ((data ?? []) as Row[]).map((row) => ({
+        ...row,
+        listing_title: row.listings?.title ?? "Untitled",
+      }));
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Settings: verification + notification preferences
+// ---------------------------------------------------------------------------
+
+export interface SubmitVerificationInput {
+  legalName: string;
+  registration: string;
+}
+
+export function useSubmitVerification() {
+  const { user, hostProfile, refreshProfile } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: SubmitVerificationInput) => {
+      if (!user) throw new Error("Not authenticated");
+      const existing =
+        hostProfile?.payout_bank_json &&
+        typeof hostProfile.payout_bank_json === "object" &&
+        !Array.isArray(hostProfile.payout_bank_json)
+          ? hostProfile.payout_bank_json
+          : {};
+
+      const { error } = await supabase
+        .from("host_profiles")
+        .update({
+          kyc_status: "submitted",
+          payout_bank_json: {
+            ...existing,
+            legal_name: input.legalName.trim(),
+            registration: input.registration.trim(),
+          },
+        })
+        .eq("user_id", user.id);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await refreshProfile();
+      await queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+}
+
+export function useUpdateNotificationPrefs() {
+  const { user, refreshProfile } = useAuth();
+  return useMutation({
+    mutationFn: async (prefs: Json) => {
+      if (!user) throw new Error("Not authenticated");
+      const { error } = await supabase
+        .from("host_profiles")
+        .update({ notification_prefs: prefs })
+        .eq("user_id", user.id);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await refreshProfile();
+    },
+  });
 }
 
 function dayKey(date: Date) {

@@ -121,6 +121,10 @@ interface CreateTicketInput {
   priority: TicketPriority;
   relatedBookingId?: string | null;
   files?: File[];
+  // When a host opens a ticket on behalf of a guest, target that guest as the
+  // ticket subject (user_id) while the host remains created_by. Defaults to the
+  // signed-in user (a host raising their own ticket).
+  userId?: string;
 }
 
 export function useCreateTicket() {
@@ -140,7 +144,7 @@ export function useCreateTicket() {
           category: input.category,
           priority: input.priority,
           status: "open",
-          user_id: user.id,
+          user_id: input.userId ?? user.id,
           created_by: user.id,
           related_booking_id: input.relatedBookingId ?? null,
           attachment_urls: attachmentPaths,

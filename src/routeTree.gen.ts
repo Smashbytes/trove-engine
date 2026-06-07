@@ -19,15 +19,18 @@ import { Route as PayoutsRouteImport } from './routes/payouts'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SupportIndexRouteImport } from './routes/support.index'
 import { Route as ListingsIndexRouteImport } from './routes/listings.index'
+import { Route as AudienceIndexRouteImport } from './routes/audience.index'
 import { Route as SupportNewRouteImport } from './routes/support.new'
 import { Route as SupportTicketIdRouteImport } from './routes/support.$ticketId'
 import { Route as ListingsNewRouteImport } from './routes/listings.new'
 import { Route as ListingsListingIdRouteImport } from './routes/listings.$listingId'
 import { Route as AuthConfirmRouteImport } from './routes/auth.confirm'
+import { Route as AudienceGuestIdRouteImport } from './routes/audience.$guestId'
 import { Route as ListingsListingIdSlotsRouteImport } from './routes/listings.$listingId.slots'
 import { Route as ListingsListingIdBookingsRouteImport } from './routes/listings.$listingId.bookings'
 
@@ -81,6 +84,11 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CalendarRoute = CalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AnalyticsRoute = AnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
@@ -99,6 +107,11 @@ const SupportIndexRoute = SupportIndexRouteImport.update({
 const ListingsIndexRoute = ListingsIndexRouteImport.update({
   id: '/listings/',
   path: '/listings/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AudienceIndexRoute = AudienceIndexRouteImport.update({
+  id: '/audience/',
+  path: '/audience/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SupportNewRoute = SupportNewRouteImport.update({
@@ -126,6 +139,11 @@ const AuthConfirmRoute = AuthConfirmRouteImport.update({
   path: '/auth/confirm',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AudienceGuestIdRoute = AudienceGuestIdRouteImport.update({
+  id: '/audience/$guestId',
+  path: '/audience/$guestId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ListingsListingIdSlotsRoute = ListingsListingIdSlotsRouteImport.update({
   id: '/slots',
   path: '/slots',
@@ -141,6 +159,7 @@ const ListingsListingIdBookingsRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
+  '/calendar': typeof CalendarRoute
   '/dashboard': typeof DashboardRoute
   '/notifications': typeof NotificationsRoute
   '/onboarding': typeof OnboardingRoute
@@ -151,11 +170,13 @@ export interface FileRoutesByFullPath {
   '/scanner': typeof ScannerRoute
   '/settings': typeof SettingsRoute
   '/team': typeof TeamRoute
+  '/audience/$guestId': typeof AudienceGuestIdRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/listings/$listingId': typeof ListingsListingIdRouteWithChildren
   '/listings/new': typeof ListingsNewRoute
   '/support/$ticketId': typeof SupportTicketIdRoute
   '/support/new': typeof SupportNewRoute
+  '/audience/': typeof AudienceIndexRoute
   '/listings/': typeof ListingsIndexRoute
   '/support/': typeof SupportIndexRoute
   '/listings/$listingId/bookings': typeof ListingsListingIdBookingsRoute
@@ -164,6 +185,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
+  '/calendar': typeof CalendarRoute
   '/dashboard': typeof DashboardRoute
   '/notifications': typeof NotificationsRoute
   '/onboarding': typeof OnboardingRoute
@@ -174,11 +196,13 @@ export interface FileRoutesByTo {
   '/scanner': typeof ScannerRoute
   '/settings': typeof SettingsRoute
   '/team': typeof TeamRoute
+  '/audience/$guestId': typeof AudienceGuestIdRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/listings/$listingId': typeof ListingsListingIdRouteWithChildren
   '/listings/new': typeof ListingsNewRoute
   '/support/$ticketId': typeof SupportTicketIdRoute
   '/support/new': typeof SupportNewRoute
+  '/audience': typeof AudienceIndexRoute
   '/listings': typeof ListingsIndexRoute
   '/support': typeof SupportIndexRoute
   '/listings/$listingId/bookings': typeof ListingsListingIdBookingsRoute
@@ -188,6 +212,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
+  '/calendar': typeof CalendarRoute
   '/dashboard': typeof DashboardRoute
   '/notifications': typeof NotificationsRoute
   '/onboarding': typeof OnboardingRoute
@@ -198,11 +223,13 @@ export interface FileRoutesById {
   '/scanner': typeof ScannerRoute
   '/settings': typeof SettingsRoute
   '/team': typeof TeamRoute
+  '/audience/$guestId': typeof AudienceGuestIdRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/listings/$listingId': typeof ListingsListingIdRouteWithChildren
   '/listings/new': typeof ListingsNewRoute
   '/support/$ticketId': typeof SupportTicketIdRoute
   '/support/new': typeof SupportNewRoute
+  '/audience/': typeof AudienceIndexRoute
   '/listings/': typeof ListingsIndexRoute
   '/support/': typeof SupportIndexRoute
   '/listings/$listingId/bookings': typeof ListingsListingIdBookingsRoute
@@ -213,6 +240,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/analytics'
+    | '/calendar'
     | '/dashboard'
     | '/notifications'
     | '/onboarding'
@@ -223,11 +251,13 @@ export interface FileRouteTypes {
     | '/scanner'
     | '/settings'
     | '/team'
+    | '/audience/$guestId'
     | '/auth/confirm'
     | '/listings/$listingId'
     | '/listings/new'
     | '/support/$ticketId'
     | '/support/new'
+    | '/audience/'
     | '/listings/'
     | '/support/'
     | '/listings/$listingId/bookings'
@@ -236,6 +266,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/analytics'
+    | '/calendar'
     | '/dashboard'
     | '/notifications'
     | '/onboarding'
@@ -246,11 +277,13 @@ export interface FileRouteTypes {
     | '/scanner'
     | '/settings'
     | '/team'
+    | '/audience/$guestId'
     | '/auth/confirm'
     | '/listings/$listingId'
     | '/listings/new'
     | '/support/$ticketId'
     | '/support/new'
+    | '/audience'
     | '/listings'
     | '/support'
     | '/listings/$listingId/bookings'
@@ -259,6 +292,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/analytics'
+    | '/calendar'
     | '/dashboard'
     | '/notifications'
     | '/onboarding'
@@ -269,11 +303,13 @@ export interface FileRouteTypes {
     | '/scanner'
     | '/settings'
     | '/team'
+    | '/audience/$guestId'
     | '/auth/confirm'
     | '/listings/$listingId'
     | '/listings/new'
     | '/support/$ticketId'
     | '/support/new'
+    | '/audience/'
     | '/listings/'
     | '/support/'
     | '/listings/$listingId/bookings'
@@ -283,6 +319,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnalyticsRoute: typeof AnalyticsRoute
+  CalendarRoute: typeof CalendarRoute
   DashboardRoute: typeof DashboardRoute
   NotificationsRoute: typeof NotificationsRoute
   OnboardingRoute: typeof OnboardingRoute
@@ -293,11 +330,13 @@ export interface RootRouteChildren {
   ScannerRoute: typeof ScannerRoute
   SettingsRoute: typeof SettingsRoute
   TeamRoute: typeof TeamRoute
+  AudienceGuestIdRoute: typeof AudienceGuestIdRoute
   AuthConfirmRoute: typeof AuthConfirmRoute
   ListingsListingIdRoute: typeof ListingsListingIdRouteWithChildren
   ListingsNewRoute: typeof ListingsNewRoute
   SupportTicketIdRoute: typeof SupportTicketIdRoute
   SupportNewRoute: typeof SupportNewRoute
+  AudienceIndexRoute: typeof AudienceIndexRoute
   ListingsIndexRoute: typeof ListingsIndexRoute
   SupportIndexRoute: typeof SupportIndexRoute
 }
@@ -374,6 +413,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/calendar': {
+      id: '/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof CalendarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/analytics': {
       id: '/analytics'
       path: '/analytics'
@@ -400,6 +446,13 @@ declare module '@tanstack/react-router' {
       path: '/listings'
       fullPath: '/listings/'
       preLoaderRoute: typeof ListingsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/audience/': {
+      id: '/audience/'
+      path: '/audience'
+      fullPath: '/audience/'
+      preLoaderRoute: typeof AudienceIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/support/new': {
@@ -437,6 +490,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthConfirmRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/audience/$guestId': {
+      id: '/audience/$guestId'
+      path: '/audience/$guestId'
+      fullPath: '/audience/$guestId'
+      preLoaderRoute: typeof AudienceGuestIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/listings/$listingId/slots': {
       id: '/listings/$listingId/slots'
       path: '/slots'
@@ -470,6 +530,7 @@ const ListingsListingIdRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnalyticsRoute: AnalyticsRoute,
+  CalendarRoute: CalendarRoute,
   DashboardRoute: DashboardRoute,
   NotificationsRoute: NotificationsRoute,
   OnboardingRoute: OnboardingRoute,
@@ -480,11 +541,13 @@ const rootRouteChildren: RootRouteChildren = {
   ScannerRoute: ScannerRoute,
   SettingsRoute: SettingsRoute,
   TeamRoute: TeamRoute,
+  AudienceGuestIdRoute: AudienceGuestIdRoute,
   AuthConfirmRoute: AuthConfirmRoute,
   ListingsListingIdRoute: ListingsListingIdRouteWithChildren,
   ListingsNewRoute: ListingsNewRoute,
   SupportTicketIdRoute: SupportTicketIdRoute,
   SupportNewRoute: SupportNewRoute,
+  AudienceIndexRoute: AudienceIndexRoute,
   ListingsIndexRoute: ListingsIndexRoute,
   SupportIndexRoute: SupportIndexRoute,
 }

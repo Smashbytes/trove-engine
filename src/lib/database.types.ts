@@ -132,6 +132,11 @@ export type Payout = Tables<"payouts">;
 export type DeviceSession = Tables<"device_sessions">;
 export type Notification = Tables<"notifications">;
 export type AuditLogEntry = Tables<"audit_log">;
+export type GuestNote = Tables<"guest_notes">;
+
+// Row shape returned by the host_audience_profiles() RPC (scoped, PII-safe).
+export type AudienceProfile =
+  Database["public"]["Functions"]["host_audience_profiles"]["Returns"][number];
 
 // `listings.metadata` is widened to Json by the generator. Narrow it back to
 // our PRD-shaped union so the rest of the codebase keeps autocomplete.

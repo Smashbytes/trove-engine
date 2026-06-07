@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { Facebook, Globe, Instagram, MessageCircle, Music2, Twitter } from "lucide-react";
+import { useEffect, useState, type ComponentType } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/trove/AppShell";
 import { ImageUpload } from "@/components/trove/ImageUpload";
@@ -17,6 +18,77 @@ export const Route = createFileRoute("/profile")({
   component: ProfilePage,
 });
 
+interface SocialField {
+  key: string;
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+  placeholder: string;
+  href: (value: string) => string;
+}
+
+const SOCIAL_FIELDS: SocialField[] = [
+  {
+    key: "instagram",
+    label: "Instagram",
+    icon: Instagram,
+    placeholder: "@yourspot or full URL",
+    href: (v) => toUrl(v, "instagram.com/"),
+  },
+  {
+    key: "tiktok",
+    label: "TikTok",
+    icon: Music2,
+    placeholder: "@yourspot or full URL",
+    href: (v) => toUrl(v, "tiktok.com/@", true),
+  },
+  {
+    key: "facebook",
+    label: "Facebook",
+    icon: Facebook,
+    placeholder: "page name or full URL",
+    href: (v) => toUrl(v, "facebook.com/"),
+  },
+  {
+    key: "x",
+    label: "X",
+    icon: Twitter,
+    placeholder: "@yourspot or full URL",
+    href: (v) => toUrl(v, "x.com/"),
+  },
+  {
+    key: "whatsapp",
+    label: "WhatsApp",
+    icon: MessageCircle,
+    placeholder: "+27 82 000 0000",
+    href: (v) => `https://wa.me/${v.replace(/[^\d]/g, "")}`,
+  },
+  {
+    key: "website",
+    label: "Website",
+    icon: Globe,
+    placeholder: "https://yourspot.co.za",
+    href: (v) => (/^https?:\/\//i.test(v) ? v : `https://${v}`),
+  },
+];
+
+// Turn a handle (or full URL) into an absolute link. `keepAt` keeps a leading
+// "@" in the path (TikTok-style); otherwise it's stripped.
+function toUrl(value: string, base: string, keepAt = false) {
+  const trimmed = value.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  const handle = keepAt ? trimmed.replace(/^@?/, "") : trimmed.replace(/^@/, "");
+  return `https://${base}${handle}`;
+}
+
+function coerceSocials(raw: unknown): Record<string, string> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value === "string") out[key] = value;
+  }
+  return out;
+}
+
 function ProfilePage() {
   const { profile, hostProfile } = useAuth();
   const workspace = getHostWorkspace(hostProfile?.host_type);
@@ -30,6 +102,9 @@ function ProfilePage() {
   const [city, setCity] = useState(hostProfile?.city ?? "");
   const [bio, setBio] = useState(hostProfile?.bio ?? "");
   const [heroUrl, setHeroUrl] = useState(hostProfile?.hero_url ?? "");
+  const [socials, setSocials] = useState<Record<string, string>>(() =>
+    coerceSocials(hostProfile?.social_links),
+  );
 
   useEffect(() => {
     setFullName(profile?.full_name ?? "");
@@ -38,6 +113,7 @@ function ProfilePage() {
     setCity(hostProfile?.city ?? "");
     setBio(hostProfile?.bio ?? "");
     setHeroUrl(hostProfile?.hero_url ?? "");
+    setSocials(coerceSocials(hostProfile?.social_links));
   }, [hostProfile, profile]);
 
   const listings = listingsQuery.data ?? [];
@@ -56,6 +132,7 @@ function ProfilePage() {
         city,
         bio,
         heroUrl,
+        socialLinks: socials,
       });
       toast.success("Workspace profile updated.");
     } catch (error) {
@@ -101,6 +178,22 @@ function ProfilePage() {
               {bio ||
                 "Use this profile to give the platform and future partners a real sense of the business behind this workspace."}
             </p>
+            {SOCIAL_FIELDS.some((field) => socials[field.key]?.trim()) && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {SOCIAL_FIELDS.filter((field) => socials[field.key]?.trim()).map((field) => (
+                  <a
+                    key={field.key}
+                    href={field.href(socials[field.key])}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-white/85 transition-colors hover:border-primary/50 hover:text-white"
+                  >
+                    <field.icon className="h-3.5 w-3.5" />
+                    {field.label}
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -130,6 +223,31 @@ function ProfilePage() {
               <ImageUpload value={heroUrl} onChange={setHeroUrl} label="Hero image" />
             </Field>
           </div>
+
+          <div className="mt-8 border-t border-border/60 pt-6">
+            <h3 className="font-display text-lg font-semibold">Social channels</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Link the channels where guests can find you. Paste a handle or a full URL.
+            </p>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              {SOCIAL_FIELDS.map((field) => (
+                <Field key={field.key} label={field.label}>
+                  <div className="relative">
+                    <field.icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={socials[field.key] ?? ""}
+                      onChange={(event) =>
+                        setSocials((prev) => ({ ...prev, [field.key]: event.target.value }))
+                      }
+                      placeholder={field.placeholder}
+                      className="pl-9"
+                    />
+                  </div>
+                </Field>
+              ))}
+            </div>
+          </div>
+
           <div className="mt-6 flex justify-end">
             <Button
               onClick={handleSave}
