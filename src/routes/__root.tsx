@@ -136,14 +136,16 @@ function EngineAuthGate() {
 
   useEffect(() => {
     if (isLoading) return;
-    // Don't redirect away from the auth-callback pages — users land here
-    // mid-flow and must complete the verification before we route them.
-    if (pathname === "/reset-password" || pathname === "/auth/confirm") return;
+    // Public routes must stay reachable for everyone — including a signed-in
+    // host who hasn't finished onboarding. The landing page ("/") and the
+    // auth-callback pages ("/reset-password", "/auth/confirm") must never bounce
+    // to onboarding; only protected routes nudge an un-onboarded host forward.
+    if (isPublicRoute) return;
 
     if (isAuthenticated && !isHost && profile && pathname !== "/onboarding") {
       navigate({ to: "/onboarding" });
     }
-  }, [isAuthenticated, isHost, isLoading, navigate, pathname, profile]);
+  }, [isAuthenticated, isHost, isLoading, navigate, pathname, profile, isPublicRoute]);
 
   if (isLoading) {
     return <AuthGateLoader />;
