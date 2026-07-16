@@ -14,6 +14,9 @@ import type {
   Notification,
   Payout,
   Review,
+  TeamInvite,
+  TeamMember,
+  TeamRole,
   Ticket,
   TicketType,
 } from "./database.types";
@@ -50,15 +53,15 @@ export function useHostCategories() {
 }
 
 export function useHostListings() {
-  const { user } = useAuth();
+  const { activeHostId } = useAuth();
   return useQuery<ListingWithCapacity[]>({
-    queryKey: [...listingQueryKeys.all, user?.id],
-    enabled: !!user,
+    queryKey: [...listingQueryKeys.all, activeHostId],
+    enabled: !!activeHostId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("listings_with_capacity")
         .select("*")
-        .eq("host_id", user!.id)
+        .eq("host_id", activeHostId!)
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as ListingWithCapacity[];
@@ -188,15 +191,15 @@ export function useListingTickets(listingId: string | undefined) {
 }
 
 export function useRecentBookings(limit = 6) {
-  const { user } = useAuth();
+  const { activeHostId } = useAuth();
   return useQuery<(Booking & { listing_title: string })[]>({
-    queryKey: ["bookings", "recent", user?.id, limit],
-    enabled: !!user,
+    queryKey: ["bookings", "recent", activeHostId, limit],
+    enabled: !!activeHostId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
         .select("*, listings!inner(title, host_id)")
-        .eq("listings.host_id", user!.id)
+        .eq("listings.host_id", activeHostId!)
         .order("created_at", { ascending: false })
         .limit(limit);
       if (error) throw error;
@@ -218,10 +221,10 @@ export interface DashboardKpis {
 }
 
 export function useDashboardKpis() {
-  const { user } = useAuth();
+  const { activeHostId } = useAuth();
   return useQuery<DashboardKpis>({
-    queryKey: ["dashboard-kpis", user?.id],
-    enabled: !!user,
+    queryKey: ["dashboard-kpis", activeHostId],
+    enabled: !!activeHostId,
     queryFn: async () => {
       const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
 
@@ -229,17 +232,17 @@ export function useDashboardKpis() {
         supabase
           .from("bookings")
           .select("id, total_kobo, fee_kobo, status, created_at, listings!inner(host_id)")
-          .eq("listings.host_id", user!.id)
+          .eq("listings.host_id", activeHostId!)
           .gte("created_at", sevenDaysAgo),
         supabase
           .from("listings_with_capacity")
           .select("id, status, capacity, capacity_booked")
-          .eq("host_id", user!.id)
+          .eq("host_id", activeHostId!)
           .eq("status", "live"),
         supabase
           .from("tickets")
           .select("id, status, scanned_at, bookings!inner(listings!inner(host_id))")
-          .eq("bookings.listings.host_id", user!.id)
+          .eq("bookings.listings.host_id", activeHostId!)
           .eq("status", "used")
           .gte("scanned_at", sevenDaysAgo),
       ]);
@@ -284,16 +287,16 @@ export interface DailySalesPoint {
 }
 
 export function useSalesByDay(days = 14) {
-  const { user } = useAuth();
+  const { activeHostId } = useAuth();
   return useQuery<DailySalesPoint[]>({
-    queryKey: ["sales-by-day", user?.id, days],
-    enabled: !!user,
+    queryKey: ["sales-by-day", activeHostId, days],
+    enabled: !!activeHostId,
     queryFn: async () => {
       const start = new Date(Date.now() - days * 86_400_000);
       const { data, error } = await supabase
         .from("bookings")
         .select("total_kobo, fee_kobo, status, created_at, listings!inner(host_id)")
-        .eq("listings.host_id", user!.id)
+        .eq("listings.host_id", activeHostId!)
         .gte("created_at", start.toISOString())
         .in("status", ["confirmed", "completed"]);
       if (error) throw error;
@@ -318,15 +321,15 @@ export function useSalesByDay(days = 14) {
 }
 
 export function useHostReviews(limit = 20) {
-  const { user } = useAuth();
+  const { activeHostId } = useAuth();
   return useQuery<Review[]>({
-    queryKey: ["host-reviews", user?.id, limit],
-    enabled: !!user,
+    queryKey: ["host-reviews", activeHostId, limit],
+    enabled: !!activeHostId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("reviews")
         .select("*")
-        .eq("of_host", user!.id)
+        .eq("of_host", activeHostId!)
         .order("created_at", { ascending: false })
         .limit(limit);
       if (error) throw error;
@@ -336,15 +339,15 @@ export function useHostReviews(limit = 20) {
 }
 
 export function useHostPayouts(limit = 20) {
-  const { user } = useAuth();
+  const { activeHostId } = useAuth();
   return useQuery<Payout[]>({
-    queryKey: ["host-payouts", user?.id, limit],
-    enabled: !!user,
+    queryKey: ["host-payouts", activeHostId, limit],
+    enabled: !!activeHostId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("payouts")
         .select("*")
-        .eq("host_id", user!.id)
+        .eq("host_id", activeHostId!)
         .order("created_at", { ascending: false })
         .limit(limit);
       if (error) throw error;
@@ -471,21 +474,25 @@ export interface UpdateBankingDetailsInput {
 }
 
 export function useUpdateWorkspaceProfile() {
-  const { user, refreshProfile } = useAuth();
+  const { user, activeHostId, isOwner, refreshProfile } = useAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (input: UpdateWorkspaceProfileInput) => {
-      if (!user) throw new Error("Not authenticated");
+      if (!user || !activeHostId) throw new Error("Not authenticated");
 
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({
-          full_name: input.fullName.trim() || null,
-          phone: input.phone.trim() || null,
-        })
-        .eq("id", user.id);
-      if (profileError) throw profileError;
+      // full_name / phone live on the OWNER's profile row (own-only RLS), so
+      // only update them when the owner is editing their own spot.
+      if (isOwner) {
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({
+            full_name: input.fullName.trim() || null,
+            phone: input.phone.trim() || null,
+          })
+          .eq("id", user.id);
+        if (profileError) throw profileError;
+      }
 
       const socialLinks = Object.fromEntries(
         Object.entries(input.socialLinks ?? {})
@@ -502,7 +509,7 @@ export function useUpdateWorkspaceProfile() {
           hero_url: input.heroUrl.trim() || null,
           social_links: socialLinks,
         })
-        .eq("user_id", user.id);
+        .eq("user_id", activeHostId);
       if (hostError) throw hostError;
     },
     onSuccess: async () => {
@@ -516,12 +523,12 @@ export function useUpdateWorkspaceProfile() {
 }
 
 export function useUpdateBankingDetails() {
-  const { user, hostProfile, refreshProfile } = useAuth();
+  const { activeHostId, hostProfile, refreshProfile } = useAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (input: UpdateBankingDetailsInput) => {
-      if (!user) throw new Error("Not authenticated");
+      if (!activeHostId) throw new Error("Not authenticated");
 
       const existing =
         hostProfile?.payout_bank_json &&
@@ -543,7 +550,7 @@ export function useUpdateBankingDetails() {
             updated_at: new Date().toISOString(),
           },
         })
-        .eq("user_id", user.id);
+        .eq("user_id", activeHostId);
 
       if (error) throw error;
     },
@@ -657,6 +664,99 @@ export function useUploadListingImage() {
 
       const { data } = supabase.storage.from(LISTING_MEDIA_BUCKET).getPublicUrl(objectName);
       return { path: objectName, url: data.publicUrl };
+    },
+  });
+}
+
+// ── KYC documents ─────────────────────────────────────────────────────────────
+// Uploads an identity / registration document to the PRIVATE `kyc-docs` bucket
+// (POPIA: encrypted at rest, owner-scoped RLS) and records a kyc_documents row.
+// Path convention: {user_id}/{doc_type}-{timestamp}.{ext} — the first folder
+// segment is matched against auth.uid() by the storage RLS policy.
+export type KycDocType =
+  | "id"
+  | "passport"
+  | "cipc"
+  | "proof_of_address"
+  | "bank_confirmation";
+
+export interface UploadKycDocumentInput {
+  file: File;
+  docType: KycDocType;
+}
+
+const KYC_BUCKET = "kyc-docs";
+
+export function useUploadKycDocument() {
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ file, docType }: UploadKycDocumentInput) => {
+      if (!user) throw new Error("Not authenticated");
+      const okTypes = ["application/pdf", "image/png", "image/jpeg", "image/jpg"];
+      if (!okTypes.includes(file.type)) {
+        throw new Error("Upload a PDF, PNG or JPG.");
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error("Document must be under 10 MB.");
+      }
+
+      const ext = file.name.split(".").pop()?.toLowerCase() || "pdf";
+      const objectName = `${user.id}/${docType}-${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from(KYC_BUCKET)
+        .upload(objectName, file, { upsert: false, contentType: file.type });
+      if (uploadError) throw uploadError;
+
+      // kyc_documents is added in migration 0019; cast until types regenerate.
+      const { error: rowError } = await (supabase as unknown as {
+        from: (t: string) => {
+          insert: (v: Record<string, unknown>) => Promise<{ error: unknown }>;
+        };
+      })
+        .from("kyc_documents")
+        .insert({ host_id: user.id, doc_type: docType, storage_path: objectName });
+      if (rowError) throw rowError;
+
+      return { path: objectName };
+    },
+  });
+}
+
+// ── Payout recipient (Paystack Transfers) ───────────────────────────────────
+// Verifies the host's bank account (Paystack /bank/resolve) and creates a
+// transfer recipient. No payout is released until this succeeds.
+export interface VerifyPayoutRecipientInput {
+  bankCode: string;
+  accountNumber: string;
+}
+
+export function useVerifyPayoutRecipient() {
+  const queryClient = useQueryClient();
+  const { refreshProfile } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ bankCode, accountNumber }: VerifyPayoutRecipientInput) => {
+      const { data, error } = await supabase.functions.invoke("paystack-create-recipient", {
+        body: { bank_code: bankCode, account_number: accountNumber },
+      });
+      if (error) {
+        const ctx = (error as { context?: Response }).context;
+        let msg = error.message;
+        try {
+          if (ctx) {
+            const body = await ctx.json();
+            if (body?.error) msg = body.error;
+          }
+        } catch { /* ignore */ }
+        throw new Error(msg);
+      }
+      return data as { recipient_code: string; account_name: string; verified: boolean };
+    },
+    onSuccess: async () => {
+      await refreshProfile();
+      await queryClient.invalidateQueries({ queryKey: ["host-profile"] });
     },
   });
 }
@@ -794,16 +894,16 @@ export interface HostAvailabilitySlot extends Availability {
 }
 
 export function useHostUpcomingAvailability() {
-  const { user } = useAuth();
+  const { activeHostId } = useAuth();
   return useQuery<HostAvailabilitySlot[]>({
-    queryKey: ["host-upcoming-availability", user?.id],
-    enabled: !!user,
+    queryKey: ["host-upcoming-availability", activeHostId],
+    enabled: !!activeHostId,
     queryFn: async () => {
       const nowIso = new Date().toISOString();
       const { data, error } = await supabase
         .from("availability")
         .select("*, listings!inner(title, host_id)")
-        .eq("listings.host_id", user!.id)
+        .eq("listings.host_id", activeHostId!)
         .gte("starts_at", nowIso)
         .order("starts_at", { ascending: true });
       if (error) throw error;
@@ -826,11 +926,11 @@ export interface SubmitVerificationInput {
 }
 
 export function useSubmitVerification() {
-  const { user, hostProfile, refreshProfile } = useAuth();
+  const { activeHostId, hostProfile, refreshProfile } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: SubmitVerificationInput) => {
-      if (!user) throw new Error("Not authenticated");
+      if (!activeHostId) throw new Error("Not authenticated");
       const existing =
         hostProfile?.payout_bank_json &&
         typeof hostProfile.payout_bank_json === "object" &&
@@ -848,7 +948,7 @@ export function useSubmitVerification() {
             registration: input.registration.trim(),
           },
         })
-        .eq("user_id", user.id);
+        .eq("user_id", activeHostId);
       if (error) throw error;
     },
     onSuccess: async () => {
@@ -859,18 +959,152 @@ export function useSubmitVerification() {
 }
 
 export function useUpdateNotificationPrefs() {
-  const { user, refreshProfile } = useAuth();
+  const { activeHostId, refreshProfile } = useAuth();
   return useMutation({
     mutationFn: async (prefs: Json) => {
-      if (!user) throw new Error("Not authenticated");
+      if (!activeHostId) throw new Error("Not authenticated");
       const { error } = await supabase
         .from("host_profiles")
         .update({ notification_prefs: prefs })
-        .eq("user_id", user.id);
+        .eq("user_id", activeHostId);
       if (error) throw error;
     },
     onSuccess: async () => {
       await refreshProfile();
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Team management (Eventbrite-style staff + roles)
+// ---------------------------------------------------------------------------
+
+export type TeamRosterRow = Database["public"]["Functions"]["host_team_roster"]["Returns"][number];
+
+export const teamKeys = {
+  members: (hostId: string | null | undefined) => ["team-members", hostId] as const,
+  invites: (hostId: string | null | undefined) => ["team-invites", hostId] as const,
+};
+
+export function useTeamMembers() {
+  const { activeHostId, can } = useAuth();
+  const enabled = !!activeHostId && can("team.manage");
+  return useQuery<TeamRosterRow[]>({
+    queryKey: teamKeys.members(activeHostId),
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("host_team_roster", { p_host_id: activeHostId! });
+      if (error) throw error;
+      return (data ?? []) as TeamRosterRow[];
+    },
+  });
+}
+
+export function useTeamInvites() {
+  const { activeHostId, can } = useAuth();
+  const enabled = !!activeHostId && can("team.manage");
+  return useQuery<TeamInvite[]>({
+    queryKey: teamKeys.invites(activeHostId),
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("host_team_invites")
+        .select("*")
+        .eq("host_id", activeHostId!)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as TeamInvite[];
+    },
+  });
+}
+
+export interface InviteTeamMemberInput {
+  email: string;
+  role: TeamRole;
+  permissions: string[];
+  department?: string | null;
+}
+
+export function useInviteTeamMember() {
+  const { activeHostId } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: InviteTeamMemberInput) => {
+      if (!activeHostId) throw new Error("No active workspace");
+      const { data, error } = await supabase.functions.invoke("team-invite", {
+        body: {
+          hostId: activeHostId,
+          email: input.email.trim().toLowerCase(),
+          role: input.role,
+          permissions: input.permissions,
+          department: input.department?.trim() || null,
+          origin: typeof window !== "undefined" ? window.location.origin : null,
+        },
+      });
+      if (error) throw error;
+      return data as { invite: TeamInvite };
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: teamKeys.invites(activeHostId) });
+    },
+  });
+}
+
+export interface UpdateTeamMemberInput {
+  id: string;
+  role?: TeamRole;
+  permissions?: string[];
+  department?: string | null;
+  status?: TeamMember["status"];
+}
+
+export function useUpdateTeamMember() {
+  const { activeHostId } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: UpdateTeamMemberInput) => {
+      const patch: Database["public"]["Tables"]["host_team_members"]["Update"] = {};
+      if (input.role !== undefined) patch.role = input.role;
+      if (input.permissions !== undefined) patch.permissions = input.permissions;
+      if (input.department !== undefined) patch.department = input.department;
+      if (input.status !== undefined) patch.status = input.status;
+      const { error } = await supabase.from("host_team_members").update(patch).eq("id", input.id);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: teamKeys.members(activeHostId) });
+    },
+  });
+}
+
+export function useRemoveTeamMember() {
+  const { activeHostId } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (memberRowId: string) => {
+      const { error } = await supabase.from("host_team_members").delete().eq("id", memberRowId);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: teamKeys.members(activeHostId) });
+    },
+  });
+}
+
+export function useRevokeInvite() {
+  const { activeHostId } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (inviteId: string) => {
+      const { error } = await supabase
+        .from("host_team_invites")
+        .update({ status: "revoked" })
+        .eq("id", inviteId);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: teamKeys.invites(activeHostId) });
     },
   });
 }

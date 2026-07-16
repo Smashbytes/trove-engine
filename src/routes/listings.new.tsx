@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/trove/AppShell";
 import { ImageUpload } from "@/components/trove/ImageUpload";
 import { PageHeader } from "@/components/trove/PageHeader";
+import { PermissionGate } from "@/components/trove/PermissionGate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -285,6 +286,7 @@ function NewListing() {
 
   return (
     <AppShell>
+      <PermissionGate perm="listings.manage">
       <PageHeader
         eyebrow={workspace.heroEyebrow}
         title={`New ${workspace.singularLabel.toLowerCase()}`}
@@ -764,6 +766,7 @@ function NewListing() {
           </section>
         </aside>
       </div>
+      </PermissionGate>
     </AppShell>
   );
 }

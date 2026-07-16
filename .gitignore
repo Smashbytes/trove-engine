@@ -39,3 +39,5 @@ dist-vercel/
 .agents/
 skills-lock.json
 dist-pages
+
+supabase/.temp/

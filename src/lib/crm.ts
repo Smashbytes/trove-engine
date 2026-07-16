@@ -40,12 +40,14 @@ export const crmKeys = {
 // ---------------------------------------------------------------------------
 
 export function useAudienceProfiles() {
-  const { user } = useAuth();
+  const { activeHostId } = useAuth();
   return useQuery<Map<string, AudienceProfile>>({
-    queryKey: crmKeys.profiles(user?.id),
-    enabled: !!user,
+    queryKey: crmKeys.profiles(activeHostId ?? undefined),
+    enabled: !!activeHostId,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("host_audience_profiles");
+      const { data, error } = await supabase.rpc("host_audience_profiles", {
+        p_host_id: activeHostId!,
+      });
       if (error) throw error;
       const map = new Map<string, AudienceProfile>();
       for (const row of (data ?? []) as AudienceProfile[]) map.set(row.id, row);
@@ -64,15 +66,15 @@ export interface FollowerRow {
 }
 
 export function useFollowers() {
-  const { user } = useAuth();
+  const { activeHostId } = useAuth();
   return useQuery<FollowerRow[]>({
-    queryKey: crmKeys.followers(user?.id),
-    enabled: !!user,
+    queryKey: crmKeys.followers(activeHostId ?? undefined),
+    enabled: !!activeHostId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("follows")
         .select("user_id, created_at")
-        .eq("host_id", user!.id)
+        .eq("host_id", activeHostId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return ((data ?? []) as Array<{ user_id: string; created_at: string | null }>).map((row) => ({
@@ -101,17 +103,17 @@ type GuestBookingRow = Pick<
 > & { listings?: { title: string | null; host_id: string } | null };
 
 export function useGuests() {
-  const { user } = useAuth();
+  const { activeHostId } = useAuth();
   return useQuery<GuestSummary[]>({
-    queryKey: crmKeys.guests(user?.id),
-    enabled: !!user,
+    queryKey: crmKeys.guests(activeHostId ?? undefined),
+    enabled: !!activeHostId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
         .select(
           "guest_id, total_kobo, created_at, status, listing_id, listings!inner(title, host_id)",
         )
-        .eq("listings.host_id", user!.id)
+        .eq("listings.host_id", activeHostId!)
         .in("status", GUEST_BOOKING_STATUSES)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -170,10 +172,10 @@ type UpcomingBookingRow = Pick<
 >;
 
 export function useUpcomingEventGuests() {
-  const { user } = useAuth();
+  const { activeHostId } = useAuth();
   return useQuery<UpcomingEventGuests[]>({
-    queryKey: crmKeys.upcoming(user?.id),
-    enabled: !!user,
+    queryKey: crmKeys.upcoming(activeHostId ?? undefined),
+    enabled: !!activeHostId,
     queryFn: async () => {
       const nowIso = new Date().toISOString();
 
@@ -182,7 +184,7 @@ export function useUpcomingEventGuests() {
       const { data: avail, error: availError } = await supabase
         .from("availability")
         .select("listing_id, starts_at, listings!inner(title, cover_url, host_id)")
-        .eq("listings.host_id", user!.id)
+        .eq("listings.host_id", activeHostId!)
         .gte("starts_at", nowIso)
         .order("starts_at", { ascending: true });
       if (availError) throw availError;
@@ -240,17 +242,17 @@ export interface GuestBooking {
 }
 
 export function useGuestBookings(guestId: string | undefined) {
-  const { user } = useAuth();
+  const { activeHostId } = useAuth();
   return useQuery<GuestBooking[]>({
-    queryKey: crmKeys.guestDetail(user?.id, guestId),
-    enabled: !!user && !!guestId,
+    queryKey: crmKeys.guestDetail(activeHostId ?? undefined, guestId),
+    enabled: !!activeHostId && !!guestId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
         .select(
           "id, listing_id, status, party_size, total_kobo, created_at, checked_in_at, listings!inner(title, host_id)",
         )
-        .eq("listings.host_id", user!.id)
+        .eq("listings.host_id", activeHostId!)
         .eq("guest_id", guestId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -283,15 +285,15 @@ export function useGuestBookings(guestId: string | undefined) {
 // ---------------------------------------------------------------------------
 
 export function useGuestNotes(guestId: string | undefined) {
-  const { user } = useAuth();
+  const { activeHostId } = useAuth();
   return useQuery<GuestNote[]>({
-    queryKey: crmKeys.guestNotes(user?.id, guestId),
-    enabled: !!user && !!guestId,
+    queryKey: crmKeys.guestNotes(activeHostId ?? undefined, guestId),
+    enabled: !!activeHostId && !!guestId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("guest_notes")
         .select("*")
-        .eq("host_id", user!.id)
+        .eq("host_id", activeHostId!)
         .eq("guest_id", guestId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -301,26 +303,28 @@ export function useGuestNotes(guestId: string | undefined) {
 }
 
 export function useCreateGuestNote(guestId: string | undefined) {
-  const { user } = useAuth();
+  const { activeHostId } = useAuth();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: string) => {
-      if (!user || !guestId) throw new Error("Not signed in");
+      if (!activeHostId || !guestId) throw new Error("Not signed in");
       const trimmed = body.trim();
       if (!trimmed) throw new Error("Note cannot be empty");
       const { error } = await supabase
         .from("guest_notes")
-        .insert({ host_id: user.id, guest_id: guestId, body: trimmed });
+        .insert({ host_id: activeHostId, guest_id: guestId, body: trimmed });
       if (error) throw error;
     },
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: crmKeys.guestNotes(user?.id, guestId) });
+      void qc.invalidateQueries({
+        queryKey: crmKeys.guestNotes(activeHostId ?? undefined, guestId),
+      });
     },
   });
 }
 
 export function useDeleteGuestNote(guestId: string | undefined) {
-  const { user } = useAuth();
+  const { activeHostId } = useAuth();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (noteId: string) => {
@@ -328,7 +332,9 @@ export function useDeleteGuestNote(guestId: string | undefined) {
       if (error) throw error;
     },
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: crmKeys.guestNotes(user?.id, guestId) });
+      void qc.invalidateQueries({
+        queryKey: crmKeys.guestNotes(activeHostId ?? undefined, guestId),
+      });
     },
   });
 }

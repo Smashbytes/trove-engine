@@ -4,7 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, ArrowRight, Sparkles } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, Sparkles, X } from "lucide-react";
+
+const SITE = "https://www.welovetrove.co.za";
 
 type View = "signin" | "signup" | "forgot";
 
@@ -23,11 +25,11 @@ const SLIDES = [
   },
 ];
 
-export function AuthModal({ open }: { open: boolean }) {
+export function AuthModal({ open, dismissible = false }: { open: boolean; dismissible?: boolean }) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex min-h-screen bg-background">
-      <AuthFormPanel />
+      <AuthFormPanel dismissible={dismissible} />
       <SlideshowPanel />
     </div>
   );
@@ -36,10 +38,11 @@ export function AuthModal({ open }: { open: boolean }) {
 // Form panel owns all text-input state. Isolating it here means typing in
 // email/password doesn't re-render the slideshow or its framer-motion tree —
 // that was causing dropped frames + unresponsive input on tablets and phones.
-function AuthFormPanel() {
-  const { signInWithEmail, signUpWithEmail, resetPassword } = useAuth();
-  const [tab, setTab] = useState<"signin" | "signup">("signin");
-  const [view, setView] = useState<View>("signin");
+function AuthFormPanel({ dismissible }: { dismissible: boolean }) {
+  const { signInWithEmail, signUpWithEmail, resetPassword, authModalView, closeAuthModal } =
+    useAuth();
+  const [tab, setTab] = useState<"signin" | "signup">(authModalView);
+  const [view, setView] = useState<View>(authModalView);
   const [busy, setBusy] = useState(false);
   const [showPw, setShowPw] = useState(false);
 
@@ -85,6 +88,17 @@ function AuthFormPanel() {
   return (
     <div className="relative flex w-full flex-col justify-center px-8 py-12 sm:px-12 lg:w-[46%] xl:px-16">
       <div className="grid-bg pointer-events-none absolute inset-0 opacity-25" />
+
+      {dismissible && (
+        <button
+          type="button"
+          onClick={closeAuthModal}
+          aria-label="Close sign in"
+          className="absolute right-5 top-5 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-surface-1 text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
 
       <div className="relative mx-auto w-full max-w-[360px]">
         {/* Logo */}
@@ -261,13 +275,23 @@ function AuthFormPanel() {
                     />
                     <p className="text-center text-xs text-muted-foreground">
                       By continuing you agree to TROVE's{" "}
-                      <span className="cursor-pointer text-primary hover:underline underline-offset-4">
-                        Terms
-                      </span>{" "}
+                      <a
+                        href={`${SITE}/legal/terms-of-use`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary hover:underline underline-offset-4"
+                      >
+                        Terms of Use
+                      </a>{" "}
                       and{" "}
-                      <span className="cursor-pointer text-primary hover:underline underline-offset-4">
+                      <a
+                        href={`${SITE}/legal/privacy`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary hover:underline underline-offset-4"
+                      >
                         Privacy Policy
-                      </span>
+                      </a>
                       .
                     </p>
                   </motion.form>

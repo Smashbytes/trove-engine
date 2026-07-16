@@ -100,7 +100,7 @@ export const Route = createRootRoute({
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Unbounded:wght@500;600;700&display=swap",
       },
     ],
   }),
@@ -124,28 +124,31 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function EngineAuthGate() {
-  const { isAuthenticated, isLoading, isHost, profile, showAuthModal } = useAuth();
+  const { isAuthenticated, isLoading, hasWorkspace, profile, showAuthModal } = useAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   // /reset-password and /auth/confirm must be reachable without a full
   // session: Supabase drops the user there from an email link with a
   // one-shot token, and we need to render the form/verifier even while
-  // the auth listener is still settling.
+  // the auth listener is still settling. /join is the team-invite acceptance
+  // route — a signed-in user without their own spot must reach it.
   const isPublicRoute =
-    pathname === "/" || pathname === "/reset-password" || pathname === "/auth/confirm";
+    pathname === "/" ||
+    pathname === "/reset-password" ||
+    pathname === "/auth/confirm" ||
+    pathname.startsWith("/join");
 
   useEffect(() => {
     if (isLoading) return;
     // Public routes must stay reachable for everyone — including a signed-in
-    // host who hasn't finished onboarding. The landing page ("/") and the
-    // auth-callback pages ("/reset-password", "/auth/confirm") must never bounce
-    // to onboarding; only protected routes nudge an un-onboarded host forward.
+    // host who hasn't finished onboarding. Only nudge a user with NO workspace
+    // (not an owner and not a team member of any spot) toward onboarding.
     if (isPublicRoute) return;
 
-    if (isAuthenticated && !isHost && profile && pathname !== "/onboarding") {
+    if (isAuthenticated && !hasWorkspace && profile && pathname !== "/onboarding") {
       navigate({ to: "/onboarding" });
     }
-  }, [isAuthenticated, isHost, isLoading, navigate, pathname, profile, isPublicRoute]);
+  }, [isAuthenticated, hasWorkspace, isLoading, navigate, pathname, profile, isPublicRoute]);
 
   if (isLoading) {
     return <AuthGateLoader />;
@@ -157,7 +160,9 @@ function EngineAuthGate() {
   return (
     <>
       {canRenderOutlet && <Outlet />}
-      <AuthModal open={shouldOpenAuthModal} />
+      {/* On public routes the modal is opt-in (opened by a CTA or ?auth= link),
+          so hosts can close it. On protected routes it is the auth wall. */}
+      <AuthModal open={shouldOpenAuthModal} dismissible={isPublicRoute} />
       <Toaster theme="dark" position="top-right" richColors />
     </>
   );

@@ -29,7 +29,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth";
 import type { HostType, Json } from "@/lib/database.types";
-import { useCreateHostProfile } from "@/lib/queries";
+import { useCreateHostProfile, useUploadKycDocument } from "@/lib/queries";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({
@@ -135,6 +135,7 @@ function Onboarding() {
   const navigate = useNavigate();
   const { profile, user, isHost } = useAuth();
   const createHostProfile = useCreateHostProfile();
+  const uploadKyc = useUploadKycDocument();
 
   // Navigation
   const [globalStep, setGlobalStep] = useState<GlobalStep>(1);
@@ -156,6 +157,7 @@ function Onboarding() {
   const [accountNumber, setAccountNumber] = useState("");
   const [accountType, setAccountType] = useState("business");
   const [documentName, setDocumentName] = useState("");
+  const [documentFile, setDocumentFile] = useState<File | null>(null);
   const [confirmed, setConfirmed] = useState(false);
 
   useEffect(() => {
@@ -235,6 +237,24 @@ function Onboarding() {
               }
             : undefined,
       });
+
+      // Upload the verification document to the private KYC bucket (best-effort
+      // — the profile is already saved; the doc can be re-added in Settings).
+      if (documentFile) {
+        try {
+          await uploadKyc.mutateAsync({
+            file: documentFile,
+            docType: companyReg.trim() ? "cipc" : "id",
+          });
+        } catch (e) {
+          toast.error(
+            e instanceof Error
+              ? `Profile saved, but the document upload failed: ${e.message}`
+              : "Profile saved, but the document upload failed. Re-upload it in Settings.",
+          );
+        }
+      }
+
       setGlobalStep(5);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Submission failed. Please try again.");
@@ -341,6 +361,7 @@ function Onboarding() {
                 setAccountType={setAccountType}
                 documentName={documentName}
                 setDocumentName={setDocumentName}
+                setDocumentFile={setDocumentFile}
                 onNext={advanceGlobal}
                 onBack={retreatGlobal}
               />
@@ -687,6 +708,7 @@ interface VerificationStepProps {
   setAccountType: (v: string) => void;
   documentName: string;
   setDocumentName: (v: string) => void;
+  setDocumentFile: (f: File | null) => void;
   onNext: () => void;
   onBack: () => void;
 }
@@ -714,6 +736,7 @@ function VerificationStep({
   setAccountType,
   documentName,
   setDocumentName,
+  setDocumentFile,
   onNext,
   onBack,
 }: VerificationStepProps) {
@@ -721,7 +744,10 @@ function VerificationStep({
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
-    if (f) setDocumentName(f.name);
+    if (f) {
+      setDocumentName(f.name);
+      setDocumentFile(f);
+    }
   };
 
   return (

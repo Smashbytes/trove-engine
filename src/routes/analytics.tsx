@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { BarChart3 } from "lucide-react";
 import { AppShell } from "@/components/trove/AppShell";
 import { PageHeader } from "@/components/trove/PageHeader";
+import { PermissionGate } from "@/components/trove/PermissionGate";
 
 export const Route = createFileRoute("/analytics")({
   head: () => ({ meta: [{ title: "Analytics · Trove Engine" }] }),
@@ -11,6 +12,7 @@ export const Route = createFileRoute("/analytics")({
 function AnalyticsPage() {
   return (
     <AppShell>
+      <PermissionGate perm="payouts.view">
       <PageHeader
         eyebrow="What's working"
         title="Analytics"
@@ -25,6 +27,7 @@ function AnalyticsPage() {
           repeat-guest cohorts here.
         </p>
       </div>
+      </PermissionGate>
     </AppShell>
   );
 }

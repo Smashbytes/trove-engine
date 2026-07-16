@@ -7,6 +7,8 @@
 @theme inline {
   --font-display: "Space Grotesk", system-ui, sans-serif;
   --font-sans: "Inter", system-ui, sans-serif;
+  /* Brand display face shared with welovetrove.co.za (landing surfaces only) */
+  --font-brand: "Unbounded", "Space Grotesk", system-ui, sans-serif;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -189,6 +191,69 @@
     transform: translateY(-2px);
     box-shadow: var(--shadow-lift);
   }
+}
+
+/* ── Landing page: welovetrove brand treatments ─────────────────────────── */
+
+/* Aurora wash behind the hero, same recipe as the website's .aurora */
+.aurora {
+  position: absolute;
+  inset: -20% -10% auto -10%;
+  height: 70vh;
+  pointer-events: none;
+  background:
+    radial-gradient(40% 50% at 20% 20%, oklch(0.62 0.26 0 / 0.30), transparent 70%),
+    radial-gradient(45% 55% at 80% 10%, oklch(0.52 0.25 300 / 0.30), transparent 70%),
+    radial-gradient(40% 45% at 60% 60%, oklch(0.72 0.14 180 / 0.16), transparent 70%);
+  filter: blur(40px);
+  opacity: 0.9;
+}
+
+/* Film grain overlay, ported from the website (fixed + pointer-events-none
+   so it never repaints on scroll) */
+.grain::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+  opacity: 0.022;
+}
+
+/* Reveal-on-scroll (progressive enhancement, ported from the website: only
+   hides once JS "arms" it, so SSR/no-JS visitors always see the content). */
+.reveal {
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.reveal.armed {
+  opacity: 0;
+  transform: translateY(18px);
+}
+.reveal.armed.in {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal.armed { opacity: 1; transform: none; transition: none; }
+}
+
+/* City / category ticker (single marquee on the page) */
+@keyframes ticker-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker-marquee 60s linear infinite;
+  will-change: transform;
+}
+.ticker-fade {
+  mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track { animation: none; }
 }
 
 @font-face {

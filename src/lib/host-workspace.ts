@@ -8,6 +8,7 @@ import {
   LifeBuoy,
   ScanLine,
   Settings,
+  Shield,
   Sparkles,
   Star,
   Store,
@@ -15,6 +16,7 @@ import {
   Wallet,
 } from "lucide-react";
 import type { HostType, KycStatus, ListingType } from "./database.types";
+import type { PermissionKey } from "./permissions";
 
 export interface HostWorkspaceConfig {
   hostType: HostType;
@@ -36,6 +38,8 @@ export interface HostWorkspaceConfig {
     to: string;
     label: string;
     icon: LucideIcon;
+    /** Permission required to see this item. Undefined = visible to everyone in the workspace. */
+    perm?: PermissionKey;
   }>;
 }
 
@@ -46,18 +50,19 @@ export const HOST_TO_LISTING_TYPE: Record<HostType, ListingType> = {
   accommodation: "accommodation",
 };
 
-const SHARED_NAV = [
+const SHARED_NAV: HostWorkspaceConfig["nav"] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/audience", label: "Audience", icon: Users },
-  { to: "/calendar", label: "Calendar", icon: CalendarDays },
-  { to: "/scanner", label: "Scanner", icon: ScanLine },
-  { to: "/payouts", label: "Payouts", icon: Wallet },
-  { to: "/reviews", label: "Reviews", icon: Star },
+  { to: "/audience", label: "Audience", icon: Users, perm: "audience.manage" },
+  { to: "/calendar", label: "Calendar", icon: CalendarDays, perm: "calendar.manage" },
+  { to: "/scanner", label: "Scanner", icon: ScanLine, perm: "scanner.use" },
+  { to: "/payouts", label: "Payouts", icon: Wallet, perm: "payouts.view" },
+  { to: "/reviews", label: "Reviews", icon: Star, perm: "reviews.manage" },
   { to: "/notifications", label: "Inbox", icon: Bell },
   { to: "/support", label: "Support", icon: LifeBuoy },
+  { to: "/team", label: "Team", icon: Shield, perm: "team.manage" },
   { to: "/profile", label: "Profile", icon: Store },
   { to: "/settings", label: "Settings", icon: Settings },
-] as const;
+];
 
 const WORKSPACES: Record<HostType, HostWorkspaceConfig> = {
   organiser: {
@@ -80,8 +85,8 @@ const WORKSPACES: Record<HostType, HostWorkspaceConfig> = {
     categoryRoots: ["music", "stage", "nightlife", "activities-outdoor"],
     nav: [
       { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { to: "/listings", label: "Events", icon: CalendarDays },
-      { to: "/listings/new", label: "New event", icon: Sparkles },
+      { to: "/listings", label: "Events", icon: CalendarDays, perm: "listings.manage" },
+      { to: "/listings/new", label: "New event", icon: Sparkles, perm: "listings.manage" },
       ...SHARED_NAV.slice(1),
     ],
   },
@@ -105,8 +110,8 @@ const WORKSPACES: Record<HostType, HostWorkspaceConfig> = {
     categoryRoots: ["adrenaline", "activities-indoor", "activities-outdoor", "getaways"],
     nav: [
       { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { to: "/listings", label: "Experiences", icon: Sparkles },
-      { to: "/listings/new", label: "New experience", icon: CalendarDays },
+      { to: "/listings", label: "Experiences", icon: Sparkles, perm: "listings.manage" },
+      { to: "/listings/new", label: "New experience", icon: CalendarDays, perm: "listings.manage" },
       ...SHARED_NAV.slice(1),
     ],
   },
@@ -130,8 +135,8 @@ const WORKSPACES: Record<HostType, HostWorkspaceConfig> = {
     categoryRoots: ["getaways"],
     nav: [
       { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { to: "/listings", label: "Stays", icon: BedDouble },
-      { to: "/listings/new", label: "New stay", icon: CalendarDays },
+      { to: "/listings", label: "Stays", icon: BedDouble, perm: "listings.manage" },
+      { to: "/listings/new", label: "New stay", icon: CalendarDays, perm: "listings.manage" },
       ...SHARED_NAV.slice(1),
     ],
   },
@@ -155,8 +160,8 @@ const WORKSPACES: Record<HostType, HostWorkspaceConfig> = {
     categoryRoots: ["nightlife", "food", "stage", "getaways"],
     nav: [
       { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { to: "/listings", label: "Spaces", icon: Building2 },
-      { to: "/listings/new", label: "New space", icon: CalendarDays },
+      { to: "/listings", label: "Spaces", icon: Building2, perm: "listings.manage" },
+      { to: "/listings/new", label: "New space", icon: CalendarDays, perm: "listings.manage" },
       ...SHARED_NAV.slice(1),
     ],
   },

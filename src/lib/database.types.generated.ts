@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -619,6 +619,8 @@ export type Database = {
         Row: {
           address: string | null
           address_number: string | null
+          bank_account_verified: boolean
+          bank_resolved_name: string | null
           bio: string | null
           city: string | null
           created_at: string
@@ -634,6 +636,8 @@ export type Database = {
           payout_bank_json: Json | null
           payouts_frozen: boolean
           payouts_frozen_at: string | null
+          payouts_paused: boolean
+          paystack_recipient_code: string | null
           paystack_subaccount_code: string | null
           response_rate: number
           slug: string
@@ -645,10 +649,14 @@ export type Database = {
           user_id: string
           verified: boolean | null
           verified_at: string | null
+          whatsapp_number: string | null
+          whatsapp_verified_at: string | null
         }
         Insert: {
           address?: string | null
           address_number?: string | null
+          bank_account_verified?: boolean
+          bank_resolved_name?: string | null
           bio?: string | null
           city?: string | null
           created_at?: string
@@ -664,6 +672,8 @@ export type Database = {
           payout_bank_json?: Json | null
           payouts_frozen?: boolean
           payouts_frozen_at?: string | null
+          payouts_paused?: boolean
+          paystack_recipient_code?: string | null
           paystack_subaccount_code?: string | null
           response_rate?: number
           slug: string
@@ -675,10 +685,14 @@ export type Database = {
           user_id: string
           verified?: boolean | null
           verified_at?: string | null
+          whatsapp_number?: string | null
+          whatsapp_verified_at?: string | null
         }
         Update: {
           address?: string | null
           address_number?: string | null
+          bank_account_verified?: boolean
+          bank_resolved_name?: string | null
           bio?: string | null
           city?: string | null
           created_at?: string
@@ -694,6 +708,8 @@ export type Database = {
           payout_bank_json?: Json | null
           payouts_frozen?: boolean
           payouts_frozen_at?: string | null
+          payouts_paused?: boolean
+          paystack_recipient_code?: string | null
           paystack_subaccount_code?: string | null
           response_rate?: number
           slug?: string
@@ -705,12 +721,138 @@ export type Database = {
           user_id?: string
           verified?: boolean | null
           verified_at?: string | null
+          whatsapp_number?: string | null
+          whatsapp_verified_at?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "host_profiles_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      host_team_invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          department: string | null
+          email: string
+          expires_at: string
+          host_id: string
+          id: string
+          invited_by: string | null
+          permissions: string[]
+          role: Database["public"]["Enums"]["team_role"]
+          status: Database["public"]["Enums"]["team_invite_status"]
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          department?: string | null
+          email: string
+          expires_at?: string
+          host_id: string
+          id?: string
+          invited_by?: string | null
+          permissions?: string[]
+          role?: Database["public"]["Enums"]["team_role"]
+          status?: Database["public"]["Enums"]["team_invite_status"]
+          token: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          department?: string | null
+          email?: string
+          expires_at?: string
+          host_id?: string
+          id?: string
+          invited_by?: string | null
+          permissions?: string[]
+          role?: Database["public"]["Enums"]["team_role"]
+          status?: Database["public"]["Enums"]["team_invite_status"]
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "host_team_invites_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "host_profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "host_team_invites_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "public_host_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      host_team_members: {
+        Row: {
+          created_at: string
+          department: string | null
+          host_id: string
+          id: string
+          invited_by: string | null
+          member_user_id: string
+          permissions: string[]
+          role: Database["public"]["Enums"]["team_role"]
+          status: Database["public"]["Enums"]["team_member_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          department?: string | null
+          host_id: string
+          id?: string
+          invited_by?: string | null
+          member_user_id: string
+          permissions?: string[]
+          role?: Database["public"]["Enums"]["team_role"]
+          status?: Database["public"]["Enums"]["team_member_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          department?: string | null
+          host_id?: string
+          id?: string
+          invited_by?: string | null
+          member_user_id?: string
+          permissions?: string[]
+          role?: Database["public"]["Enums"]["team_role"]
+          status?: Database["public"]["Enums"]["team_member_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "host_team_members_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "host_profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "host_team_members_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "public_host_profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "host_team_members_member_user_id_fkey"
+            columns: ["member_user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -766,6 +908,148 @@ export type Database = {
         }
         Relationships: []
       }
+      kb_articles: {
+        Row: {
+          body_md: string
+          category: string | null
+          created_at: string
+          id: string
+          section: string
+          slug: string
+          sort_order: number
+          source_path: string | null
+          status: string
+          tags: string[]
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          body_md: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          section: string
+          slug: string
+          sort_order?: number
+          source_path?: string | null
+          status?: string
+          tags?: string[]
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          body_md?: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          section?: string
+          slug?: string
+          sort_order?: number
+          source_path?: string | null
+          status?: string
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kb_articles_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kb_revisions: {
+        Row: {
+          article_id: string
+          body_md: string
+          created_at: string
+          id: string
+          title: string
+          updated_by: string | null
+        }
+        Insert: {
+          article_id: string
+          body_md: string
+          created_at?: string
+          id?: string
+          title: string
+          updated_by?: string | null
+        }
+        Update: {
+          article_id?: string
+          body_md?: string
+          created_at?: string
+          id?: string
+          title?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kb_revisions_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "kb_articles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kyc_documents: {
+        Row: {
+          created_at: string | null
+          doc_type: string
+          host_id: string
+          id: string
+          note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string | null
+          doc_type: string
+          host_id: string
+          id?: string
+          note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          storage_path: string
+        }
+        Update: {
+          created_at?: string | null
+          doc_type?: string
+          host_id?: string
+          id?: string
+          note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kyc_documents_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "host_profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "kyc_documents_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "public_host_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       ledger: {
         Row: {
           amount_kobo: number
@@ -774,6 +1058,7 @@ export type Database = {
           id: string
           kind: Database["public"]["Enums"]["ledger_kind"]
           owner_user_id: string
+          payout_id: string | null
           ref_id: string | null
           ref_type: string | null
         }
@@ -784,6 +1069,7 @@ export type Database = {
           id?: string
           kind: Database["public"]["Enums"]["ledger_kind"]
           owner_user_id: string
+          payout_id?: string | null
           ref_id?: string | null
           ref_type?: string | null
         }
@@ -794,6 +1080,7 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["ledger_kind"]
           owner_user_id?: string
+          payout_id?: string | null
           ref_id?: string | null
           ref_type?: string | null
         }
@@ -803,6 +1090,13 @@ export type Database = {
             columns: ["owner_user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ledger_payout_id_fkey"
+            columns: ["payout_id"]
+            isOneToOne: false
+            referencedRelation: "payouts"
             referencedColumns: ["id"]
           },
         ]
@@ -1083,32 +1377,50 @@ export type Database = {
         Row: {
           amount_kobo: number
           created_at: string
+          failure_reason: string | null
           host_id: string
           id: string
+          paystack_recipient_code: string | null
+          paystack_status: string | null
           paystack_transfer_code: string | null
+          paystack_transfer_reference: string | null
           period_end: string | null
           period_start: string | null
+          processed_at: string | null
           status: Database["public"]["Enums"]["payout_status"]
+          updated_at: string | null
         }
         Insert: {
           amount_kobo: number
           created_at?: string
+          failure_reason?: string | null
           host_id: string
           id?: string
+          paystack_recipient_code?: string | null
+          paystack_status?: string | null
           paystack_transfer_code?: string | null
+          paystack_transfer_reference?: string | null
           period_end?: string | null
           period_start?: string | null
+          processed_at?: string | null
           status?: Database["public"]["Enums"]["payout_status"]
+          updated_at?: string | null
         }
         Update: {
           amount_kobo?: number
           created_at?: string
+          failure_reason?: string | null
           host_id?: string
           id?: string
+          paystack_recipient_code?: string | null
+          paystack_status?: string | null
           paystack_transfer_code?: string | null
+          paystack_transfer_reference?: string | null
           period_end?: string | null
           period_start?: string | null
+          processed_at?: string | null
           status?: Database["public"]["Enums"]["payout_status"]
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -1692,6 +2004,41 @@ export type Database = {
           },
         ]
       }
+      whatsapp_verifications: {
+        Row: {
+          code: string
+          created_at: string
+          expires_at: string
+          id: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_verifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       listings_with_capacity: {
@@ -1813,6 +2160,8 @@ export type Database = {
       }
     }
     Functions: {
+      accept_team_invite: { Args: { p_token: string }; Returns: string }
+      expire_stale_pending_bookings: { Args: never; Returns: number }
       find_guest_by_email: {
         Args: { p_email: string }
         Returns: {
@@ -1829,13 +2178,35 @@ export type Database = {
           id: string
         }[]
       }
-      host_audience_profiles: {
+      generate_payout_batches: {
         Args: never
+        Returns: {
+          amount_kobo: number
+          host_id: string
+          payout_id: string
+        }[]
+      }
+      host_audience_profiles: {
+        Args: { p_host_id: string }
         Returns: {
           avatar_url: string
           full_name: string
           id: string
           phone: string
+        }[]
+      }
+      host_team_roster: {
+        Args: { p_host_id: string }
+        Returns: {
+          avatar_url: string
+          created_at: string
+          department: string
+          full_name: string
+          id: string
+          member_user_id: string
+          permissions: string[]
+          role: Database["public"]["Enums"]["team_role"]
+          status: Database["public"]["Enums"]["team_member_status"]
         }[]
       }
       my_friends: {
@@ -1848,8 +2219,22 @@ export type Database = {
           status: Database["public"]["Enums"]["friend_status"]
         }[]
       }
+      reserve_booking: {
+        Args: {
+          p_attested_age?: boolean
+          p_guest_id: string
+          p_listing_id: string
+          p_party_size: number
+          p_slot_id: string
+          p_ticket_type_id: string
+          p_total_kobo: number
+        }
+        Returns: string
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      team_can: { Args: { host: string; perm: string }; Returns: boolean }
+      team_host_ids: { Args: never; Returns: string[] }
       trove_generate_slug: { Args: { input: string }; Returns: string }
       unaccent: { Args: { "": string }; Returns: string }
     }
@@ -1882,6 +2267,9 @@ export type Database = {
       listing_status: "draft" | "live" | "paused" | "archived"
       listing_type: "venue" | "event" | "experience" | "accommodation"
       payout_status: "pending" | "processing" | "paid" | "failed"
+      team_invite_status: "pending" | "accepted" | "revoked" | "expired"
+      team_member_status: "active" | "suspended"
+      team_role: "admin" | "manager" | "finance" | "scanner"
       ticket_status: "valid" | "used" | "voided" | "refunded" | "transferred"
     }
     CompositeTypes: {
@@ -2040,6 +2428,9 @@ export const Constants = {
       listing_status: ["draft", "live", "paused", "archived"],
       listing_type: ["venue", "event", "experience", "accommodation"],
       payout_status: ["pending", "processing", "paid", "failed"],
+      team_invite_status: ["pending", "accepted", "revoked", "expired"],
+      team_member_status: ["active", "suspended"],
+      team_role: ["admin", "manager", "finance", "scanner"],
       ticket_status: ["valid", "used", "voided", "refunded", "transferred"],
     },
   },

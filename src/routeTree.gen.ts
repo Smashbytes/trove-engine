@@ -29,6 +29,7 @@ import { Route as SupportNewRouteImport } from './routes/support.new'
 import { Route as SupportTicketIdRouteImport } from './routes/support.$ticketId'
 import { Route as ListingsNewRouteImport } from './routes/listings.new'
 import { Route as ListingsListingIdRouteImport } from './routes/listings.$listingId'
+import { Route as JoinTokenRouteImport } from './routes/join.$token'
 import { Route as AuthConfirmRouteImport } from './routes/auth.confirm'
 import { Route as AudienceGuestIdRouteImport } from './routes/audience.$guestId'
 import { Route as ListingsListingIdSlotsRouteImport } from './routes/listings.$listingId.slots'
@@ -134,6 +135,11 @@ const ListingsListingIdRoute = ListingsListingIdRouteImport.update({
   path: '/listings/$listingId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const JoinTokenRoute = JoinTokenRouteImport.update({
+  id: '/join/$token',
+  path: '/join/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthConfirmRoute = AuthConfirmRouteImport.update({
   id: '/auth/confirm',
   path: '/auth/confirm',
@@ -172,6 +178,7 @@ export interface FileRoutesByFullPath {
   '/team': typeof TeamRoute
   '/audience/$guestId': typeof AudienceGuestIdRoute
   '/auth/confirm': typeof AuthConfirmRoute
+  '/join/$token': typeof JoinTokenRoute
   '/listings/$listingId': typeof ListingsListingIdRouteWithChildren
   '/listings/new': typeof ListingsNewRoute
   '/support/$ticketId': typeof SupportTicketIdRoute
@@ -198,6 +205,7 @@ export interface FileRoutesByTo {
   '/team': typeof TeamRoute
   '/audience/$guestId': typeof AudienceGuestIdRoute
   '/auth/confirm': typeof AuthConfirmRoute
+  '/join/$token': typeof JoinTokenRoute
   '/listings/$listingId': typeof ListingsListingIdRouteWithChildren
   '/listings/new': typeof ListingsNewRoute
   '/support/$ticketId': typeof SupportTicketIdRoute
@@ -225,6 +233,7 @@ export interface FileRoutesById {
   '/team': typeof TeamRoute
   '/audience/$guestId': typeof AudienceGuestIdRoute
   '/auth/confirm': typeof AuthConfirmRoute
+  '/join/$token': typeof JoinTokenRoute
   '/listings/$listingId': typeof ListingsListingIdRouteWithChildren
   '/listings/new': typeof ListingsNewRoute
   '/support/$ticketId': typeof SupportTicketIdRoute
@@ -253,6 +262,7 @@ export interface FileRouteTypes {
     | '/team'
     | '/audience/$guestId'
     | '/auth/confirm'
+    | '/join/$token'
     | '/listings/$listingId'
     | '/listings/new'
     | '/support/$ticketId'
@@ -279,6 +289,7 @@ export interface FileRouteTypes {
     | '/team'
     | '/audience/$guestId'
     | '/auth/confirm'
+    | '/join/$token'
     | '/listings/$listingId'
     | '/listings/new'
     | '/support/$ticketId'
@@ -305,6 +316,7 @@ export interface FileRouteTypes {
     | '/team'
     | '/audience/$guestId'
     | '/auth/confirm'
+    | '/join/$token'
     | '/listings/$listingId'
     | '/listings/new'
     | '/support/$ticketId'
@@ -332,6 +344,7 @@ export interface RootRouteChildren {
   TeamRoute: typeof TeamRoute
   AudienceGuestIdRoute: typeof AudienceGuestIdRoute
   AuthConfirmRoute: typeof AuthConfirmRoute
+  JoinTokenRoute: typeof JoinTokenRoute
   ListingsListingIdRoute: typeof ListingsListingIdRouteWithChildren
   ListingsNewRoute: typeof ListingsNewRoute
   SupportTicketIdRoute: typeof SupportTicketIdRoute
@@ -483,6 +496,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ListingsListingIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/join/$token': {
+      id: '/join/$token'
+      path: '/join/$token'
+      fullPath: '/join/$token'
+      preLoaderRoute: typeof JoinTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/confirm': {
       id: '/auth/confirm'
       path: '/auth/confirm'
@@ -543,6 +563,7 @@ const rootRouteChildren: RootRouteChildren = {
   TeamRoute: TeamRoute,
   AudienceGuestIdRoute: AudienceGuestIdRoute,
   AuthConfirmRoute: AuthConfirmRoute,
+  JoinTokenRoute: JoinTokenRoute,
   ListingsListingIdRoute: ListingsListingIdRouteWithChildren,
   ListingsNewRoute: ListingsNewRoute,
   SupportTicketIdRoute: SupportTicketIdRoute,

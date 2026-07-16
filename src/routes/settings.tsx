@@ -1,5 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Bell as BellIcon, KeyRound, Settings as SettingsIcon, ShieldCheck } from "lucide-react";
+import {
+  Bell as BellIcon,
+  KeyRound,
+  MessageCircle,
+  Settings as SettingsIcon,
+  ShieldCheck,
+} from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/trove/AppShell";
@@ -14,7 +20,14 @@ import {
   useSubmitVerification,
   useUpdateBankingDetails,
   useUpdateNotificationPrefs,
+  useVerifyPayoutRecipient,
 } from "@/lib/queries";
+import { SA_BANKS } from "@/lib/sa-banks";
+import {
+  useDisconnectWhatsApp,
+  useStartWhatsAppConnect,
+  useWhatsAppStatus,
+} from "@/lib/whatsapp";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({ meta: [{ title: "Settings · Trove Engine" }] }),
@@ -153,13 +166,20 @@ function SettingsPage() {
   };
 
   // ---- banking (existing) ----
+  const verifyRecipient = useVerifyPayoutRecipient();
   const [bank, setBank] = useState("");
+  const [bankCode, setBankCode] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [accountName, setAccountName] = useState("");
   const [accountType, setAccountType] = useState("business");
 
+  const payoutsVerified = Boolean(
+    hostProfile?.bank_account_verified && hostProfile?.paystack_recipient_code,
+  );
+
   useEffect(() => {
     setBank(typeof bankJson.bank === "string" ? bankJson.bank : "");
+    setBankCode(typeof bankJson.bank_code === "string" ? bankJson.bank_code : "");
     setAccountNumber(typeof bankJson.account_number === "string" ? bankJson.account_number : "");
     setAccountName(typeof bankJson.account_name === "string" ? bankJson.account_name : "");
     setAccountType(typeof bankJson.account_type === "string" ? bankJson.account_type : "business");
@@ -175,6 +195,24 @@ function SettingsPage() {
       toast.success("Banking details updated.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not update banking details.");
+    }
+  };
+
+  // Verify the account with Paystack and create a transfer recipient. This is
+  // what actually enables payouts — generate_payout_batches gates on it.
+  const verifyPayouts = async () => {
+    if (!bankCode || !accountNumber.trim()) {
+      toast.error("Choose your bank and enter your account number first.");
+      return;
+    }
+    try {
+      const res = await verifyRecipient.mutateAsync({ bankCode, accountNumber: accountNumber.trim() });
+      setAccountName(res.account_name || accountName);
+      const chosen = SA_BANKS.find((b) => b.code === bankCode);
+      if (chosen) setBank(chosen.name);
+      toast.success(`Verified ${res.account_name}. Payouts enabled.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not verify this account.");
     }
   };
 
@@ -271,6 +309,15 @@ function SettingsPage() {
           </div>
         </Section>
 
+        {/* WhatsApp connection */}
+        <Section
+          icon={MessageCircle}
+          title="WhatsApp"
+          sub="Connect your WhatsApp to get bookings, payouts and alerts the moment they happen."
+        >
+          <WhatsAppCard />
+        </Section>
+
         {/* Notification preferences */}
         <Section
           icon={BellIcon}
@@ -341,26 +388,51 @@ function SettingsPage() {
             </div>
             <span
               className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
-                bank && accountNumber ? "bg-success/15 text-success" : "bg-warning/15 text-warning"
+                payoutsVerified
+                  ? "bg-success/15 text-success"
+                  : bank && accountNumber
+                    ? "bg-warning/15 text-warning"
+                    : "bg-warning/15 text-warning"
               }`}
             >
-              {bank && accountNumber ? "Ready" : "Needs banking"}
+              {payoutsVerified ? "Verified · payouts on" : bank && accountNumber ? "Unverified" : "Needs banking"}
             </span>
           </div>
 
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             <Field label="Bank">
-              <Input value={bank} onChange={(event) => setBank(event.target.value)} />
+              <select
+                value={bankCode}
+                onChange={(event) => {
+                  setBankCode(event.target.value);
+                  const b = SA_BANKS.find((x) => x.code === event.target.value);
+                  if (b) setBank(b.name);
+                }}
+                className="flex h-10 w-full rounded-md border border-input bg-input px-3 text-sm"
+              >
+                <option value="">Select your bank…</option>
+                {SA_BANKS.map((b) => (
+                  <option key={b.code} value={b.code}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
             </Field>
             <Field label="Account number">
               <Input
                 value={accountNumber}
-                onChange={(event) => setAccountNumber(event.target.value)}
+                onChange={(event) => {
+                  setAccountNumber(event.target.value);
+                }}
                 inputMode="numeric"
               />
             </Field>
             <Field label="Account name">
-              <Input value={accountName} onChange={(event) => setAccountName(event.target.value)} />
+              <Input
+                value={accountName}
+                onChange={(event) => setAccountName(event.target.value)}
+                placeholder={payoutsVerified ? accountName : "Auto-filled when you verify"}
+              />
             </Field>
             <Field label="Account type">
               <select
@@ -375,13 +447,30 @@ function SettingsPage() {
             </Field>
           </div>
 
-          <div className="mt-6 flex justify-end">
+          <p className="mt-4 text-xs leading-5 text-muted-foreground">
+            {payoutsVerified
+              ? `Verified with Paystack${hostProfile?.bank_resolved_name ? ` as ${hostProfile.bank_resolved_name}` : ""}. Payouts are released after each event completes.`
+              : "Verify your account with Paystack to enable payouts. We confirm the account holder's name before any money is sent."}
+          </p>
+
+          <div className="mt-6 flex flex-wrap justify-end gap-3">
             <Button
+              variant="outline"
               onClick={saveBanking}
               disabled={updateBanking.isPending}
+            >
+              {updateBanking.isPending ? "Saving..." : "Save details"}
+            </Button>
+            <Button
+              onClick={verifyPayouts}
+              disabled={verifyRecipient.isPending || !bankCode || !accountNumber.trim()}
               className="bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95"
             >
-              {updateBanking.isPending ? "Saving..." : "Save banking details"}
+              {verifyRecipient.isPending
+                ? "Verifying…"
+                : payoutsVerified
+                  ? "Re-verify account"
+                  : "Verify & enable payouts"}
             </Button>
           </div>
         </section>
@@ -454,5 +543,91 @@ function Section({
       </div>
       <div className="mt-6">{children}</div>
     </section>
+  );
+}
+
+function WhatsAppCard() {
+  const [waiting, setWaiting] = useState(false);
+  const status = useWhatsAppStatus({ poll: waiting });
+  const start = useStartWhatsAppConnect();
+  const disconnect = useDisconnectWhatsApp();
+
+  // Stop polling + celebrate the moment the webhook confirms the connection.
+  useEffect(() => {
+    if (waiting && status.data?.number) {
+      setWaiting(false);
+      toast.success("WhatsApp connected! Your updates will land there from now on.");
+    }
+  }, [waiting, status.data?.number]);
+
+  const connect = async () => {
+    try {
+      const res = await start.mutateAsync();
+      if (!res.waLink) {
+        toast.error(res.error ?? "WhatsApp isn't enabled yet — check back soon.");
+        return;
+      }
+      window.open(res.waLink, "_blank", "noopener");
+      setWaiting(true);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't start the connection.");
+    }
+  };
+
+  if (status.isLoading) {
+    return <p className="text-sm text-muted-foreground">Checking your WhatsApp connection…</p>;
+  }
+
+  if (status.data?.number) {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <span className="h-2.5 w-2.5 rounded-full bg-success shadow-[0_0_10px] shadow-success/60" />
+          <div>
+            <p className="font-medium">{status.data.number}</p>
+            <p className="text-xs text-muted-foreground">
+              Connected
+              {status.data.verifiedAt
+                ? ` · verified ${new Date(status.data.verifiedAt).toLocaleDateString("en-ZA")}`
+                : ""}{" "}
+              — use the matrix below to choose which updates arrive here.
+            </p>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          onClick={() => disconnect.mutate()}
+          disabled={disconnect.isPending}
+        >
+          {disconnect.isPending ? "Disconnecting…" : "Disconnect"}
+        </Button>
+      </div>
+    );
+  }
+
+  if (status.data && !status.data.configured) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        WhatsApp notifications are nearly here — Trove&apos;s WhatsApp line is being set up. This
+        button will go live the moment it&apos;s ready.
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-4">
+      <p className="max-w-md text-sm text-muted-foreground">
+        {waiting
+          ? "WhatsApp should have opened with a pre-filled message — just tap send. We'll connect you the second it arrives."
+          : "One tap: we open WhatsApp with a pre-filled message, you hit send, and you're connected. No codes to type."}
+      </p>
+      <Button
+        onClick={connect}
+        disabled={start.isPending || waiting}
+        className="bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95"
+      >
+        {waiting ? "Waiting for your message…" : start.isPending ? "Preparing…" : "Connect WhatsApp"}
+      </Button>
+    </div>
   );
 }

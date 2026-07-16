@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/trove/AppShell";
 import { PageHeader } from "@/components/trove/PageHeader";
+import { PermissionGate } from "@/components/trove/PermissionGate";
 import { QrScanner } from "@/components/trove/QrScanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,7 +35,7 @@ export const Route = createFileRoute("/scanner")({
 });
 
 function ScannerPage() {
-  const { hostProfile } = useAuth();
+  const { hostProfile, can } = useAuth();
   const device = useDevice();
   const workspace = getHostWorkspace(hostProfile?.host_type);
   const listingsQuery = useHostListings();
@@ -77,6 +78,14 @@ function ScannerPage() {
       toast.error(error instanceof Error ? error.message : "Could not check guest in.");
     }
   };
+
+  if (!can("scanner.use")) {
+    return (
+      <AppShell>
+        <PermissionGate perm="scanner.use">{null}</PermissionGate>
+      </AppShell>
+    );
+  }
 
   if (device === "smartphone") {
     return (

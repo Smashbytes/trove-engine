@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/trove/AppShell";
 import { PageHeader } from "@/components/trove/PageHeader";
+import { PermissionGate } from "@/components/trove/PermissionGate";
 import { useAuth } from "@/lib/auth";
 import { useHostPayouts } from "@/lib/queries";
 
@@ -35,6 +36,7 @@ function PayoutsPage() {
 
   return (
     <AppShell>
+      <PermissionGate perm="payouts.view">
       <PageHeader
         eyebrow="Finance"
         title="Earnings & payouts"
@@ -79,6 +81,7 @@ function PayoutsPage() {
           <PayoutTable payouts={payouts} />
         </section>
       </div>
+      </PermissionGate>
     </AppShell>
   );
 }

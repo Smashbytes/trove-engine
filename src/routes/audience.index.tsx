@@ -3,6 +3,7 @@ import { CalendarClock, Heart, Sparkles, Ticket, UserPlus, Users } from "lucide-
 import { useMemo } from "react";
 import { AppShell } from "@/components/trove/AppShell";
 import { PageHeader } from "@/components/trove/PageHeader";
+import { PermissionGate } from "@/components/trove/PermissionGate";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -126,6 +127,7 @@ function AudiencePage() {
 
   return (
     <AppShell>
+      <PermissionGate perm="audience.manage">
       <PageHeader
         eyebrow="Your people"
         title="Audience"
@@ -331,6 +333,7 @@ function AudiencePage() {
           )}
         </TabsContent>
       </Tabs>
+      </PermissionGate>
     </AppShell>
   );
 }

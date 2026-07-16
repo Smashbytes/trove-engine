@@ -26,6 +26,9 @@ export type KycStatus = Database["public"]["Enums"]["kyc_status"];
 export type HostType = Database["public"]["Enums"]["host_type"];
 export type PayoutStatus = Database["public"]["Enums"]["payout_status"];
 export type LedgerKind = Database["public"]["Enums"]["ledger_kind"];
+export type TeamRole = Database["public"]["Enums"]["team_role"];
+export type TeamMemberStatus = Database["public"]["Enums"]["team_member_status"];
+export type TeamInviteStatus = Database["public"]["Enums"]["team_invite_status"];
 
 // ---------------------------------------------------------------------------
 // Listing metadata payloads (PRD §5.3.2) — JSONB-shaped per listing_type
@@ -133,6 +136,8 @@ export type DeviceSession = Tables<"device_sessions">;
 export type Notification = Tables<"notifications">;
 export type AuditLogEntry = Tables<"audit_log">;
 export type GuestNote = Tables<"guest_notes">;
+export type TeamMember = Tables<"host_team_members">;
+export type TeamInvite = Tables<"host_team_invites">;
 
 // Row shape returned by the host_audience_profiles() RPC (scoped, PII-safe).
 export type AudienceProfile =

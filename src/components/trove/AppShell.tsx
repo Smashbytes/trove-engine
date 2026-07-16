@@ -1,19 +1,48 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { AlertOctagon, LogOut, Menu, Snowflake, Sparkles, X } from "lucide-react";
+import {
+  AlertOctagon,
+  Check,
+  ChevronsUpDown,
+  LogOut,
+  Menu,
+  Snowflake,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/auth";
 import { getHostWorkspace, getVerificationCopy } from "@/lib/host-workspace";
+import { ROLE_META } from "@/lib/permissions";
 import { TroveLogo } from "./Logo";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { profile, hostProfile, signOut } = useAuth();
+  const {
+    profile,
+    hostProfile,
+    signOut,
+    can,
+    workspaces,
+    activeHostId,
+    activeRole,
+    setActiveWorkspace,
+  } = useAuth();
   const navigate = useNavigate();
   const path = useRouterState({ select: (state) => state.location.pathname });
 
   const workspace = getHostWorkspace(hostProfile?.host_type);
+  const navItems = workspace.nav.filter((item) => !item.perm || can(item.perm));
+  const roleLabel = activeRole === "owner" || !activeRole ? "Owner" : ROLE_META[activeRole].label;
   const verification = getVerificationCopy(hostProfile?.kyc_status);
   const bankProfile =
     hostProfile?.payout_bank_json &&
@@ -82,6 +111,55 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          {workspaces.length > 1 && (
+            <div className="mx-3 mt-3 shrink-0">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2.5 text-left transition-colors hover:bg-white/[0.06]"
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/15 font-display text-xs font-bold text-primary">
+                      {(workspaces.find((w) => w.hostId === activeHostId)?.label ?? "TR")
+                        .slice(0, 2)
+                        .toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">
+                        {workspaces.find((w) => w.hostId === activeHostId)?.label ?? "Workspace"}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">{roleLabel}</p>
+                    </div>
+                    <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-64">
+                  <DropdownMenuLabel>Switch workspace</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {workspaces.map((w) => (
+                    <DropdownMenuItem
+                      key={w.hostId}
+                      onClick={() => {
+                        setActiveWorkspace(w.hostId);
+                        setMobileOpen(false);
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{w.label}</span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {w.isOwner
+                            ? "Owner"
+                            : ROLE_META[w.role as Exclude<typeof w.role, "owner">].label}
+                        </span>
+                      </span>
+                      {w.hostId === activeHostId && <Check className="h-4 w-4 text-primary" />}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
           {hostProfile && (
             <div className="mx-3 mt-3 shrink-0 overflow-hidden rounded-2xl border border-white/8 bg-[linear-gradient(155deg,rgba(255,255,255,0.05),rgba(255,255,255,0.01))] p-4 shadow-card">
               <p className="eyebrow text-white/55">{workspace.heroEyebrow}</p>
@@ -110,7 +188,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           )}
 
           <nav className="flex flex-col gap-1 p-3">
-            {workspace.nav.map((item) => {
+            {navItems.map((item) => {
               const active =
                 path === item.to ||
                 (item.to !== "/dashboard" &&
@@ -189,12 +267,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {workspace.label} workspace
           </div>
           <div className="flex items-center gap-2">
-            <Link to="/listings/new">
-              <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
-                <Sparkles className="mr-1.5 h-4 w-4" />
-                New {workspace.singularLabel.toLowerCase()}
-              </Button>
-            </Link>
+            {can("listings.manage") && (
+              <Link to="/listings/new">
+                <Button
+                  size="sm"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  <Sparkles className="mr-1.5 h-4 w-4" />
+                  New {workspace.singularLabel.toLowerCase()}
+                </Button>
+              </Link>
+            )}
           </div>
         </header>
         <main className="flex-1 space-y-4 px-4 py-6 lg:px-8 lg:py-8">
@@ -208,8 +291,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <p className="text-xs leading-5 text-destructive/80">
                   {hostProfile.suspended_reason
                     ? hostProfile.suspended_reason
-                    : "Your account is currently suspended. New bookings cannot be accepted while this is in place."}
-                  {" "}Reach out to TROVE support to resolve.
+                    : "Your account is currently suspended. New bookings cannot be accepted while this is in place."}{" "}
+                  Reach out to TROVE support to resolve.
                 </p>
               </div>
             </div>
@@ -221,8 +304,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <div className="space-y-1">
                 <p className="text-sm font-semibold text-warning">Payouts frozen</p>
                 <p className="text-xs leading-5 text-warning/80">
-                  Any pending payouts have been cancelled and no new payouts will be queued
-                  until TROVE HQ lifts the freeze.
+                  Any pending payouts have been cancelled and no new payouts will be queued until
+                  TROVE HQ lifts the freeze.
                 </p>
               </div>
             </div>
