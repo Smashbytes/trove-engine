@@ -30,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth";
 import type { HostType, Json } from "@/lib/database.types";
 import { useCreateHostProfile, useUploadKycDocument } from "@/lib/queries";
+import { SA_BANKS } from "@/lib/sa-banks";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({
@@ -153,12 +154,16 @@ function Onboarding() {
   const [phone, setPhone] = useState(profile?.phone ?? "");
   const [companyReg, setCompanyReg] = useState("");
   const [idPassport, setIdPassport] = useState("");
+  const [idType, setIdType] = useState<"ID" | "PASSPORT">("ID");
+  const [organizationType, setOrganizationType] = useState("PRIVATE");
   const [bank, setBank] = useState("");
+  const [bankCode, setBankCode] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [accountType, setAccountType] = useState("business");
   const [documentName, setDocumentName] = useState("");
   const [documentFile, setDocumentFile] = useState<File | null>(null);
   const [confirmed, setConfirmed] = useState(false);
+  const [escrowStatus, setEscrowStatus] = useState("not_started");
 
   useEffect(() => {
     if (!slugTouched) setSlug(slugify(businessName));
@@ -187,8 +192,8 @@ function Onboarding() {
         toast.error("Please choose a searchable address and fill in the required fields.");
         return;
       }
-      if ((bank.trim() && !accountNumber.trim()) || (!bank.trim() && accountNumber.trim())) {
-        toast.error("Add both bank and account number, or skip banking for now.");
+      if (!bankCode || !bank.trim() || !accountNumber.trim() || !idPassport.trim() || !phone.trim() || !documentFile) {
+        toast.error("Legal identity, contact, verified bank, account, and KYC document details are required for escrow payouts.");
         return;
       }
     }
@@ -214,7 +219,9 @@ function Onboarding() {
       return;
     }
     try {
-      await createHostProfile.mutateAsync({
+      const tradeSafeAccountType: "CHEQUE" | "SAVINGS" | "CURRENT" =
+        accountType === "savings" ? "SAVINGS" : accountType === "current" ? "CURRENT" : "CHEQUE";
+      const onboardingInput = {
         hostType,
         slug: slug.trim() || slugify(businessName),
         city: city.trim(),
@@ -228,15 +235,22 @@ function Onboarding() {
         phone: phone.trim() || undefined,
         legalName: businessName.trim(),
         registration: companyReg.trim(),
+        contactPerson: contactPerson.trim(),
+        idNumber: idPassport.trim(),
+        idType,
+        organizationType,
         bankAccount:
-          bank.trim() && accountNumber.trim()
+          bankCode && bank.trim() && accountNumber.trim()
             ? {
                 bank: bank.trim(),
+                bank_code: bankCode,
                 account_number: accountNumber.trim(),
-                account_type: accountType,
+                account_type: tradeSafeAccountType,
               }
             : undefined,
-      });
+        kycDocumentUploaded: false,
+      } as const;
+      let onboardingResult = await createHostProfile.mutateAsync(onboardingInput);
 
       // Upload the verification document to the private KYC bucket (best-effort
       // — the profile is already saved; the doc can be re-added in Settings).
@@ -245,6 +259,10 @@ function Onboarding() {
           await uploadKyc.mutateAsync({
             file: documentFile,
             docType: companyReg.trim() ? "cipc" : "id",
+          });
+          onboardingResult = await createHostProfile.mutateAsync({
+            ...onboardingInput,
+            kycDocumentUploaded: true,
           });
         } catch (e) {
           toast.error(
@@ -255,6 +273,13 @@ function Onboarding() {
         }
       }
 
+      setEscrowStatus(onboardingResult.escrow_status);
+      if (onboardingResult.escrow_status !== "escrow_ready") {
+        toast.error("Your profile was saved, but TradeSafe seller setup needs attention. Retry from this review step.");
+        setGlobalStep(4);
+        return;
+      }
+      toast.success("TradeSafe seller token created. Your Spot is payout-ready.");
       setGlobalStep(5);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Submission failed. Please try again.");
@@ -353,8 +378,14 @@ function Onboarding() {
                 setCompanyReg={setCompanyReg}
                 idPassport={idPassport}
                 setIdPassport={setIdPassport}
+                idType={idType}
+                setIdType={setIdType}
+                organizationType={organizationType}
+                setOrganizationType={setOrganizationType}
                 bank={bank}
                 setBank={setBank}
+                bankCode={bankCode}
+                setBankCode={setBankCode}
                 accountNumber={accountNumber}
                 setAccountNumber={setAccountNumber}
                 accountType={accountType}
@@ -391,6 +422,7 @@ function Onboarding() {
               <CompleteStep
                 hostType={hostType}
                 businessName={businessName}
+                escrowStatus={escrowStatus}
                 onStartListing={startSubFlow}
                 onDashboard={() => navigate({ to: "/dashboard" })}
               />
@@ -700,8 +732,14 @@ interface VerificationStepProps {
   setCompanyReg: (v: string) => void;
   idPassport: string;
   setIdPassport: (v: string) => void;
+  idType: "ID" | "PASSPORT";
+  setIdType: (v: "ID" | "PASSPORT") => void;
+  organizationType: string;
+  setOrganizationType: (v: string) => void;
   bank: string;
   setBank: (v: string) => void;
+  bankCode: string;
+  setBankCode: (v: string) => void;
   accountNumber: string;
   setAccountNumber: (v: string) => void;
   accountType: string;
@@ -728,8 +766,14 @@ function VerificationStep({
   setCompanyReg,
   idPassport,
   setIdPassport,
+  idType,
+  setIdType,
+  organizationType,
+  setOrganizationType,
   bank,
   setBank,
+  bankCode,
+  setBankCode,
   accountNumber,
   setAccountNumber,
   accountType,
@@ -782,21 +826,55 @@ function VerificationStep({
           />
         </Field>
 
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label>Organization Type *</Label>
+            <select
+              value={organizationType}
+              onChange={(e) => setOrganizationType(e.target.value)}
+              className="mt-2 h-10 w-full rounded-xl border border-border/60 bg-background px-3 text-sm"
+            >
+              <option value="PRIVATE">Private company</option>
+              <option value="PUBLIC">Public company</option>
+              <option value="TRUST">Trust</option>
+              <option value="NON_PROFIT">Non-profit</option>
+            </select>
+          </div>
+          <div>
+            <Label>ID Type *</Label>
+            <select
+              value={idType}
+              onChange={(e) => setIdType(e.target.value as "ID" | "PASSPORT")}
+              className="mt-2 h-10 w-full rounded-xl border border-border/60 bg-background px-3 text-sm"
+            >
+              <option value="ID">South African ID</option>
+              <option value="PASSPORT">Passport</option>
+            </select>
+          </div>
+        </div>
+
         <div className="rounded-2xl border border-border/60 bg-card/40 p-4 space-y-3">
           <div>
             <p className="text-sm font-semibold">Bank Account Details</p>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Optional for now. You can submit without banking, but payouts stay paused until it is
-              added in Settings.
+              TradeSafe requires verified banking details before a seller token can receive payouts.
             </p>
           </div>
-          <Field label="Bank">
-            <Input
-              value={bank}
-              onChange={(e) => setBank(e.target.value)}
-              placeholder="Standard Bank"
-            />
-          </Field>
+          <div>
+            <Label>Bank *</Label>
+            <select
+              value={bankCode}
+              onChange={(e) => {
+                const selected = SA_BANKS.find((item) => item.code === e.target.value);
+                setBankCode(e.target.value);
+                setBank(selected?.name ?? "");
+              }}
+              className="mt-2 h-10 w-full rounded-xl border border-border/60 bg-background px-3 text-sm"
+            >
+              <option value="">Select your bank</option>
+              {SA_BANKS.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}
+            </select>
+          </div>
           <Field label="Account Number">
             <Input
               value={accountNumber}
@@ -826,7 +904,7 @@ function VerificationStep({
           </div>
         </div>
 
-        <Field label="ID / Passport / License">
+        <Field label={`${idType === "PASSPORT" ? "Passport" : "ID number"} *`}>
           <Input
             value={idPassport}
             onChange={(e) => setIdPassport(e.target.value)}
@@ -1139,7 +1217,7 @@ function ReviewStep({
           rows={[
             { label: "Bank", value: bank || "—" },
             { label: "Account", value: accountNumber ? `****${accountNumber.slice(-4)}` : "—" },
-            { label: "Type", value: bank ? accountType : "Skipped for now" },
+            { label: "Type", value: bank ? accountType : "Required before submission" },
           ]}
         />
         <ReviewCard
@@ -1178,8 +1256,8 @@ function ReviewStep({
           {confirmed && <CheckCircle2 className="h-3.5 w-3.5 text-white" />}
         </div>
         <span className="text-sm leading-relaxed text-foreground">
-          I have reviewed the business, address, contact, and payout details above. I understand
-          skipped banking details must be added before payouts can run.
+          I have reviewed the business, address, contact, identity, and payout details above. I
+          understand TradeSafe will receive the sensitive identity and bank values securely.
         </span>
       </button>
 
@@ -1237,11 +1315,13 @@ function ReviewCard({
 function CompleteStep({
   hostType,
   businessName,
+  escrowStatus,
   onStartListing,
   onDashboard,
 }: {
   hostType: HostType | null;
   businessName: string;
+  escrowStatus: string;
   onStartListing: () => void;
   onDashboard: () => void;
 }) {
@@ -1263,10 +1343,12 @@ function CompleteStep({
         <Star className="h-12 w-12 text-white" />
       </motion.div>
 
-      <p className="eyebrow text-primary mb-2">Submitted</p>
+      <p className="eyebrow text-primary mb-2">TradeSafe {escrowStatus === "escrow_ready" ? "ready" : "review"}</p>
       <h1 className="font-display text-4xl font-bold mb-3 tracking-tight">All Set!</h1>
       <p className="text-muted-foreground text-sm mb-2 max-w-sm mx-auto leading-relaxed">
-        Your account is under review. You'll be notified once approved.
+        {escrowStatus === "escrow_ready"
+          ? "Your seller token is ready. Paid listings can now enter escrow once the rest of the Spot is complete."
+          : "Your profile is saved, but TradeSafe seller setup still needs attention. Retry onboarding before publishing paid listings."}
       </p>
       {businessName && (
         <p className="text-xs text-muted-foreground mb-8">
