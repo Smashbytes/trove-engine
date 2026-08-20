@@ -651,15 +651,6 @@ export type Database = {
           verified_at: string | null
           whatsapp_number: string | null
           whatsapp_verified_at: string | null
-          tradesafe_token_id: string | null
-          tradesafe_status: string
-          tradesafe_ready_at: string | null
-          tradesafe_last_error: string | null
-          tradesafe_token_created_at: string | null
-          tradesafe_bank_name: string | null
-          tradesafe_bank_last4: string | null
-          tradesafe_account_type: string | null
-          tradesafe_token_fingerprint: string | null
         }
         Insert: {
           address?: string | null
@@ -696,15 +687,6 @@ export type Database = {
           verified_at?: string | null
           whatsapp_number?: string | null
           whatsapp_verified_at?: string | null
-          tradesafe_token_id?: string | null
-          tradesafe_status?: string
-          tradesafe_ready_at?: string | null
-          tradesafe_last_error?: string | null
-          tradesafe_token_created_at?: string | null
-          tradesafe_bank_name?: string | null
-          tradesafe_bank_last4?: string | null
-          tradesafe_account_type?: string | null
-          tradesafe_token_fingerprint?: string | null
         }
         Update: {
           address?: string | null
@@ -741,15 +723,6 @@ export type Database = {
           verified_at?: string | null
           whatsapp_number?: string | null
           whatsapp_verified_at?: string | null
-          tradesafe_token_id?: string | null
-          tradesafe_status?: string
-          tradesafe_ready_at?: string | null
-          tradesafe_last_error?: string | null
-          tradesafe_token_created_at?: string | null
-          tradesafe_bank_name?: string | null
-          tradesafe_bank_last4?: string | null
-          tradesafe_account_type?: string | null
-          tradesafe_token_fingerprint?: string | null
         }
         Relationships: [
           {

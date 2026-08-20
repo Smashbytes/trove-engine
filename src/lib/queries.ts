@@ -388,16 +388,10 @@ export interface CreateHostProfileInput {
   phone?: string;
   legalName?: string;
   registration?: string;
-  contactPerson?: string;
-  idNumber?: string;
-  idType?: "ID" | "PASSPORT";
-  organizationType?: string;
-  kycDocumentUploaded?: boolean;
   bankAccount?: {
     bank: string;
-    bank_code: string;
     account_number: string;
-    account_type: "CHEQUE" | "SAVINGS" | "CURRENT";
+    account_type: string;
   };
 }
 
@@ -409,45 +403,46 @@ export function useCreateHostProfile() {
     mutationFn: async (input: CreateHostProfileInput) => {
       if (!user) throw new Error("Not authenticated");
 
-      if (!input.bankAccount?.bank_code || !input.bankAccount.account_number || !input.idNumber) {
-        throw new Error("Legal identity and banking details are required to activate escrow payouts.");
-      }
-      const { data, error } = await supabase.functions.invoke("complete-host-onboarding", {
-        body: {
+      const hasBankAccount = !!(
+        input.bankAccount?.bank?.trim() && input.bankAccount?.account_number?.trim()
+      );
+      const submittedVerification = !!(input.legalName && input.registration);
+      const payoutProfile = {
+        legal_name: input.legalName ?? null,
+        registration: input.registration ?? null,
+        status: hasBankAccount ? "provided" : "missing",
+        ...(hasBankAccount ? input.bankAccount : {}),
+      };
+
+      const { error: hostError } = await supabase.from("host_profiles").upsert(
+        {
+          user_id: user.id,
           slug: input.slug,
           host_type: input.hostType,
           city: input.city,
-          address: input.address,
-          address_number: input.addressNumber,
-          lat: input.lat,
-          lng: input.lng,
-          location_place_id: input.locationPlaceId,
-          location_json: input.locationJson,
-          display_name: input.displayName?.trim() || input.legalName?.trim(),
-          contact_person: input.contactPerson?.trim() || input.displayName?.trim(),
-          phone: input.phone?.trim(),
-          legal_name: input.legalName?.trim(),
-          registration: input.registration?.trim(),
-          id_number: input.idNumber.trim(),
-          id_type: input.idType ?? "ID",
-          organization_type: input.organizationType ?? "PRIVATE",
-          kyc_document_uploaded: input.kycDocumentUploaded ?? false,
-          bank: input.bankAccount.bank.trim(),
-          bank_code: input.bankAccount.bank_code.trim(),
-          account_number: input.bankAccount.account_number.trim(),
-          account_type: input.bankAccount.account_type,
+          address: input.address?.trim() || null,
+          address_number: input.addressNumber?.trim() || null,
+          lat: input.lat ?? null,
+          lng: input.lng ?? null,
+          location_place_id: input.locationPlaceId?.trim() || null,
+          location_json: input.locationJson ?? {},
+          bio: input.bio ?? null,
+          kyc_status: submittedVerification ? "submitted" : "pending",
+          payout_bank_json: payoutProfile,
         },
-      });
-      if (error) {
-        const ctx = (error as { context?: Response }).context;
-        let message = error.message;
-        try {
-          const body = ctx ? await ctx.json() : null;
-          if (body?.error) message = body.error;
-        } catch { /* keep the SDK message */ }
-        throw new Error(message);
-      }
-      return data as { escrow_status: string; token_id?: string; retryable?: boolean };
+        { onConflict: "user_id" },
+      );
+      if (hostError) throw hostError;
+
+      const profilePatch: Database["public"]["Tables"]["profiles"]["Update"] = { is_host: true };
+      if (input.displayName?.trim()) profilePatch.full_name = input.displayName.trim();
+      if (input.phone?.trim()) profilePatch.phone = input.phone.trim();
+
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update(profilePatch)
+        .eq("id", user.id);
+      if (profileError) throw profileError;
     },
     onSuccess: async () => {
       await refreshProfile();
@@ -535,9 +530,29 @@ export function useUpdateBankingDetails() {
     mutationFn: async (input: UpdateBankingDetailsInput) => {
       if (!activeHostId) throw new Error("Not authenticated");
 
-      void input;
-      void hostProfile;
-      throw new Error("Banking changes must be completed through TradeSafe onboarding so the new account is tokenized securely.");
+      const existing =
+        hostProfile?.payout_bank_json &&
+        typeof hostProfile.payout_bank_json === "object" &&
+        !Array.isArray(hostProfile.payout_bank_json)
+          ? hostProfile.payout_bank_json
+          : {};
+
+      const { error } = await supabase
+        .from("host_profiles")
+        .update({
+          payout_bank_json: {
+            ...existing,
+            status: "provided",
+            bank: input.bank.trim(),
+            account_number: input.accountNumber.trim(),
+            account_type: input.accountType,
+            account_name: input.accountName?.trim() || null,
+            updated_at: new Date().toISOString(),
+          },
+        })
+        .eq("user_id", activeHostId);
+
+      if (error) throw error;
     },
     onSuccess: async () => {
       await refreshProfile();

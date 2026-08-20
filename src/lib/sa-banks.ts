@@ -1,5 +1,6 @@
-// South African banks with universal branch codes used for payout onboarding.
-// The codes are provider-neutral and are sent server-side during TradeSafe token creation.
+// South African banks with their Paystack bank codes (country=south africa).
+// Used for creating Paystack transfer recipients (type "basa"). Source:
+// GET https://api.paystack.co/bank?country=south africa  (fetched 2026-06-26).
 export interface SaBank {
   code: string;
   name: string;
