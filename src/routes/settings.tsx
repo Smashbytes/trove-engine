@@ -14,13 +14,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { isAnalyticsEnabled, setAnalyticsEnabled } from "@/lib/analytics";
 import { useAuth } from "@/lib/auth";
 import { getVerificationCopy } from "@/lib/host-workspace";
 import {
   useSubmitVerification,
   useUpdateBankingDetails,
   useUpdateNotificationPrefs,
-  useVerifyPayoutRecipient,
 } from "@/lib/queries";
 import { SA_BANKS } from "@/lib/sa-banks";
 import {
@@ -166,21 +166,18 @@ function SettingsPage() {
   };
 
   // ---- banking (existing) ----
-  const verifyRecipient = useVerifyPayoutRecipient();
   const [bank, setBank] = useState("");
   const [bankCode, setBankCode] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [accountName, setAccountName] = useState("");
   const [accountType, setAccountType] = useState("business");
 
-  const payoutsVerified = Boolean(
-    hostProfile?.bank_account_verified && hostProfile?.paystack_recipient_code,
-  );
+  const payoutsVerified = hostProfile?.tradesafe_status === "escrow_ready";
 
   useEffect(() => {
     setBank(typeof bankJson.bank === "string" ? bankJson.bank : "");
     setBankCode(typeof bankJson.bank_code === "string" ? bankJson.bank_code : "");
-    setAccountNumber(typeof bankJson.account_number === "string" ? bankJson.account_number : "");
+    setAccountNumber("");
     setAccountName(typeof bankJson.account_name === "string" ? bankJson.account_name : "");
     setAccountType(typeof bankJson.account_type === "string" ? bankJson.account_type : "business");
   }, [hostProfile?.payout_bank_json]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -198,24 +195,7 @@ function SettingsPage() {
     }
   };
 
-  // Verify the account with Paystack and create a transfer recipient. This is
-  // what actually enables payouts — generate_payout_batches gates on it.
-  const verifyPayouts = async () => {
-    if (!bankCode || !accountNumber.trim()) {
-      toast.error("Choose your bank and enter your account number first.");
-      return;
-    }
-    try {
-      const res = await verifyRecipient.mutateAsync({ bankCode, accountNumber: accountNumber.trim() });
-      setAccountName(res.account_name || accountName);
-      const chosen = SA_BANKS.find((b) => b.code === bankCode);
-      if (chosen) setBank(chosen.name);
-      toast.success(`Verified ${res.account_name}. Payouts enabled.`);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not verify this account.");
-    }
-  };
-
+  // Banking changes are completed through the server-controlled TradeSafe onboarding flow.
   return (
     <AppShell>
       <PageHeader
@@ -375,6 +355,15 @@ function SettingsPage() {
           </div>
         </Section>
 
+        {/* Privacy & data */}
+        <Section
+          icon={ShieldCheck}
+          title="Privacy & data"
+          sub="Anonymous product analytics, per our Privacy Policy — switch it off any time."
+        >
+          <PrivacyDataCard />
+        </Section>
+
         {/* Banking (live) */}
         <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -418,15 +407,9 @@ function SettingsPage() {
                 ))}
               </select>
             </Field>
-            <Field label="Account number">
-              <Input
-                value={accountNumber}
-                onChange={(event) => {
-                  setAccountNumber(event.target.value);
-                }}
-                inputMode="numeric"
-              />
-            </Field>
+            <div className="rounded-md border border-border/60 bg-input px-3 py-2 text-sm text-muted-foreground">
+              Account ending in {hostProfile?.tradesafe_bank_last4 ? `****${hostProfile.tradesafe_bank_last4}` : "not set"}
+            </div>
             <Field label="Account name">
               <Input
                 value={accountName}
@@ -449,8 +432,8 @@ function SettingsPage() {
 
           <p className="mt-4 text-xs leading-5 text-muted-foreground">
             {payoutsVerified
-              ? `Verified with Paystack${hostProfile?.bank_resolved_name ? ` as ${hostProfile.bank_resolved_name}` : ""}. Payouts are released after each event completes.`
-              : "Verify your account with Paystack to enable payouts. We confirm the account holder's name before any money is sent."}
+              ? "TradeSafe seller token ready. Payouts are released after the escrow completion rule for the booking."
+              : `TradeSafe status: ${hostProfile?.tradesafe_status ?? "not_started"}. Complete onboarding to provision a payout-ready seller token.`}
           </p>
 
           <div className="mt-6 flex flex-wrap justify-end gap-3">
@@ -462,20 +445,51 @@ function SettingsPage() {
               {updateBanking.isPending ? "Saving..." : "Save details"}
             </Button>
             <Button
-              onClick={verifyPayouts}
-              disabled={verifyRecipient.isPending || !bankCode || !accountNumber.trim()}
+              onClick={() => toast.info("TradeSafe banking changes are completed through onboarding.")}
+              disabled={false}
               className="bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95"
             >
-              {verifyRecipient.isPending
+              {false
                 ? "Verifying…"
                 : payoutsVerified
-                  ? "Re-verify account"
-                  : "Verify & enable payouts"}
+                  ? "Open onboarding"
+                  : "Open onboarding"}
             </Button>
           </div>
         </section>
       </div>
     </AppShell>
+  );
+}
+
+function PrivacyDataCard() {
+  const [analytics, setAnalytics] = useState(() => isAnalyticsEnabled());
+
+  function toggle(value: boolean) {
+    setAnalytics(value);
+    setAnalyticsEnabled(value);
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="max-w-xl">
+        <p className="text-sm font-medium">Product analytics</p>
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">
+          Anonymous usage stats (PostHog) that help us improve the Engine. We
+          never link them to your account. Details in the{" "}
+          <a
+            href="https://www.welovetrove.co.za/legal/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary underline-offset-2 hover:underline"
+          >
+            Privacy Policy
+          </a>
+          .
+        </p>
+      </div>
+      <Switch checked={analytics} onCheckedChange={toggle} />
+    </div>
   );
 }
 

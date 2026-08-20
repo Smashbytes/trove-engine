@@ -76,7 +76,8 @@ function NewListing() {
     });
   }, [categoriesQuery.data, workspace.categoryRoots]);
 
-  const saveLabel = hostProfile?.verified
+  const escrowReady = hostProfile?.tradesafe_status === "escrow_ready";
+  const saveLabel = hostProfile?.verified && escrowReady
     ? `Create live ${workspace.singularLabel.toLowerCase()}`
     : "Create draft";
 
@@ -95,7 +96,7 @@ function NewListing() {
 
     try {
       const trimmedAmenities = splitItems(amenities);
-      const status = hostProfile.verified ? "live" : "draft";
+      const status = hostProfile.verified && escrowReady ? "live" : "draft";
 
       if (workspace.hostType === "organiser") {
         if (!eventDate) {
@@ -293,15 +294,14 @@ function NewListing() {
         subtitle={`This form is filtered for the signed-in ${workspace.label.toLowerCase()} account and writes only real schema-backed data.`}
       />
 
-      {!hostProfile?.verified && (
+      {(!hostProfile?.verified || !escrowReady) && (
         <div className="mb-6 rounded-[1.75rem] border border-warning/35 bg-warning/8 p-5">
           <p className="eyebrow text-warning">Verification gate</p>
           <p className="mt-2 font-display text-2xl font-semibold">
-            This will save as a draft until the host account is verified.
+            This will save as a draft until host verification and TradeSafe escrow setup are ready.
           </p>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            The platform now respects the live-publish gate in Supabase instead of pretending
-            unverified hosts can go live immediately.
+            Paid listings cannot publish until a seller token, KYC state, and payout details are ready.
           </p>
         </div>
       )}
