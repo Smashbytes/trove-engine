@@ -41,3 +41,6 @@ skills-lock.json
 dist-pages
 
 supabase/.temp/
+
+# Universal-analyzer scan artifacts (local tooling only)
+.ua/
