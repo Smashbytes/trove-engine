@@ -1,6 +1,7 @@
 import { createRouter, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { routeTree } from "./routeTree.gen";
+import { initAnalytics } from "@/lib/analytics";
 
 // Auto-recover from stale chunk references after a deploy.
 // When users have a tab open during a deploy, their HTML still references
@@ -153,6 +154,10 @@ export const getRouter = () => {
     defaultErrorComponent: DefaultErrorComponent,
     defaultPendingComponent: DefaultPendingComponent,
   });
+
+  // No-op on the server; on the client this starts PostHog (unless the host
+  // opted out in Settings → Privacy & data) and captures per-route pageviews.
+  initAnalytics(router);
 
   return router;
 };
