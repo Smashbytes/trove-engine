@@ -29,6 +29,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth";
 import type { HostType, Json } from "@/lib/database.types";
+import { searchAddresses, type GeocodeResult } from "@/lib/geocoding";
 import { useCreateHostProfile, useUploadKycDocument } from "@/lib/queries";
 import { SA_BANKS } from "@/lib/sa-banks";
 
@@ -970,14 +971,6 @@ function VerificationStep({
 
 // ─── Step 4 — Review & Submit ─────────────────────────────────────────────────
 
-type NominatimResult = {
-  place_id: number | string;
-  display_name: string;
-  lat: string;
-  lon: string;
-  address?: Record<string, string | undefined>;
-};
-
 function AddressSearchField({
   city,
   setCity,
@@ -991,8 +984,9 @@ function AddressSearchField({
 }) {
   const [query, setQuery] = useState(selectedAddress?.label ?? city);
   const [manualNumber, setManualNumber] = useState(selectedAddress?.addressNumber ?? "");
-  const [results, setResults] = useState<NominatimResult[]>([]);
+  const [results, setResults] = useState<GeocodeResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchFailed, setSearchFailed] = useState(false);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -1000,29 +994,21 @@ function AddressSearchField({
       setResults([]);
       return;
     }
+    // Picking a result writes its label into the box — don't search that again.
+    if (selectedAddress && query === selectedAddress.label) return;
 
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       setLoading(true);
       try {
-        const params = new URLSearchParams({
-          q: query,
-          format: "jsonv2",
-          addressdetails: "1",
-          limit: "6",
-          countrycodes: "za",
-        });
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
-          signal: controller.signal,
-          headers: { Accept: "application/json" },
-        });
-        if (!response.ok) throw new Error("Address search failed");
-        setResults((await response.json()) as NominatimResult[]);
+        setResults(await searchAddresses(query, controller.signal));
+        setSearchFailed(false);
         setOpen(true);
       } catch (error) {
         if (!controller.signal.aborted) {
           console.error("[onboarding] address search failed:", error);
           setResults([]);
+          setSearchFailed(true);
         }
       } finally {
         if (!controller.signal.aborted) setLoading(false);
@@ -1033,34 +1019,32 @@ function AddressSearchField({
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [query]);
+  }, [query, selectedAddress]);
 
-  const applySelection = (result: NominatimResult, numberOverride = manualNumber) => {
-    const address = result.address ?? {};
-    const cityName =
-      address.city ??
-      address.town ??
-      address.village ??
-      address.suburb ??
-      address.municipality ??
-      address.county ??
-      "";
-    const houseNumber = numberOverride.trim() || address.house_number || "";
-    const street = address.road ?? address.pedestrian ?? address.neighbourhood ?? "";
-    const composedAddress =
-      houseNumber && street
-        ? `${houseNumber} ${street}, ${result.display_name}`
-        : result.display_name;
+  const applySelection = (result: GeocodeResult, numberOverride = manualNumber) => {
+    const houseNumber = numberOverride.trim() || result.houseNumber;
+    // Street line first so the manual street-number field can swap the leading number.
+    const composedAddress = result.street
+      ? [
+          [houseNumber, result.street].filter(Boolean).join(" "),
+          result.suburb,
+          result.city,
+          result.province,
+          result.postcode,
+        ]
+          .filter(Boolean)
+          .join(", ")
+      : result.label;
 
     const selection: AddressSelection = {
-      label: result.display_name,
+      label: result.label,
       address: composedAddress,
       addressNumber: houseNumber,
-      city: cityName || result.display_name.split(",").slice(-3, -2)[0]?.trim() || "",
-      lat: Number(result.lat),
-      lng: Number(result.lon),
-      placeId: String(result.place_id),
-      raw: result as unknown as Json,
+      city: result.city || result.suburb,
+      lat: result.lat,
+      lng: result.lng,
+      placeId: result.id,
+      raw: { provider: "photon", ...result.raw } as unknown as Json,
     };
 
     setSelectedAddress(selection);
@@ -1106,12 +1090,12 @@ function AddressSearchField({
             <div className="absolute left-0 right-0 top-full z-30 mt-2 max-h-72 overflow-y-auto rounded-xl border border-border/70 bg-popover p-1 shadow-card">
               {results.map((result) => (
                 <button
-                  key={result.place_id}
+                  key={result.id}
                   type="button"
                   onClick={() => applySelection(result)}
                   className="w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-muted"
                 >
-                  <span className="line-clamp-2">{result.display_name}</span>
+                  <span className="line-clamp-2">{result.label}</span>
                 </button>
               ))}
             </div>
@@ -1139,7 +1123,9 @@ function AddressSearchField({
       <p className="mt-3 text-xs leading-5 text-muted-foreground">
         {selectedAddress
           ? `Coordinates captured: ${selectedAddress.lat.toFixed(5)}, ${selectedAddress.lng.toFixed(5)}`
-          : "Choose a result so Trove can store coordinates for maps, HQ, and guest discovery."}
+          : searchFailed
+            ? "Address search is unavailable right now — check your connection and try again in a moment."
+            : "Choose a result so Trove can store coordinates for maps, HQ, and guest discovery."}
       </p>
     </div>
   );
