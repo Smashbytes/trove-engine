@@ -992,6 +992,7 @@ function AddressSearchField({
   useEffect(() => {
     if (query.trim().length < 3) {
       setResults([]);
+      setSearchFailed(false);
       return;
     }
     // Picking a result writes its label into the box — don't search that again.
