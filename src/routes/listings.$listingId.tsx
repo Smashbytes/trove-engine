@@ -1,7 +1,8 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Copy, Trash2 } from "lucide-react";
+import { ArrowLeft, Share2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/trove/AppShell";
+import { ShareKit } from "@/components/trove/ShareKit";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import type { AccommodationMetadata, VenueMetadata } from "@/lib/database.types";
@@ -71,7 +72,6 @@ function ListingDetailPage() {
     );
   }
 
-  const shareUrl = `https://www.welovetrove.co.za/host/${hostProfile?.slug ?? "trove"}/${listing.slug ?? listing.id}`;
   const bookings = bookingsQuery.data ?? [];
   const ticketTypes = ticketTypesQuery.data ?? [];
   const availability = availabilityQuery.data ?? [];
@@ -137,13 +137,12 @@ function ListingDetailPage() {
       <div className="mt-6 flex flex-wrap gap-2">
         <Button
           variant="outline"
-          onClick={() => {
-            navigator.clipboard.writeText(shareUrl);
-            toast.success("Share link copied.");
-          }}
+          onClick={() =>
+            document.getElementById("share-kit")?.scrollIntoView({ behavior: "smooth", block: "start" })
+          }
         >
-          <Copy className="mr-1.5 h-4 w-4" />
-          Copy share link
+          <Share2 className="mr-1.5 h-4 w-4" />
+          Share
         </Button>
         <Button
           variant="ghost"
@@ -163,6 +162,10 @@ function ListingDetailPage() {
           label="Base price"
           value={listing.base_price_kobo > 0 ? formatZar(listing.base_price_kobo) : "TBC"}
         />
+      </div>
+
+      <div id="share-kit" className="scroll-mt-6">
+        <ShareKit listing={listing} />
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
