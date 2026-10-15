@@ -450,15 +450,15 @@ function Landing() {
                 Get paid in Rands, on time.
               </h2>
               <p className="mt-5 max-w-xl text-muted-foreground">
-                Card payments run through Paystack. Payouts land in your South African
-                bank account on an automatic schedule, and refunds are handled for you.
+                Card payments are held in escrow by TradeSafe. Payouts land in your South
+                African bank account once your guests have been, and refunds are handled for you.
               </p>
             </div>
             <div className="grid grid-cols-3 gap-3 lg:w-[460px]">
               {[
                 { value: "R0", label: "to list your Spot" },
                 { value: "ZAR", label: "every payout, in Rands" },
-                { value: "Paystack", label: "secured payments" },
+                { value: "TradeSafe", label: "escrow-secured payments" },
               ].map((fact) => (
                 <div key={fact.value} className="min-w-0 rounded-2xl bg-white/[0.04] p-4 ring-hairline">
                   <p className="truncate font-display text-lg font-bold text-gradient md:text-xl">

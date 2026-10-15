@@ -410,7 +410,9 @@ export function useCreateHostProfile() {
       if (!user) throw new Error("Not authenticated");
 
       if (!input.bankAccount?.bank_code || !input.bankAccount.account_number || !input.idNumber) {
-        throw new Error("Legal identity and banking details are required to activate escrow payouts.");
+        throw new Error(
+          "Legal identity and banking details are required to activate escrow payouts.",
+        );
       }
       const { data, error } = await supabase.functions.invoke("complete-host-onboarding", {
         body: {
@@ -444,7 +446,9 @@ export function useCreateHostProfile() {
         try {
           const body = ctx ? await ctx.json() : null;
           if (body?.error) message = body.error;
-        } catch { /* keep the SDK message */ }
+        } catch {
+          /* keep the SDK message */
+        }
         throw new Error(message);
       }
       return data as { escrow_status: string; token_id?: string; retryable?: boolean };
@@ -537,7 +541,9 @@ export function useUpdateBankingDetails() {
 
       void input;
       void hostProfile;
-      throw new Error("Banking changes must be completed through TradeSafe onboarding so the new account is tokenized securely.");
+      throw new Error(
+        "Banking changes must be completed through TradeSafe onboarding so the new account is tokenized securely.",
+      );
     },
     onSuccess: async () => {
       await refreshProfile();
@@ -658,12 +664,7 @@ export function useUploadListingImage() {
 // (POPIA: encrypted at rest, owner-scoped RLS) and records a kyc_documents row.
 // Path convention: {user_id}/{doc_type}-{timestamp}.{ext} — the first folder
 // segment is matched against auth.uid() by the storage RLS policy.
-export type KycDocType =
-  | "id"
-  | "passport"
-  | "cipc"
-  | "proof_of_address"
-  | "bank_confirmation";
+export type KycDocType = "id" | "passport" | "cipc" | "proof_of_address" | "bank_confirmation";
 
 export interface UploadKycDocumentInput {
   file: File;
@@ -695,11 +696,13 @@ export function useUploadKycDocument() {
       if (uploadError) throw uploadError;
 
       // kyc_documents is added in migration 0019; cast until types regenerate.
-      const { error: rowError } = await (supabase as unknown as {
-        from: (t: string) => {
-          insert: (v: Record<string, unknown>) => Promise<{ error: unknown }>;
-        };
-      })
+      const { error: rowError } = await (
+        supabase as unknown as {
+          from: (t: string) => {
+            insert: (v: Record<string, unknown>) => Promise<{ error: unknown }>;
+          };
+        }
+      )
         .from("kyc_documents")
         .insert({ host_id: user.id, doc_type: docType, storage_path: objectName });
       if (rowError) throw rowError;
@@ -709,42 +712,11 @@ export function useUploadKycDocument() {
   });
 }
 
-// ── Payout recipient (Paystack Transfers) ───────────────────────────────────
-// Verifies the host's bank account (Paystack /bank/resolve) and creates a
-// transfer recipient. No payout is released until this succeeds.
-export interface VerifyPayoutRecipientInput {
-  bankCode: string;
-  accountNumber: string;
-}
-
-export function useVerifyPayoutRecipient() {
-  const queryClient = useQueryClient();
-  const { refreshProfile } = useAuth();
-
-  return useMutation({
-    mutationFn: async ({ bankCode, accountNumber }: VerifyPayoutRecipientInput) => {
-      const { data, error } = await supabase.functions.invoke("paystack-create-recipient", {
-        body: { bank_code: bankCode, account_number: accountNumber },
-      });
-      if (error) {
-        const ctx = (error as { context?: Response }).context;
-        let msg = error.message;
-        try {
-          if (ctx) {
-            const body = await ctx.json();
-            if (body?.error) msg = body.error;
-          }
-        } catch { /* ignore */ }
-        throw new Error(msg);
-      }
-      return data as { recipient_code: string; account_name: string; verified: boolean };
-    },
-    onSuccess: async () => {
-      await refreshProfile();
-      await queryClient.invalidateQueries({ queryKey: ["host-profile"] });
-    },
-  });
-}
+// NOTE: the Paystack Transfers recipient flow (useVerifyPayoutRecipient /
+// paystack-create-recipient) was removed with the TradeSafe migration. Under
+// escrow the host's bank account is tokenised during complete-host-onboarding
+// and TradeSafe pays them directly on release, so TROVE never creates a
+// transfer recipient. The hook had no callers.
 
 export interface CheckInBookingInput {
   bookingId: string;
@@ -911,29 +883,28 @@ export interface SubmitVerificationInput {
 }
 
 export function useSubmitVerification() {
-  const { activeHostId, hostProfile, refreshProfile } = useAuth();
+  const { activeHostId, refreshProfile } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: SubmitVerificationInput) => {
       if (!activeHostId) throw new Error("Not authenticated");
-      const existing =
-        hostProfile?.payout_bank_json &&
-        typeof hostProfile.payout_bank_json === "object" &&
-        !Array.isArray(hostProfile.payout_bank_json)
-          ? hostProfile.payout_bank_json
-          : {};
 
-      const { error } = await supabase
-        .from("host_profiles")
-        .update({
-          kyc_status: "submitted",
-          payout_bank_json: {
-            ...existing,
-            legal_name: input.legalName.trim(),
-            registration: input.registration.trim(),
-          },
-        })
-        .eq("user_id", activeHostId);
+      // kyc_status is no longer writable from the browser (migration 0022).
+      // This RPC can only ever move the profile into 'submitted' — promotion to
+      // 'verified' stays an HQ decision made with the service role.
+      // Cast until the generated types are regenerated against 0022.
+      const { error } = await (
+        supabase as unknown as {
+          rpc: (
+            fn: string,
+            args: Record<string, unknown>,
+          ) => Promise<{ error: { message: string } | null }>;
+        }
+      ).rpc("submit_host_verification", {
+        p_host_id: activeHostId,
+        p_legal_name: input.legalName.trim(),
+        p_registration: input.registration.trim(),
+      });
       if (error) throw error;
     },
     onSuccess: async () => {
