@@ -12,6 +12,7 @@ import {
   MessageCircle,
   MousePointerClick,
   QrCode,
+  Ticket,
   Twitter,
   Users,
 } from "lucide-react";
@@ -23,6 +24,7 @@ import type { ListingWithCapacity } from "@/lib/database.types";
 import {
   ogImageUrl,
   shortUrl,
+  summarizeShareLinks,
   useMintShareLink,
   useShareLinks,
   type ShareChannel,
@@ -97,7 +99,7 @@ function formatDate(iso: string | undefined) {
 
 export function ShareKit({ listing }: { listing: ListingWithCapacity }) {
   const { user } = useAuth();
-  const linksQuery = useShareLinks(listing.id);
+  const linksQuery = useShareLinks(listing.host_id, listing.id);
   const mint = useMintShareLink(listing.id);
   const [copied, setCopied] = useState<ShareChannel | null>(null);
   const qrRef = useRef<HTMLDivElement>(null);
@@ -117,23 +119,31 @@ export function ShareKit({ listing }: { listing: ListingWithCapacity }) {
     return m;
   }, [links, user?.id]);
 
-  // … but clicks are reported for the whole team per channel.
-  const clicksByChannel = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const l of links) if (l.kind === "host") m.set(l.channel, (m.get(l.channel) ?? 0) + l.clicks);
+  // … but clicks and bookings are reported for the whole team per channel.
+  const byChannel = useMemo(() => {
+    const m = new Map<string, { clicks: number; bookings: number }>();
+    for (const l of links) {
+      if (l.kind !== "host") continue;
+      const cur = m.get(l.channel) ?? { clicks: 0, bookings: 0 };
+      m.set(l.channel, { clicks: cur.clicks + l.clicks, bookings: cur.bookings + l.bookings });
+    }
     return m;
   }, [links]);
+  const clicksByChannel = useMemo(
+    () => new Map([...byChannel].map(([k, v]) => [k, v.clicks])),
+    [byChannel],
+  );
 
-  const hostClicks = links.filter((l) => l.kind === "host").reduce((s, l) => s + l.clicks, 0);
-  const guestLinks = links.filter((l) => l.kind === "guest");
-  const guestClicks = guestLinks.reduce((s, l) => s + l.clicks, 0);
+  const totals = summarizeShareLinks(links);
 
   const captionFor = (url: string) =>
     [
       `🔥 ${listing.title}`,
       [date, listing.city].filter(Boolean).join(" · "),
       meta.tagline,
-      `Tickets ${price} on TROVE 👉 ${url}`,
+      listing.base_price_kobo > 0
+        ? `Tickets ${price} on TROVE 👉 ${url}`
+        : `Free entry — RSVP on TROVE 👉 ${url}`,
     ]
       .filter(Boolean)
       .join("\n");
@@ -210,8 +220,19 @@ export function ShareKit({ listing }: { listing: ListingWithCapacity }) {
           </p>
         </div>
         <div className="flex gap-3">
-          <Stat icon={MousePointerClick} label="Link clicks" value={hostClicks} />
-          <Stat icon={Users} label="Guest shares" value={guestClicks} hint={`${guestLinks.length} guests sharing`} />
+          <Stat icon={MousePointerClick} label="Link clicks" value={totals.hostClicks} />
+          <Stat
+            icon={Ticket}
+            label="Bookings"
+            value={totals.bookings}
+            hint="Paid bookings that came through your links or guests' shares"
+          />
+          <Stat
+            icon={Users}
+            label="Guest shares"
+            value={totals.guestClicks}
+            hint={`${totals.guestSharers} guests sharing · ${totals.guestBookings} bookings from their links`}
+          />
         </div>
       </div>
 
@@ -291,6 +312,7 @@ export function ShareKit({ listing }: { listing: ListingWithCapacity }) {
           <ul className="mt-3 space-y-2">
             {CHANNELS.map((def) => {
               const link = mine.get(def.id);
+              const stats = byChannel.get(def.id) ?? { clicks: 0, bookings: 0 };
               const Icon = def.icon;
               return (
                 <li
@@ -304,18 +326,22 @@ export function ShareKit({ listing }: { listing: ListingWithCapacity }) {
                     <p className="text-sm font-semibold">
                       {def.label}
                       <span className="ml-2 text-xs font-normal text-muted-foreground sm:hidden">
-                        {clickLabel(clicksByChannel.get(def.id) ?? 0)}
+                        {clickLabel(stats.clicks)} · {stats.bookings} booked
                       </span>
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
                       {link ? shortUrl(link.code).replace("https://www.", "") : def.hint}
                     </p>
                   </div>
-                  <span className="hidden w-16 text-right text-xs text-muted-foreground sm:inline">
+                  <span className="hidden w-20 text-right text-xs leading-tight text-muted-foreground sm:block">
                     <span className="font-display text-base font-bold text-foreground">
-                      {clicksByChannel.get(def.id) ?? 0}
+                      {stats.clicks}
                     </span>{" "}
-                    {(clicksByChannel.get(def.id) ?? 0) === 1 ? "click" : "clicks"}
+                    {stats.clicks === 1 ? "click" : "clicks"}
+                    <span className="block">
+                      <span className="font-semibold text-foreground">{stats.bookings}</span>{" "}
+                      booked
+                    </span>
                   </span>
                   <div className="flex gap-1.5">
                     <Button

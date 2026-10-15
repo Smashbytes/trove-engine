@@ -19,40 +19,52 @@ export function ogImageUrl(listingId: string, version?: string) {
 
 export type ShareChannel = "whatsapp" | "instagram" | "facebook" | "x" | "tiktok" | "qr" | "link";
 
+/** One link with its performance, from the share_link_stats RPC (migration 0028). */
 export interface ShareLinkRow {
-  id: string;
+  link_id: string;
   code: string;
   listing_id: string;
+  listing_title: string;
   created_by: string;
   kind: "host" | "guest";
   channel: ShareChannel | "email";
   clicks: number;
   last_clicked_at: string | null;
   created_at: string;
+  /** Paid bookings (confirmed / completed / no-show) credited to this link. */
+  bookings: number;
+  /** Ticket sales in ZAR cents — null when the viewer can't see payouts. */
+  sales_kobo: number | null;
 }
 
 export const shortUrl = (code: string) => SHORT_LINK_BASE + code;
 
 const keys = {
-  listing: (listingId: string) => ["share-links", listingId] as const,
+  all: ["share-links"] as const,
+  host: (hostId: string, listingId?: string) => ["share-links", hostId, listingId ?? "all"] as const,
 };
 
-/** Every link pointing at this listing — the team's channel links and guests' referral links. */
-export function useShareLinks(listingId: string) {
+// share_link_stats / get_share_link aren't in the generated types yet. Call
+// through the client (not a detached `supabase.rpc`) so `this` stays bound.
+function rpc<T>(fn: string, args: Record<string, unknown>) {
+  return (supabase as unknown as {
+    rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: T | null; error: Error | null }>;
+  }).rpc(fn, args);
+}
+
+/**
+ * Every link for a Spot (optionally one listing) with clicks, bookings and
+ * sales — the team's channel links and guests' referral links.
+ */
+export function useShareLinks(hostId: string | null | undefined, listingId?: string) {
   return useQuery<ShareLinkRow[]>({
-    queryKey: keys.listing(listingId),
+    queryKey: keys.host(hostId ?? "", listingId),
+    enabled: !!hostId,
     queryFn: async () => {
-      // share_links isn't in the generated types yet (migration 0027).
-      const { data, error } = await (supabase as unknown as {
-        from: (t: string) => {
-          select: (c: string) => {
-            eq: (k: string, v: string) => Promise<{ data: ShareLinkRow[] | null; error: Error | null }>;
-          };
-        };
-      })
-        .from("share_links")
-        .select("id, code, listing_id, created_by, kind, channel, clicks, last_clicked_at, created_at")
-        .eq("listing_id", listingId);
+      const { data, error } = await rpc<ShareLinkRow[]>("share_link_stats", {
+        p_host_id: hostId,
+        p_listing_id: listingId ?? null,
+      });
       if (error) throw error;
       return data ?? [];
     },
@@ -61,15 +73,50 @@ export function useShareLinks(listingId: string) {
   });
 }
 
+export interface ShareTotals {
+  hostClicks: number;
+  hostBookings: number;
+  guestClicks: number;
+  guestBookings: number;
+  guestSharers: number;
+  bookings: number;
+  /** null when the viewer can't see payouts. */
+  salesKobo: number | null;
+}
+
+export function summarizeShareLinks(links: ShareLinkRow[]): ShareTotals {
+  const t: ShareTotals = {
+    hostClicks: 0,
+    hostBookings: 0,
+    guestClicks: 0,
+    guestBookings: 0,
+    guestSharers: 0,
+    bookings: 0,
+    salesKobo: null,
+  };
+  const sharers = new Set<string>();
+  for (const l of links) {
+    if (l.kind === "host") {
+      t.hostClicks += l.clicks;
+      t.hostBookings += l.bookings;
+    } else {
+      t.guestClicks += l.clicks;
+      t.guestBookings += l.bookings;
+      sharers.add(l.created_by);
+    }
+    t.bookings += l.bookings;
+    if (l.sales_kobo != null) t.salesKobo = (t.salesKobo ?? 0) + l.sales_kobo;
+  }
+  t.guestSharers = sharers.size;
+  return t;
+}
+
 /** Mint (or fetch — the RPC is idempotent) the acting user's link for a channel. */
 export function useMintShareLink(listingId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (channel: ShareChannel): Promise<ShareLinkRow> => {
-      const { data, error } = await (supabase.rpc as unknown as (
-        fn: string,
-        args: Record<string, unknown>,
-      ) => Promise<{ data: ShareLinkRow | null; error: Error | null }>)("get_share_link", {
+    mutationFn: async (channel: ShareChannel): Promise<{ id: string; code: string }> => {
+      const { data, error } = await rpc<{ id: string; code: string }>("get_share_link", {
         p_listing_id: listingId,
         p_channel: channel,
         p_kind: "host",
@@ -78,10 +125,6 @@ export function useMintShareLink(listingId: string) {
       if (!data) throw new Error("Could not create share link.");
       return data;
     },
-    onSuccess: (row) => {
-      qc.setQueryData<ShareLinkRow[]>(keys.listing(listingId), (cur = []) =>
-        cur.some((r) => r.id === row.id) ? cur : [...cur, row],
-      );
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.all }),
   });
 }
