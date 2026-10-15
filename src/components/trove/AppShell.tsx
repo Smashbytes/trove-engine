@@ -9,8 +9,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -24,6 +23,7 @@ import { useAuth } from "@/lib/auth";
 import { getHostWorkspace, getVerificationCopy } from "@/lib/host-workspace";
 import { ROLE_META } from "@/lib/permissions";
 import { TroveLogo } from "./Logo";
+import { PayoutVerificationNotice } from "./PayoutVerificationNotice";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -44,44 +44,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const navItems = workspace.nav.filter((item) => !item.perm || can(item.perm));
   const roleLabel = activeRole === "owner" || !activeRole ? "Owner" : ROLE_META[activeRole].label;
   const verification = getVerificationCopy(hostProfile?.kyc_status);
-  const bankProfile =
-    hostProfile?.payout_bank_json &&
-    typeof hostProfile.payout_bank_json === "object" &&
-    !Array.isArray(hostProfile.payout_bank_json)
-      ? (hostProfile.payout_bank_json as Record<string, unknown>)
-      : null;
-  const hasBankDetails = !!(
-    typeof bankProfile?.bank === "string" &&
-    bankProfile.bank.trim() &&
-    typeof bankProfile?.account_number === "string" &&
-    bankProfile.account_number.trim()
-  );
-
   const handleLogout = async () => {
     await signOut();
     navigate({ to: "/" });
   };
-
-  useEffect(() => {
-    if (!hostProfile || hasBankDetails || path === "/settings") return;
-
-    const prompt = () => {
-      const lastPrompt = Number(localStorage.getItem("trove:last-bank-prompt") ?? "0");
-      if (Date.now() - lastPrompt < 5 * 60 * 1000) return;
-      localStorage.setItem("trove:last-bank-prompt", String(Date.now()));
-      toast.warning("Add banking details to unlock payouts.", {
-        duration: 12_000,
-        action: {
-          label: "Settings",
-          onClick: () => navigate({ to: "/settings" }),
-        },
-      });
-    };
-
-    prompt();
-    const interval = window.setInterval(prompt, 5 * 60 * 1000);
-    return () => window.clearInterval(interval);
-  }, [hasBankDetails, hostProfile, navigate, path]);
 
   const initials = (profile?.full_name ?? "TR")
     .split(" ")
@@ -310,6 +276,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           )}
+
+          <PayoutVerificationNotice />
 
           {children}
         </main>

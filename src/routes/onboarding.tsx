@@ -23,6 +23,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { TroveLogo } from "@/components/trove/Logo";
+import { markJustOnboarded } from "@/lib/onboarding-flag";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -165,14 +166,18 @@ function Onboarding() {
   const [documentFile, setDocumentFile] = useState<File | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [escrowStatus, setEscrowStatus] = useState("not_started");
+  // Once submission starts, the first complete-host-onboarding call flips
+  // is_host — without this the redirect below would yank the host to the
+  // dashboard mid-submit, before the KYC upload and the TradeSafe result.
+  const [submitStarted, setSubmitStarted] = useState(false);
 
   useEffect(() => {
     if (!slugTouched) setSlug(slugify(businessName));
   }, [businessName, slugTouched]);
 
   useEffect(() => {
-    if (isHost && !inSubFlow && globalStep < 5) navigate({ to: "/dashboard" });
-  }, [isHost, globalStep, inSubFlow, navigate]);
+    if (isHost && !submitStarted && !inSubFlow && globalStep < 5) navigate({ to: "/dashboard" });
+  }, [isHost, submitStarted, globalStep, inSubFlow, navigate]);
 
   const maxSubSteps = hostType ? SUB_STEP_LABELS[hostType].length : 4;
 
@@ -219,6 +224,7 @@ function Onboarding() {
       setGlobalStep(3);
       return;
     }
+    setSubmitStarted(true);
     try {
       const tradeSafeAccountType: "CHEQUE" | "SAVINGS" | "CURRENT" =
         accountType === "savings" ? "SAVINGS" : accountType === "current" ? "CURRENT" : "CHEQUE";
@@ -277,10 +283,13 @@ function Onboarding() {
       setEscrowStatus(onboardingResult.escrow_status);
       if (onboardingResult.escrow_status !== "escrow_ready") {
         toast.error("Your profile was saved, but TradeSafe seller setup needs attention. Retry from this review step.");
+        // If they leave for the dashboard instead, the pop-up there picks it up.
+        markJustOnboarded();
         setGlobalStep(4);
         return;
       }
       toast.success("TradeSafe seller token created. Your Spot is payout-ready.");
+      markJustOnboarded();
       setGlobalStep(5);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Submission failed. Please try again.");

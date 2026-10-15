@@ -5,11 +5,13 @@ import {
   MessageCircle,
   Settings as SettingsIcon,
   ShieldCheck,
+  Wallet,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/trove/AppShell";
 import { PageHeader } from "@/components/trove/PageHeader";
+import { VerifyPayoutDialog } from "@/components/trove/VerifyPayoutDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,12 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { isAnalyticsEnabled, setAnalyticsEnabled } from "@/lib/analytics";
 import { useAuth } from "@/lib/auth";
 import { getVerificationCopy } from "@/lib/host-workspace";
-import {
-  useSubmitVerification,
-  useUpdateBankingDetails,
-  useUpdateNotificationPrefs,
-} from "@/lib/queries";
-import { SA_BANKS } from "@/lib/sa-banks";
+import { useSubmitVerification, useUpdateNotificationPrefs } from "@/lib/queries";
 import {
   useDisconnectWhatsApp,
   useStartWhatsAppConnect,
@@ -47,6 +44,12 @@ const NOTIFY_CHANNELS = [
   { key: "in_app", label: "In-app" },
 ] as const;
 
+// Event × channel pairs that a sender actually honours today. Everything else
+// is shown as "soon" rather than a switch that silently does nothing.
+//   new_booking.whatsapp → _shared/whatsapp.ts notifyHostNewBooking
+//   *.in_app             → useHostNotifications filters the feed
+const WIRED = new Set(["new_booking.whatsapp", "new_booking.in_app", "new_follower.in_app"]);
+
 type NotifyPrefs = Record<string, Record<string, boolean>>;
 
 function coercePrefs(raw: unknown): NotifyPrefs {
@@ -66,8 +69,8 @@ function coercePrefs(raw: unknown): NotifyPrefs {
 }
 
 function SettingsPage() {
-  const { user, hostProfile, updateEmail, updatePassword } = useAuth();
-  const updateBanking = useUpdateBankingDetails();
+  const { user, hostProfile, isOwner, can, updateEmail, updatePassword } = useAuth();
+  const [verifyPayoutOpen, setVerifyPayoutOpen] = useState(false);
   const submitVerification = useSubmitVerification();
   const updatePrefs = useUpdateNotificationPrefs();
 
@@ -165,37 +168,11 @@ function SettingsPage() {
     }
   };
 
-  // ---- banking (existing) ----
-  const [bank, setBank] = useState("");
-  const [bankCode, setBankCode] = useState("");
-  const [accountNumber, setAccountNumber] = useState("");
-  const [accountName, setAccountName] = useState("");
-  const [accountType, setAccountType] = useState("business");
+  // ---- payout account (TradeSafe) ----
+  const tradesafeStatus = hostProfile?.tradesafe_status ?? "not_started";
+  const payoutsVerified = tradesafeStatus === "escrow_ready";
+  const canManagePayouts = isOwner || can("payouts.manage");
 
-  const payoutsVerified = hostProfile?.tradesafe_status === "escrow_ready";
-
-  useEffect(() => {
-    setBank(typeof bankJson.bank === "string" ? bankJson.bank : "");
-    setBankCode(typeof bankJson.bank_code === "string" ? bankJson.bank_code : "");
-    setAccountNumber("");
-    setAccountName(typeof bankJson.account_name === "string" ? bankJson.account_name : "");
-    setAccountType(typeof bankJson.account_type === "string" ? bankJson.account_type : "business");
-  }, [hostProfile?.payout_bank_json]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const saveBanking = async () => {
-    if (!bank.trim() || !accountNumber.trim()) {
-      toast.error("Bank and account number are required.");
-      return;
-    }
-    try {
-      await updateBanking.mutateAsync({ bank, accountNumber, accountName, accountType });
-      toast.success("Banking details updated.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not update banking details.");
-    }
-  };
-
-  // Banking changes are completed through the server-controlled TradeSafe onboarding flow.
   return (
     <AppShell>
       <PageHeader
@@ -257,6 +234,7 @@ function SettingsPage() {
                 value={legalName}
                 onChange={(e) => setLegalName(e.target.value)}
                 placeholder="As it appears on CIPC"
+                disabled={alreadySubmitted}
               />
             </Field>
             <Field label="Registration number">
@@ -264,26 +242,31 @@ function SettingsPage() {
                 value={registration}
                 onChange={(e) => setRegistration(e.target.value)}
                 placeholder="e.g. 2021/123456/07"
+                disabled={alreadySubmitted}
               />
             </Field>
           </div>
           <div className="mt-4 flex items-center gap-3">
-            <Button
-              onClick={saveVerification}
-              disabled={submitVerification.isPending}
-              className="bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95"
-            >
-              {submitVerification.isPending
-                ? "Submitting…"
-                : alreadySubmitted
-                  ? "Resubmit for review"
-                  : "Submit for verification"}
-            </Button>
+            {/* submit_host_verification is a no-op once submitted/verified, so
+                offering "resubmit" there would silently drop the edits. */}
+            {!alreadySubmitted && (
+              <Button
+                onClick={saveVerification}
+                disabled={submitVerification.isPending}
+                className="bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95"
+              >
+                {submitVerification.isPending
+                  ? "Submitting…"
+                  : hostProfile?.kyc_status === "rejected"
+                    ? "Resubmit for review"
+                    : "Submit for verification"}
+              </Button>
+            )}
             {alreadySubmitted && (
               <span className="text-xs text-muted-foreground">
                 {hostProfile?.kyc_status === "verified"
                   ? "Your business is verified."
-                  : "Submitted — Trove is reviewing your details."}
+                  : "Submitted — Trove is reviewing your details. Need to correct something? Contact support."}
               </span>
             )}
           </div>
@@ -323,10 +306,16 @@ function SettingsPage() {
                     {NOTIFY_CHANNELS.map((channel) => (
                       <td key={channel.key} className="py-3 text-center">
                         <div className="flex justify-center">
-                          <Switch
-                            checked={prefs[event.key]?.[channel.key] ?? true}
-                            onCheckedChange={(value) => togglePref(event.key, channel.key, value)}
-                          />
+                          {WIRED.has(`${event.key}.${channel.key}`) ? (
+                            <Switch
+                              checked={prefs[event.key]?.[channel.key] ?? true}
+                              onCheckedChange={(value) => togglePref(event.key, channel.key, value)}
+                            />
+                          ) : (
+                            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/60">
+                              Soon
+                            </span>
+                          )}
                         </div>
                       </td>
                     ))}
@@ -364,99 +353,79 @@ function SettingsPage() {
           <PrivacyDataCard />
         </Section>
 
-        {/* Banking (live) */}
-        <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="eyebrow text-primary">Payout setup</p>
-              <h2 className="mt-2 font-display text-2xl font-semibold">Banking details</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                Spots can skip this during onboarding, but payouts stay paused until these details
-                are captured.
-              </p>
-            </div>
-            <span
-              className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
-                payoutsVerified
-                  ? "bg-success/15 text-success"
-                  : bank && accountNumber
-                    ? "bg-warning/15 text-warning"
-                    : "bg-warning/15 text-warning"
-              }`}
-            >
-              {payoutsVerified ? "Verified · payouts on" : bank && accountNumber ? "Unverified" : "Needs banking"}
-            </span>
-          </div>
-
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <Field label="Bank">
-              <select
-                value={bankCode}
-                onChange={(event) => {
-                  setBankCode(event.target.value);
-                  const b = SA_BANKS.find((x) => x.code === event.target.value);
-                  if (b) setBank(b.name);
-                }}
-                className="flex h-10 w-full rounded-md border border-input bg-input px-3 text-sm"
-              >
-                <option value="">Select your bank…</option>
-                {SA_BANKS.map((b) => (
-                  <option key={b.code} value={b.code}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <div className="rounded-md border border-border/60 bg-input px-3 py-2 text-sm text-muted-foreground">
-              Account ending in {hostProfile?.tradesafe_bank_last4 ? `****${hostProfile.tradesafe_bank_last4}` : "not set"}
-            </div>
-            <Field label="Account name">
-              <Input
-                value={accountName}
-                onChange={(event) => setAccountName(event.target.value)}
-                placeholder={payoutsVerified ? accountName : "Auto-filled when you verify"}
-              />
-            </Field>
-            <Field label="Account type">
-              <select
-                value={accountType}
-                onChange={(event) => setAccountType(event.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-input px-3 text-sm"
-              >
-                <option value="business">Business</option>
-                <option value="current">Current</option>
-                <option value="savings">Savings</option>
-              </select>
-            </Field>
+        {/* Payout account (TradeSafe) */}
+        <Section
+          icon={Wallet}
+          title="Payout account"
+          sub="Guests pay into TradeSafe escrow; TradeSafe releases your share to this account after each experience."
+          badge={
+            payoutsVerified
+              ? { label: "Verified · payouts on", tone: "success" }
+              : tradesafeStatus === "escrow_failed"
+                ? { label: "Verification failed", tone: "destructive" }
+                : tradesafeStatus === "escrow_provisioning"
+                  ? { label: "Verifying…", tone: "warning" }
+                  : { label: "Not verified", tone: "warning" }
+          }
+        >
+          <div className="grid gap-3 sm:grid-cols-3">
+            <LockedPref
+              label="Bank"
+              value={hostProfile?.tradesafe_bank_name ?? "Not set"}
+              note="Held by TradeSafe"
+            />
+            <LockedPref
+              label="Account"
+              value={
+                hostProfile?.tradesafe_bank_last4
+                  ? `•••• ${hostProfile.tradesafe_bank_last4}`
+                  : "Not set"
+              }
+              note="Only the last 4 digits are stored"
+            />
+            <LockedPref
+              label="Account type"
+              value={hostProfile?.tradesafe_account_type ?? "—"}
+              note={
+                hostProfile?.tradesafe_ready_at
+                  ? `Verified ${new Date(hostProfile.tradesafe_ready_at).toLocaleDateString("en-ZA")}`
+                  : "Not yet verified"
+              }
+            />
           </div>
 
           <p className="mt-4 text-xs leading-5 text-muted-foreground">
             {payoutsVerified
-              ? "TradeSafe seller token ready. Payouts are released after the escrow completion rule for the booking."
-              : `TradeSafe status: ${hostProfile?.tradesafe_status ?? "not_started"}. Complete onboarding to provision a payout-ready seller token.`}
+              ? "TradeSafe holds a verified seller token for this account. Paid listings can go live, and funds are released here once each booking's escrow window closes."
+              : "Until TradeSafe verifies your account, paid listings stay in draft and no funds can be released to you."}
+            {hostProfile?.tradesafe_last_error && !payoutsVerified && (
+              <span className="mt-1 block text-destructive">
+                Last TradeSafe response: {hostProfile.tradesafe_last_error}
+              </span>
+            )}
           </p>
 
-          <div className="mt-6 flex flex-wrap justify-end gap-3">
-            <Button
-              variant="outline"
-              onClick={saveBanking}
-              disabled={updateBanking.isPending}
-            >
-              {updateBanking.isPending ? "Saving..." : "Save details"}
-            </Button>
-            <Button
-              onClick={() => toast.info("TradeSafe banking changes are completed through onboarding.")}
-              disabled={false}
-              className="bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95"
-            >
-              {false
-                ? "Verifying…"
-                : payoutsVerified
-                  ? "Open onboarding"
-                  : "Open onboarding"}
-            </Button>
+          <div className="mt-6 flex justify-end">
+            {canManagePayouts ? (
+              <Button
+                onClick={() => setVerifyPayoutOpen(true)}
+                variant={payoutsVerified ? "outline" : "default"}
+                className={
+                  payoutsVerified
+                    ? undefined
+                    : "bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95"
+                }
+              >
+                {payoutsVerified ? "Change payout account" : "Verify account"}
+              </Button>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Only the Spot owner or a finance teammate can manage payouts.
+              </p>
+            )}
           </div>
-        </section>
+        </Section>
+        <VerifyPayoutDialog open={verifyPayoutOpen} onOpenChange={setVerifyPayoutOpen} />
       </div>
     </AppShell>
   );
@@ -502,14 +471,22 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function LockedPref({ label, value }: { label: string; value: string }) {
+function LockedPref({
+  label,
+  value,
+  note = "Locked",
+}: {
+  label: string;
+  value: string;
+  note?: string;
+}) {
   return (
     <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
       <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
         {label}
       </p>
       <p className="mt-1 font-display text-lg font-semibold">{value}</p>
-      <p className="mt-1 text-[11px] text-muted-foreground">Locked</p>
+      <p className="mt-1 text-[11px] text-muted-foreground">{note}</p>
     </div>
   );
 }

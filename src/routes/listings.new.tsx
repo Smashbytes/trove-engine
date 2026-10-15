@@ -67,6 +67,11 @@ function NewListing() {
     Array<{ name: string; capacity: string; price: string; description: string }>
   >([]);
 
+  // Extra checkout questions guests answer when booking this listing.
+  const [customQuestions, setCustomQuestions] = useState<
+    Array<{ label: string; type: "text" | "textarea" | "select"; options: string; required: boolean }>
+  >([]);
+
   const categoryOptions = useMemo(() => {
     const categories = categoriesQuery.data ?? [];
     const allowedRoots = new Set(workspace.categoryRoots);
@@ -97,6 +102,15 @@ function NewListing() {
     try {
       const trimmedAmenities = splitItems(amenities);
       const status = hostProfile.verified && escrowReady ? "live" : "draft";
+      const normalizedQuestions = customQuestions
+        .map((q, i) => ({
+          id: `q${i + 1}`,
+          label: q.label.trim(),
+          type: q.type,
+          options: q.type === "select" ? splitItems(q.options) : undefined,
+          required: q.required,
+        }))
+        .filter((q) => q.label);
 
       if (workspace.hostType === "organiser") {
         if (!eventDate) {
@@ -140,6 +154,8 @@ function NewListing() {
               doors_open: doorsOpen || undefined,
               doors_close: doorsClose || undefined,
             },
+            // custom_questions: migration 0025 added this column; not yet in generated types.
+            ...({ custom_questions: normalizedQuestions } as object),
           },
           ticketTypes: normalizedTiers.map((tier, index) => ({
             name: tier.name,
@@ -191,6 +207,7 @@ function NewListing() {
               max_group: Number(maxGroup) || undefined,
               safety_notes: safetyNotes.trim() || undefined,
             },
+            ...({ custom_questions: normalizedQuestions } as object),
           },
           availability: normalizedAvailability.map((slot) => ({
             starts_at: new Date(slot.startsAt).toISOString(),
@@ -244,6 +261,7 @@ function NewListing() {
               amenities: trimmedAmenities,
               rooms: normalizedRooms,
             },
+            ...({ custom_questions: normalizedQuestions } as object),
           },
         });
 
@@ -275,6 +293,7 @@ function NewListing() {
             age_restriction: Number(venueAgeRestriction) || undefined,
             amenities: trimmedAmenities,
           },
+          ...({ custom_questions: normalizedQuestions } as object),
         },
       });
 
@@ -369,6 +388,94 @@ function NewListing() {
               <Field label="Cover image">
                 <ImageUpload value={coverUrl} onChange={setCoverUrl} />
               </Field>
+            </div>
+          </section>
+
+          <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-display text-2xl font-semibold">More info from guests</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Ask Seekers anything extra you need before they check out — dietary needs, group names, a waiver number.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  setCustomQuestions((current) => [
+                    ...current,
+                    { label: "", type: "text", options: "", required: false },
+                  ])
+                }
+              >
+                <Plus className="mr-1 h-4 w-4" />
+                Add question
+              </Button>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {customQuestions.map((q, index) => (
+                <div key={index} className="rounded-2xl border border-border/60 bg-background/45 p-4">
+                  <div className="grid gap-3 md:grid-cols-[1fr_0.5fr_auto]">
+                    <Field label="Question">
+                      <Input
+                        value={q.label}
+                        onChange={(event) =>
+                          updateArrayItem(setCustomQuestions, index, { label: event.target.value })
+                        }
+                        placeholder="Any dietary requirements?"
+                      />
+                    </Field>
+                    <Field label="Answer type">
+                      <select
+                        value={q.type}
+                        onChange={(event) =>
+                          updateArrayItem(setCustomQuestions, index, {
+                            type: event.target.value as "text" | "textarea" | "select",
+                          })
+                        }
+                        className="flex h-10 w-full rounded-md border border-input bg-input px-3 text-sm"
+                      >
+                        <option value="text">Short text</option>
+                        <option value="textarea">Long text</option>
+                        <option value="select">Choose one</option>
+                      </select>
+                    </Field>
+                    <button
+                      type="button"
+                      onClick={() => removeArrayItem(setCustomQuestions, index)}
+                      className="mt-7 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/60 text-muted-foreground transition-colors hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                  {q.type === "select" && (
+                    <div className="mt-3">
+                      <Field label="Options (comma separated)">
+                        <Input
+                          value={q.options}
+                          onChange={(event) =>
+                            updateArrayItem(setCustomQuestions, index, { options: event.target.value })
+                          }
+                          placeholder="Vegetarian, Vegan, No restrictions"
+                        />
+                      </Field>
+                    </div>
+                  )}
+                  <label className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={q.required}
+                      onChange={(event) =>
+                        updateArrayItem(setCustomQuestions, index, { required: event.target.checked })
+                      }
+                      className="h-4 w-4"
+                    />
+                    Required before checkout
+                  </label>
+                </div>
+              ))}
             </div>
           </section>
 

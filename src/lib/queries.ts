@@ -356,8 +356,21 @@ export function useHostPayouts(limit = 20) {
   });
 }
 
+// Maps a notifications.type to the Settings matrix event that governs it.
+const NOTIFICATION_PREF_EVENT: Record<string, string> = {
+  new_guest: "new_booking",
+  new_booking: "new_booking",
+  new_follower: "new_follower",
+  payout_sent: "payout_sent",
+  new_review: "new_review",
+};
+
 export function useHostNotifications(limit = 20) {
-  const { user } = useAuth();
+  const { user, hostProfile } = useAuth();
+  const prefs = (hostProfile?.notification_prefs ?? {}) as Record<
+    string,
+    Record<string, boolean> | undefined
+  >;
   return useQuery<Notification[]>({
     queryKey: ["notifications", user?.id, limit],
     enabled: !!user,
@@ -370,6 +383,12 @@ export function useHostNotifications(limit = 20) {
       if (error) throw error;
       return (data ?? []) as Notification[];
     },
+    // Honour the Settings "In-app" switches (default ON when unset).
+    select: (rows) =>
+      rows.filter((row) => {
+        const event = NOTIFICATION_PREF_EVENT[row.type];
+        return !event || prefs[event]?.in_app !== false;
+      }),
   });
 }
 
@@ -475,11 +494,25 @@ export interface UpdateWorkspaceProfileInput {
   socialLinks?: Record<string, string>;
 }
 
-export interface UpdateBankingDetailsInput {
+export interface VerifyPayoutAccountInput {
+  contactPerson: string;
+  phone: string;
+  legalName: string;
+  registration: string;
+  idNumber: string;
+  idType: "ID" | "PASSPORT";
+  organizationType?: string;
   bank: string;
+  bankCode: string;
   accountNumber: string;
-  accountType: string;
-  accountName?: string;
+  accountType: "CHEQUE" | "SAVINGS" | "CURRENT";
+}
+
+export interface PayoutVerificationResult {
+  escrow_status: "escrow_ready" | "escrow_needs_review" | "escrow_failed";
+  missing: Array<"kyc_document" | "valid_token">;
+  error?: string;
+  code?: string;
 }
 
 export function useUpdateWorkspaceProfile() {
@@ -531,23 +564,77 @@ export function useUpdateWorkspaceProfile() {
   });
 }
 
-export function useUpdateBankingDetails() {
-  const { activeHostId, hostProfile, refreshProfile } = useAuth();
-  const queryClient = useQueryClient();
-
+/**
+ * Settings → "Verify account". Mints (or reuses) the owner's TradeSafe seller
+ * token so escrow payouts can reach their bank account. The account number is
+ * sent once to the edge function and never stored by TROVE.
+ */
+export function useVerifyPayoutAccount() {
+  const { refreshProfile } = useAuth();
   return useMutation({
-    mutationFn: async (input: UpdateBankingDetailsInput) => {
-      if (!activeHostId) throw new Error("Not authenticated");
-
-      void input;
-      void hostProfile;
-      throw new Error(
-        "Banking changes must be completed through TradeSafe onboarding so the new account is tokenized securely.",
-      );
+    mutationFn: async (input: VerifyPayoutAccountInput): Promise<PayoutVerificationResult> => {
+      const { data, error } = await supabase.functions.invoke("verify-payout-account", {
+        body: {
+          contact_person: input.contactPerson.trim(),
+          phone: input.phone.trim(),
+          legal_name: input.legalName.trim(),
+          registration: input.registration.trim(),
+          id_number: input.idNumber.trim(),
+          id_type: input.idType,
+          organization_type: input.organizationType ?? "PRIVATE",
+          bank: input.bank.trim(),
+          bank_code: input.bankCode.trim(),
+          account_number: input.accountNumber.replace(/\s+/g, ""),
+          account_type: input.accountType,
+        },
+      });
+      if (error) {
+        const ctx = (error as { context?: Response }).context;
+        let message = error.message;
+        try {
+          const body = ctx ? await ctx.json() : null;
+          if (body?.error) message = body.error;
+        } catch {
+          /* keep the SDK message */
+        }
+        throw new Error(message);
+      }
+      return data as PayoutVerificationResult;
     },
-    onSuccess: async () => {
+    onSettled: async () => {
       await refreshProfile();
-      await queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+}
+
+/** Whether the signed-in owner already has a KYC document on file. */
+export function useHasKycDocument() {
+  const { user } = useAuth();
+  return useQuery<boolean>({
+    queryKey: ["kyc-documents", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      // kyc_documents is added in migration 0019; cast until types regenerate.
+      const { count, error } = await (
+        supabase as unknown as {
+          from: (t: string) => {
+            select: (
+              c: string,
+              o: { count: "exact"; head: true },
+            ) => {
+              eq: (
+                col: string,
+                v: string,
+              ) => Promise<{ count: number | null; error: unknown }>;
+            };
+          };
+        }
+      )
+        .from("kyc_documents")
+        .select("id", { count: "exact", head: true })
+        .eq("host_id", user!.id);
+      if (error) throw error;
+      return (count ?? 0) > 0;
     },
   });
 }
