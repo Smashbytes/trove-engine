@@ -170,7 +170,10 @@ function SettingsPage() {
 
   // ---- payout account (TradeSafe) ----
   const tradesafeStatus = hostProfile?.tradesafe_status ?? "not_started";
+  // escrow_ready = TradeSafe accepted the details (can sell); the bank account
+  // itself is verified separately (tradesafe_verified) before any payout.
   const payoutsVerified = tradesafeStatus === "escrow_ready";
+  const bankVerified = payoutsVerified && hostProfile?.tradesafe_verified === true;
   const canManagePayouts = isOwner || can("payouts.manage");
 
   return (
@@ -359,9 +362,11 @@ function SettingsPage() {
           title="Payout account"
           sub="Guests pay into TradeSafe escrow; TradeSafe releases your share to this account after each experience."
           badge={
-            payoutsVerified
+            bankVerified
               ? { label: "Verified · payouts on", tone: "success" }
-              : tradesafeStatus === "escrow_failed"
+              : payoutsVerified
+                ? { label: "Accepted · bank check pending", tone: "warning" }
+                : tradesafeStatus === "escrow_failed"
                 ? { label: "Verification failed", tone: "destructive" }
                 : tradesafeStatus === "escrow_provisioning"
                   ? { label: "Verifying…", tone: "warning" }
@@ -387,17 +392,21 @@ function SettingsPage() {
               label="Account type"
               value={hostProfile?.tradesafe_account_type ?? "—"}
               note={
-                hostProfile?.tradesafe_ready_at
-                  ? `Verified ${new Date(hostProfile.tradesafe_ready_at).toLocaleDateString("en-ZA")}`
-                  : "Not yet verified"
+                bankVerified && hostProfile?.tradesafe_verified_at
+                  ? `Verified ${new Date(hostProfile.tradesafe_verified_at).toLocaleDateString("en-ZA")}`
+                  : hostProfile?.tradesafe_ready_at
+                    ? `Accepted ${new Date(hostProfile.tradesafe_ready_at).toLocaleDateString("en-ZA")}`
+                    : "Not yet verified"
               }
             />
           </div>
 
           <p className="mt-4 text-xs leading-5 text-muted-foreground">
-            {payoutsVerified
-              ? "TradeSafe holds a verified seller token for this account. Paid listings can go live, and funds are released here once each booking's escrow window closes."
-              : "Until TradeSafe verifies your account, paid listings stay in draft and no funds can be released to you."}
+            {bankVerified
+              ? "TradeSafe has verified this bank account. Paid listings can go live, and funds are released here once each booking's escrow window closes."
+              : payoutsVerified
+                ? "TradeSafe accepted your payout details, so paid listings can go live and take bookings. It is now verifying the bank account itself; guest payments stay safely in escrow and are released here once that check is done."
+                : "Until TradeSafe accepts your payout details, paid listings stay in draft and no funds can be released to you."}
             {hostProfile?.tradesafe_last_error && !payoutsVerified && (
               <span className="mt-1 block text-destructive">
                 Last TradeSafe response: {hostProfile.tradesafe_last_error}

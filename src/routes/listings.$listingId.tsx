@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Share2, Trash2 } from "lucide-react";
+import { ArrowLeft, Pause, Rocket, Share2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/trove/AppShell";
 import { ShareKit } from "@/components/trove/ShareKit";
@@ -15,6 +15,7 @@ import {
   useListingTicketTypes,
   useListingTickets,
   useRealtimeBookings,
+  useSetListingStatus,
 } from "@/lib/queries";
 
 export const Route = createFileRoute("/listings/$listingId")({
@@ -46,7 +47,7 @@ export const Route = createFileRoute("/listings/$listingId")({
 
 function ListingDetailPage() {
   const navigate = useNavigate();
-  const { hostProfile } = useAuth();
+  const { hostProfile, can } = useAuth();
   const workspace = getHostWorkspace(hostProfile?.host_type);
   const { listingId } = Route.useParams();
 
@@ -56,6 +57,7 @@ function ListingDetailPage() {
   const availabilityQuery = useListingAvailability(listingId);
   const ticketsQuery = useListingTickets(listingId);
   const deleteListing = useDeleteListing();
+  const setListingStatus = useSetListingStatus();
 
   useRealtimeBookings(listingId);
 
@@ -76,6 +78,15 @@ function ListingDetailPage() {
   const ticketTypes = ticketTypesQuery.data ?? [];
   const availability = availabilityQuery.data ?? [];
   const tickets = ticketsQuery.data ?? [];
+
+  const handleStatus = async (status: "live" | "paused") => {
+    try {
+      await setListingStatus.mutateAsync({ listingId: listing.id, status });
+      toast.success(status === "live" ? "Listing is live — guests can find and book it." : "Listing paused.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update this listing.");
+    }
+  };
 
   const handleDelete = async () => {
     const confirmed = window.confirm("Delete this listing?");
@@ -135,6 +146,22 @@ function ListingDetailPage() {
       </div>
 
       <div className="mt-6 flex flex-wrap gap-2">
+        {can("listings.manage") && listing.status !== "live" && (
+          <Button
+            onClick={() => handleStatus("live")}
+            disabled={setListingStatus.isPending}
+            className="bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95"
+          >
+            <Rocket className="mr-1.5 h-4 w-4" />
+            {setListingStatus.isPending ? "Publishing…" : "Publish"}
+          </Button>
+        )}
+        {can("listings.manage") && listing.status === "live" && (
+          <Button variant="outline" onClick={() => handleStatus("paused")} disabled={setListingStatus.isPending}>
+            <Pause className="mr-1.5 h-4 w-4" />
+            {setListingStatus.isPending ? "Pausing…" : "Pause"}
+          </Button>
+        )}
         <Button
           variant="outline"
           onClick={() =>

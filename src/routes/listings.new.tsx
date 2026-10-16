@@ -82,7 +82,9 @@ function NewListing() {
   }, [categoriesQuery.data, workspace.categoryRoots]);
 
   const escrowReady = hostProfile?.tradesafe_status === "escrow_ready";
-  const saveLabel = hostProfile?.verified && escrowReady
+  // Any Spot can sell (TROVE "Verified" is the Partner badge, not a licence).
+  // The database still blocks PAID listings until TradeSafe has the account.
+  const saveLabel = escrowReady
     ? `Create live ${workspace.singularLabel.toLowerCase()}`
     : "Create draft";
 
@@ -101,7 +103,7 @@ function NewListing() {
 
     try {
       const trimmedAmenities = splitItems(amenities);
-      const status = hostProfile.verified && escrowReady ? "live" : "draft";
+      const status = escrowReady ? "live" : "draft";
       const normalizedQuestions = customQuestions
         .map((q, i) => ({
           id: `q${i + 1}`,
@@ -154,8 +156,7 @@ function NewListing() {
               doors_open: doorsOpen || undefined,
               doors_close: doorsClose || undefined,
             },
-            // custom_questions: migration 0025 added this column; not yet in generated types.
-            ...({ custom_questions: normalizedQuestions } as object),
+            custom_questions: normalizedQuestions,
           },
           ticketTypes: normalizedTiers.map((tier, index) => ({
             name: tier.name,
@@ -313,14 +314,15 @@ function NewListing() {
         subtitle={`This form is filtered for the signed-in ${workspace.label.toLowerCase()} account and writes only real schema-backed data.`}
       />
 
-      {(!hostProfile?.verified || !escrowReady) && (
+      {!escrowReady && (
         <div className="mb-6 rounded-[1.75rem] border border-warning/35 bg-warning/8 p-5">
-          <p className="eyebrow text-warning">Verification gate</p>
+          <p className="eyebrow text-warning">Payout account needed</p>
           <p className="mt-2 font-display text-2xl font-semibold">
-            This will save as a draft until host verification and TradeSafe escrow setup are ready.
+            This will save as a draft until your payout account is set up.
           </p>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Paid listings cannot publish until a seller token, KYC state, and payout details are ready.
+            Guests pay into TradeSafe escrow, so paid listings need your payout account first. Verify
+            it from Settings, then publish the draft from the listing page.
           </p>
         </div>
       )}
@@ -850,7 +852,7 @@ function NewListing() {
               <PreviewItem label="Host type" value={workspace.label} />
               <PreviewItem
                 label="Publish state"
-                value={hostProfile?.verified ? "Live on create" : "Draft on create"}
+                value={escrowReady ? "Live on create" : "Draft on create"}
               />
               <PreviewItem
                 label="Category"

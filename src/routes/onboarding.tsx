@@ -1343,7 +1343,7 @@ function CompleteStep({
       <h1 className="font-display text-4xl font-bold mb-3 tracking-tight">All Set!</h1>
       <p className="text-muted-foreground text-sm mb-2 max-w-sm mx-auto leading-relaxed">
         {escrowStatus === "escrow_ready"
-          ? "Your seller token is ready. Paid listings can now enter escrow once the rest of the Spot is complete."
+          ? "TradeSafe accepted your payout details. You can publish listings now; TradeSafe verifies your bank account before releasing payouts."
           : "Your profile is saved, but TradeSafe seller setup still needs attention. Retry onboarding before publishing paid listings."}
       </p>
       {businessName && (

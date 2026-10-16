@@ -1,4 +1,4 @@
-import { BadgeCheck, ShieldAlert, Wallet } from "lucide-react";
+import { BadgeCheck, Clock, ShieldAlert, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,7 +42,12 @@ export function PayoutVerificationNotice() {
   const [welcomeOpen, setWelcomeOpen] = useState(false);
 
   const status = hostProfile?.tradesafe_status ?? "not_started";
+  // TradeSafe has two steps: `ready` = details accepted, the Spot can sell
+  // (guest money is held in escrow); `bankVerified` = TradeSafe verified the
+  // bank account, which it needs before it pays anything out.
   const ready = status === "escrow_ready";
+  const bankVerified = ready && hostProfile?.tradesafe_verified === true;
+  const last4 = hostProfile?.tradesafe_bank_last4;
 
   useEffect(() => {
     if (hostProfile && takeJustOnboarded()) setWelcomeOpen(true);
@@ -87,6 +92,20 @@ export function PayoutVerificationNotice() {
         </div>
       )}
 
+      {ready && !bankVerified && canAct && (
+        <div className="flex flex-wrap items-start gap-3 rounded-2xl border border-primary/30 bg-primary/8 p-4">
+          <Clock className="mt-0.5 size-5 shrink-0 text-primary" />
+          <div className="min-w-0 flex-1 space-y-1">
+            <p className="text-sm font-semibold text-primary">TradeSafe is verifying your bank account</p>
+            <p className="text-xs leading-5 text-muted-foreground">
+              Your payout details were accepted{last4 ? ` (account ending ${last4})` : ""}, so you can
+              publish listings and take bookings now. Guest payments are held safely in escrow, and
+              TradeSafe releases them to you once it has verified the account.
+            </p>
+          </div>
+        </div>
+      )}
+
       <Dialog open={welcomeOpen} onOpenChange={setWelcomeOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -98,16 +117,22 @@ export function PayoutVerificationNotice() {
               {ready ? <BadgeCheck className="h-7 w-7" /> : <ShieldAlert className="h-7 w-7" />}
             </div>
             <DialogTitle className="text-center">
-              {ready ? "You're verified — payouts are on" : "One last step: verify your account"}
+              {bankVerified
+                ? "You're verified — payouts are on"
+                : ready
+                  ? "You're set up to sell"
+                  : "One last step: verify your account"}
             </DialogTitle>
             <DialogDescription className="text-center">
-              {ready
+              {bankVerified
                 ? `Welcome to TROVE${hostProfile.display_name ? `, ${hostProfile.display_name}` : ""}! TradeSafe has verified your bank account${
-                    hostProfile.tradesafe_bank_last4
-                      ? ` ending in ${hostProfile.tradesafe_bank_last4}`
-                      : ""
+                    last4 ? ` ending in ${last4}` : ""
                   }. Guest payments are held safely in escrow and released to you after each experience.`
-                : "Your Spot is set up, but TradeSafe hasn't verified your payout account yet. Verify now so paid listings can go live and you can receive funds."}
+                : ready
+                  ? `Welcome to TROVE${hostProfile.display_name ? `, ${hostProfile.display_name}` : ""}! TradeSafe accepted your payout details${
+                      last4 ? ` for the account ending in ${last4}` : ""
+                    } and is now verifying the bank account. You can publish listings straight away; payouts start once TradeSafe confirms the account.`
+                  : "Your Spot is set up, but TradeSafe hasn't verified your payout account yet. Verify now so paid listings can go live and you can receive funds."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="sm:justify-center">

@@ -152,8 +152,15 @@ export type Database = {
           cancelled_at: string | null
           checked_in_at: string | null
           created_at: string
+          custom_answers: Json
+          delivery_fee_kobo: number
+          delivery_method: string
+          escrow_completed_at: string | null
+          escrow_started_at: string | null
+          escrow_status: string
           fee_kobo: number
           guest_id: string
+          guest_phone: string | null
           id: string
           listing_id: string
           party_size: number
@@ -165,6 +172,7 @@ export type Database = {
           slot_id: string | null
           status: Database["public"]["Enums"]["booking_status"]
           subtotal_kobo: number
+          terms_accepted_at: string | null
           ticket_type_id: string | null
           total_kobo: number
           updated_at: string
@@ -175,8 +183,15 @@ export type Database = {
           cancelled_at?: string | null
           checked_in_at?: string | null
           created_at?: string
+          custom_answers?: Json
+          delivery_fee_kobo?: number
+          delivery_method?: string
+          escrow_completed_at?: string | null
+          escrow_started_at?: string | null
+          escrow_status?: string
           fee_kobo?: number
           guest_id: string
+          guest_phone?: string | null
           id?: string
           listing_id: string
           party_size?: number
@@ -188,6 +203,7 @@ export type Database = {
           slot_id?: string | null
           status?: Database["public"]["Enums"]["booking_status"]
           subtotal_kobo?: number
+          terms_accepted_at?: string | null
           ticket_type_id?: string | null
           total_kobo?: number
           updated_at?: string
@@ -198,8 +214,15 @@ export type Database = {
           cancelled_at?: string | null
           checked_in_at?: string | null
           created_at?: string
+          custom_answers?: Json
+          delivery_fee_kobo?: number
+          delivery_method?: string
+          escrow_completed_at?: string | null
+          escrow_started_at?: string | null
+          escrow_status?: string
           fee_kobo?: number
           guest_id?: string
+          guest_phone?: string | null
           id?: string
           listing_id?: string
           party_size?: number
@@ -211,6 +234,7 @@ export type Database = {
           slot_id?: string | null
           status?: Database["public"]["Enums"]["booking_status"]
           subtotal_kobo?: number
+          terms_accepted_at?: string | null
           ticket_type_id?: string | null
           total_kobo?: number
           updated_at?: string
@@ -545,6 +569,93 @@ export type Database = {
           },
         ]
       }
+      friend_group_members: {
+        Row: {
+          created_at: string
+          group_id: string
+          invited_by: string | null
+          role: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          invited_by?: string | null
+          role?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          invited_by?: string | null
+          role?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "friend_group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "friend_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friend_group_members_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friend_group_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      friend_groups: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_private: boolean
+          listed: boolean
+          name: string
+          owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_private?: boolean
+          listed?: boolean
+          name: string
+          owner_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_private?: boolean
+          listed?: boolean
+          name?: string
+          owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "friend_groups_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       friends: {
         Row: {
           created_at: string
@@ -645,21 +756,23 @@ export type Database = {
           suspended: boolean
           suspended_at: string | null
           suspended_reason: string | null
+          tradesafe_account_type: string | null
+          tradesafe_bank_last4: string | null
+          tradesafe_bank_name: string | null
+          tradesafe_last_error: string | null
+          tradesafe_ready_at: string | null
+          tradesafe_status: string
+          tradesafe_token_created_at: string | null
+          tradesafe_token_fingerprint: string | null
+          tradesafe_token_id: string | null
+          tradesafe_verified: boolean
+          tradesafe_verified_at: string | null
           updated_at: string
           user_id: string
           verified: boolean | null
           verified_at: string | null
           whatsapp_number: string | null
           whatsapp_verified_at: string | null
-          tradesafe_token_id: string | null
-          tradesafe_status: string
-          tradesafe_ready_at: string | null
-          tradesafe_last_error: string | null
-          tradesafe_token_created_at: string | null
-          tradesafe_bank_name: string | null
-          tradesafe_bank_last4: string | null
-          tradesafe_account_type: string | null
-          tradesafe_token_fingerprint: string | null
         }
         Insert: {
           address?: string | null
@@ -690,21 +803,23 @@ export type Database = {
           suspended?: boolean
           suspended_at?: string | null
           suspended_reason?: string | null
+          tradesafe_account_type?: string | null
+          tradesafe_bank_last4?: string | null
+          tradesafe_bank_name?: string | null
+          tradesafe_last_error?: string | null
+          tradesafe_ready_at?: string | null
+          tradesafe_status?: string
+          tradesafe_token_created_at?: string | null
+          tradesafe_token_fingerprint?: string | null
+          tradesafe_token_id?: string | null
+          tradesafe_verified?: boolean
+          tradesafe_verified_at?: string | null
           updated_at?: string
           user_id: string
           verified?: boolean | null
           verified_at?: string | null
           whatsapp_number?: string | null
           whatsapp_verified_at?: string | null
-          tradesafe_token_id?: string | null
-          tradesafe_status?: string
-          tradesafe_ready_at?: string | null
-          tradesafe_last_error?: string | null
-          tradesafe_token_created_at?: string | null
-          tradesafe_bank_name?: string | null
-          tradesafe_bank_last4?: string | null
-          tradesafe_account_type?: string | null
-          tradesafe_token_fingerprint?: string | null
         }
         Update: {
           address?: string | null
@@ -735,21 +850,23 @@ export type Database = {
           suspended?: boolean
           suspended_at?: string | null
           suspended_reason?: string | null
+          tradesafe_account_type?: string | null
+          tradesafe_bank_last4?: string | null
+          tradesafe_bank_name?: string | null
+          tradesafe_last_error?: string | null
+          tradesafe_ready_at?: string | null
+          tradesafe_status?: string
+          tradesafe_token_created_at?: string | null
+          tradesafe_token_fingerprint?: string | null
+          tradesafe_token_id?: string | null
+          tradesafe_verified?: boolean
+          tradesafe_verified_at?: string | null
           updated_at?: string
           user_id?: string
           verified?: boolean | null
           verified_at?: string | null
           whatsapp_number?: string | null
           whatsapp_verified_at?: string | null
-          tradesafe_token_id?: string | null
-          tradesafe_status?: string
-          tradesafe_ready_at?: string | null
-          tradesafe_last_error?: string | null
-          tradesafe_token_created_at?: string | null
-          tradesafe_bank_name?: string | null
-          tradesafe_bank_last4?: string | null
-          tradesafe_account_type?: string | null
-          tradesafe_token_fingerprint?: string | null
         }
         Relationships: [
           {
@@ -1184,6 +1301,7 @@ export type Database = {
           cover_url: string | null
           created_at: string
           currency: string
+          custom_questions: Json
           description: string | null
           duration_min: number | null
           health_score: number
@@ -1214,6 +1332,7 @@ export type Database = {
           cover_url?: string | null
           created_at?: string
           currency?: string
+          custom_questions?: Json
           description?: string | null
           duration_min?: number | null
           health_score?: number
@@ -1244,6 +1363,7 @@ export type Database = {
           cover_url?: string | null
           created_at?: string
           currency?: string
+          custom_questions?: Json
           description?: string | null
           duration_min?: number | null
           health_score?: number
@@ -1288,6 +1408,7 @@ export type Database = {
       notifications: {
         Row: {
           created_at: string
+          dedupe_key: string | null
           id: string
           payload: Json
           read_at: string | null
@@ -1296,6 +1417,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          dedupe_key?: string | null
           id?: string
           payload?: Json
           read_at?: string | null
@@ -1304,6 +1426,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          dedupe_key?: string | null
           id?: string
           payload?: Json
           read_at?: string | null
@@ -1327,9 +1450,13 @@ export type Database = {
           event_id: string
           event_type: string
           id: string
+          idempotency_key: string | null
           payload: Json
+          payload_hash: string | null
           processed_at: string | null
           provider: string
+          provider_state_timestamp: string | null
+          reconciliation_status: string
         }
         Insert: {
           created_at?: string
@@ -1337,9 +1464,13 @@ export type Database = {
           event_id: string
           event_type: string
           id?: string
+          idempotency_key?: string | null
           payload: Json
+          payload_hash?: string | null
           processed_at?: string | null
           provider?: string
+          provider_state_timestamp?: string | null
+          reconciliation_status?: string
         }
         Update: {
           created_at?: string
@@ -1347,47 +1478,96 @@ export type Database = {
           event_id?: string
           event_type?: string
           id?: string
+          idempotency_key?: string | null
           payload?: Json
+          payload_hash?: string | null
           processed_at?: string | null
           provider?: string
+          provider_state_timestamp?: string | null
+          reconciliation_status?: string
         }
         Relationships: []
       }
       payments: {
         Row: {
+          agent_token_id: string | null
           amount_kobo: number
           booking_id: string
+          buyer_token_id: string | null
+          checkout_expires_at: string | null
+          checkout_url: string | null
           created_at: string
           currency: string
+          delivery_at: string | null
+          disputed_at: string | null
+          funds_received_at: string | null
           id: string
           metadata: Json
           provider: string
+          provider_allocation_id: string | null
           provider_reference: string
+          provider_state: string | null
+          provider_transaction_id: string | null
+          released_at: string | null
+          seller_payout_kobo: number
+          seller_token_id: string | null
           status: string
+          tradesafe_fee_kobo: number
+          trove_commission_kobo: number
           updated_at: string
         }
         Insert: {
+          agent_token_id?: string | null
           amount_kobo: number
           booking_id: string
+          buyer_token_id?: string | null
+          checkout_expires_at?: string | null
+          checkout_url?: string | null
           created_at?: string
           currency?: string
+          delivery_at?: string | null
+          disputed_at?: string | null
+          funds_received_at?: string | null
           id?: string
           metadata?: Json
           provider?: string
+          provider_allocation_id?: string | null
           provider_reference: string
+          provider_state?: string | null
+          provider_transaction_id?: string | null
+          released_at?: string | null
+          seller_payout_kobo?: number
+          seller_token_id?: string | null
           status?: string
+          tradesafe_fee_kobo?: number
+          trove_commission_kobo?: number
           updated_at?: string
         }
         Update: {
+          agent_token_id?: string | null
           amount_kobo?: number
           booking_id?: string
+          buyer_token_id?: string | null
+          checkout_expires_at?: string | null
+          checkout_url?: string | null
           created_at?: string
           currency?: string
+          delivery_at?: string | null
+          disputed_at?: string | null
+          funds_received_at?: string | null
           id?: string
           metadata?: Json
           provider?: string
+          provider_allocation_id?: string | null
           provider_reference?: string
+          provider_state?: string | null
+          provider_transaction_id?: string | null
+          released_at?: string | null
+          seller_payout_kobo?: number
+          seller_token_id?: string | null
           status?: string
+          tradesafe_fee_kobo?: number
+          trove_commission_kobo?: number
           updated_at?: string
         }
         Relationships: [
@@ -1501,74 +1681,98 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          city: string | null
           created_at: string
+          discoverable: boolean
+          friends_going_optin: boolean
           full_name: string | null
           id: string
           is_admin: boolean
           is_host: boolean
+          is_private: boolean
           paystack_customer_code: string | null
           phone: string | null
           updated_at: string
+          username: string | null
         }
         Insert: {
           avatar_url?: string | null
+          city?: string | null
           created_at?: string
+          discoverable?: boolean
+          friends_going_optin?: boolean
           full_name?: string | null
           id: string
           is_admin?: boolean
           is_host?: boolean
+          is_private?: boolean
           paystack_customer_code?: string | null
           phone?: string | null
           updated_at?: string
+          username?: string | null
         }
         Update: {
           avatar_url?: string | null
+          city?: string | null
           created_at?: string
+          discoverable?: boolean
+          friends_going_optin?: boolean
           full_name?: string | null
           id?: string
           is_admin?: boolean
           is_host?: boolean
+          is_private?: boolean
           paystack_customer_code?: string | null
           phone?: string | null
           updated_at?: string
+          username?: string | null
         }
         Relationships: []
       }
       refunds: {
         Row: {
+          amendment_id: string | null
           amount_kobo: number
           approved_by: string | null
           booking_id: string
           created_at: string
           id: string
           payment_id: string
+          provider_payload: Json | null
           provider_reference: string | null
+          provider_state: string | null
           reason: string | null
           requested_by: string | null
           status: string
           updated_at: string
         }
         Insert: {
+          amendment_id?: string | null
           amount_kobo: number
           approved_by?: string | null
           booking_id: string
           created_at?: string
           id?: string
           payment_id: string
+          provider_payload?: Json | null
           provider_reference?: string | null
+          provider_state?: string | null
           reason?: string | null
           requested_by?: string | null
           status?: string
           updated_at?: string
         }
         Update: {
+          amendment_id?: string | null
           amount_kobo?: number
           approved_by?: string | null
           booking_id?: string
           created_at?: string
           id?: string
           payment_id?: string
+          provider_payload?: Json | null
           provider_reference?: string | null
+          provider_state?: string | null
           reason?: string | null
           requested_by?: string | null
           status?: string
@@ -1766,6 +1970,271 @@ export type Database = {
           },
           {
             foreignKeyName: "saves_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      share_link_clicks: {
+        Row: {
+          clicked_at: string
+          id: number
+          is_bot: boolean
+          link_id: string
+          referrer: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          clicked_at?: string
+          id?: never
+          is_bot?: boolean
+          link_id: string
+          referrer?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          clicked_at?: string
+          id?: never
+          is_bot?: boolean
+          link_id?: string
+          referrer?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "share_link_clicks_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "share_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      share_link_conversions: {
+        Row: {
+          attributed_at: string
+          booking_id: string
+          link_id: string
+        }
+        Insert: {
+          attributed_at?: string
+          booking_id: string
+          link_id: string
+        }
+        Update: {
+          attributed_at?: string
+          booking_id?: string
+          link_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "share_link_conversions_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "share_link_conversions_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "share_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      share_links: {
+        Row: {
+          channel: string
+          clicks: number
+          code: string
+          created_at: string
+          created_by: string
+          host_id: string
+          id: string
+          kind: string
+          last_clicked_at: string | null
+          listing_id: string
+        }
+        Insert: {
+          channel?: string
+          clicks?: number
+          code: string
+          created_at?: string
+          created_by: string
+          host_id: string
+          id?: string
+          kind: string
+          last_clicked_at?: string | null
+          listing_id: string
+        }
+        Update: {
+          channel?: string
+          clicks?: number
+          code?: string
+          created_at?: string
+          created_by?: string
+          host_id?: string
+          id?: string
+          kind?: string
+          last_clicked_at?: string | null
+          listing_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "share_links_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "share_links_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings_with_capacity"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      split_bills: {
+        Row: {
+          booking_id: string | null
+          created_at: string
+          fee_per_share_kobo: number
+          id: string
+          initiator_id: string
+          listing_id: string
+          provider: string
+          qty: number
+          status: Database["public"]["Enums"]["split_status"]
+          ticket_total_kobo: number
+          tradesafe_status: string
+          tradesafe_transaction_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          booking_id?: string | null
+          created_at?: string
+          fee_per_share_kobo?: number
+          id?: string
+          initiator_id: string
+          listing_id: string
+          provider?: string
+          qty: number
+          status?: Database["public"]["Enums"]["split_status"]
+          ticket_total_kobo: number
+          tradesafe_status?: string
+          tradesafe_transaction_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          booking_id?: string | null
+          created_at?: string
+          fee_per_share_kobo?: number
+          id?: string
+          initiator_id?: string
+          listing_id?: string
+          provider?: string
+          qty?: number
+          status?: Database["public"]["Enums"]["split_status"]
+          ticket_total_kobo?: number
+          tradesafe_status?: string
+          tradesafe_transaction_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "split_bills_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "split_bills_initiator_id_fkey"
+            columns: ["initiator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "split_bills_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "split_bills_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings_with_capacity"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      split_shares: {
+        Row: {
+          agreed_at: string | null
+          created_at: string
+          fee_kobo: number
+          id: string
+          paid_at: string | null
+          paystack_reference: string | null
+          provider: string
+          responded_at: string | null
+          share_kobo: number
+          split_id: string
+          status: Database["public"]["Enums"]["split_share_status"]
+          tradesafe_token_id: string | null
+          tradesafe_wallet_deposit_id: string | null
+          user_id: string
+        }
+        Insert: {
+          agreed_at?: string | null
+          created_at?: string
+          fee_kobo?: number
+          id?: string
+          paid_at?: string | null
+          paystack_reference?: string | null
+          provider?: string
+          responded_at?: string | null
+          share_kobo: number
+          split_id: string
+          status?: Database["public"]["Enums"]["split_share_status"]
+          tradesafe_token_id?: string | null
+          tradesafe_wallet_deposit_id?: string | null
+          user_id: string
+        }
+        Update: {
+          agreed_at?: string | null
+          created_at?: string
+          fee_kobo?: number
+          id?: string
+          paid_at?: string | null
+          paystack_reference?: string | null
+          provider?: string
+          responded_at?: string | null
+          share_kobo?: number
+          split_id?: string
+          status?: Database["public"]["Enums"]["split_share_status"]
+          tradesafe_token_id?: string | null
+          tradesafe_wallet_deposit_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "split_shares_split_id_fkey"
+            columns: ["split_id"]
+            isOneToOne: false
+            referencedRelation: "split_bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "split_shares_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -2031,6 +2500,152 @@ export type Database = {
           },
         ]
       }
+      tradesafe_disputes: {
+        Row: {
+          allocation_id: string
+          booking_id: string
+          created_at: string
+          evidence: Json
+          id: string
+          opened_by: string
+          payment_id: string
+          provider_state: string | null
+          reason: string
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          allocation_id: string
+          booking_id: string
+          created_at?: string
+          evidence?: Json
+          id?: string
+          opened_by: string
+          payment_id: string
+          provider_state?: string | null
+          reason: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          allocation_id?: string
+          booking_id?: string
+          created_at?: string
+          evidence?: Json
+          id?: string
+          opened_by?: string
+          payment_id?: string
+          provider_state?: string | null
+          reason?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tradesafe_disputes_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tradesafe_disputes_opened_by_fkey"
+            columns: ["opened_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tradesafe_disputes_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tradesafe_disputes_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tradesafe_tokens: {
+        Row: {
+          account_type: string | null
+          bank_last4: string | null
+          bank_name: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          owner_user_id: string
+          provider_reference: string | null
+          replaced_by: string | null
+          status: string
+          token_id: string
+          token_name: string | null
+          token_role: string
+          updated_at: string
+        }
+        Insert: {
+          account_type?: string | null
+          bank_last4?: string | null
+          bank_name?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          owner_user_id: string
+          provider_reference?: string | null
+          replaced_by?: string | null
+          status?: string
+          token_id: string
+          token_name?: string | null
+          token_role: string
+          updated_at?: string
+        }
+        Update: {
+          account_type?: string | null
+          bank_last4?: string | null
+          bank_name?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          owner_user_id?: string
+          provider_reference?: string | null
+          replaced_by?: string | null
+          status?: string
+          token_id?: string
+          token_name?: string | null
+          token_role?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tradesafe_tokens_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tradesafe_tokens_replaced_by_fkey"
+            columns: ["replaced_by"]
+            isOneToOne: false
+            referencedRelation: "tradesafe_tokens"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_verifications: {
         Row: {
           code: string
@@ -2062,6 +2677,180 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      willow_alert_rules: {
+        Row: {
+          comparison: string
+          created_at: string
+          description: string | null
+          enabled: boolean
+          id: number
+          name: string
+          notification_channels: string[]
+          query_sql: string
+          severity: string
+          threshold: number
+          updated_at: string
+          window_minutes: number
+        }
+        Insert: {
+          comparison: string
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          id?: number
+          name: string
+          notification_channels?: string[]
+          query_sql: string
+          severity?: string
+          threshold: number
+          updated_at?: string
+          window_minutes?: number
+        }
+        Update: {
+          comparison?: string
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          id?: number
+          name?: string
+          notification_channels?: string[]
+          query_sql?: string
+          severity?: string
+          threshold?: number
+          updated_at?: string
+          window_minutes?: number
+        }
+        Relationships: []
+      }
+      willow_audit_log: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          created_at: string
+          error_message: string | null
+          id: number
+          payload: Json
+          status: string
+          target_id: string
+          target_type: string
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: number
+          payload?: Json
+          status?: string
+          target_id: string
+          target_type: string
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: number
+          payload?: Json
+          status?: string
+          target_id?: string
+          target_type?: string
+        }
+        Relationships: []
+      }
+      willow_cost_snapshots: {
+        Row: {
+          app: string | null
+          captured_at: string
+          cost_zar_cents: number | null
+          id: number
+          metadata: Json | null
+          metric: string
+          service: string
+          unit: string
+          value: number
+        }
+        Insert: {
+          app?: string | null
+          captured_at?: string
+          cost_zar_cents?: number | null
+          id?: number
+          metadata?: Json | null
+          metric: string
+          service: string
+          unit: string
+          value: number
+        }
+        Update: {
+          app?: string | null
+          captured_at?: string
+          cost_zar_cents?: number | null
+          id?: number
+          metadata?: Json | null
+          metric?: string
+          service?: string
+          unit?: string
+          value?: number
+        }
+        Relationships: []
+      }
+      willow_deployments: {
+        Row: {
+          app: string
+          cf_deployment_id: string | null
+          commit_sha: string
+          created_at: string
+          deployed_by: string | null
+          environment: string
+          gh_run_id: number | null
+          id: number
+          preview_url: string | null
+          rollback_from_id: number | null
+          status: string
+        }
+        Insert: {
+          app: string
+          cf_deployment_id?: string | null
+          commit_sha: string
+          created_at?: string
+          deployed_by?: string | null
+          environment?: string
+          gh_run_id?: number | null
+          id?: number
+          preview_url?: string | null
+          rollback_from_id?: number | null
+          status?: string
+        }
+        Update: {
+          app?: string
+          cf_deployment_id?: string | null
+          commit_sha?: string
+          created_at?: string
+          deployed_by?: string | null
+          environment?: string
+          gh_run_id?: number | null
+          id?: number
+          preview_url?: string | null
+          rollback_from_id?: number | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "willow_deployments_rollback_from_id_fkey"
+            columns: ["rollback_from_id"]
+            isOneToOne: false
+            referencedRelation: "willow_deployments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "willow_deployments_rollback_from_id_fkey"
+            columns: ["rollback_from_id"]
+            isOneToOne: false
+            referencedRelation: "willow_latest_deployments"
             referencedColumns: ["id"]
           },
         ]
@@ -2185,16 +2974,151 @@ export type Database = {
           },
         ]
       }
+      willow_active_alerts: {
+        Row: {
+          comparison: string | null
+          created_at: string | null
+          description: string | null
+          id: number | null
+          name: string | null
+          notification_channels: string[] | null
+          query_sql: string | null
+          severity: string | null
+          threshold: number | null
+          updated_at: string | null
+          window_minutes: number | null
+        }
+        Insert: {
+          comparison?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: number | null
+          name?: string | null
+          notification_channels?: string[] | null
+          query_sql?: string | null
+          severity?: string | null
+          threshold?: number | null
+          updated_at?: string | null
+          window_minutes?: number | null
+        }
+        Update: {
+          comparison?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: number | null
+          name?: string | null
+          notification_channels?: string[] | null
+          query_sql?: string | null
+          severity?: string | null
+          threshold?: number | null
+          updated_at?: string | null
+          window_minutes?: number | null
+        }
+        Relationships: []
+      }
+      willow_audit_summary_7d: {
+        Row: {
+          action: string | null
+          count: number | null
+          first_occurrence: string | null
+          last_occurrence: string | null
+          status: string | null
+          target_type: string | null
+        }
+        Relationships: []
+      }
+      willow_cost_summary_30d: {
+        Row: {
+          app: string | null
+          period_end: string | null
+          period_start: string | null
+          service: string | null
+          snapshot_count: number | null
+          total_cost_zar_cents: number | null
+        }
+        Relationships: []
+      }
+      willow_latest_deployments: {
+        Row: {
+          app: string | null
+          cf_deployment_id: string | null
+          commit_sha: string | null
+          created_at: string | null
+          deployed_by: string | null
+          environment: string | null
+          gh_run_id: number | null
+          id: number | null
+          preview_url: string | null
+          rollback_from_id: number | null
+          status: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "willow_deployments_rollback_from_id_fkey"
+            columns: ["rollback_from_id"]
+            isOneToOne: false
+            referencedRelation: "willow_deployments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "willow_deployments_rollback_from_id_fkey"
+            columns: ["rollback_from_id"]
+            isOneToOne: false
+            referencedRelation: "willow_latest_deployments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       accept_team_invite: { Args: { p_token: string }; Returns: string }
+      attribute_booking_share: {
+        Args: { p_booking_id: string; p_code: string }
+        Returns: boolean
+      }
+      discover_groups: {
+        Args: { p_query?: string }
+        Returns: {
+          created_at: string
+          description: string
+          id: string
+          is_private: boolean
+          member_count: number
+          my_status: string
+          name: string
+          owner_id: string
+          owner_name: string
+        }[]
+      }
       expire_stale_pending_bookings: { Args: never; Returns: number }
+      expire_stale_splits: { Args: never; Returns: number }
       find_guest_by_email: {
         Args: { p_email: string }
         Returns: {
           avatar_url: string
           full_name: string
           id: string
+        }[]
+      }
+      find_guest_by_username: {
+        Args: { p_username: string }
+        Returns: {
+          avatar_url: string
+          full_name: string
+          id: string
+          username: string
+        }[]
+      }
+      fmt_rand: { Args: { p_cents: number }; Returns: string }
+      friends_close_by: {
+        Args: { p_everywhere?: boolean }
+        Returns: {
+          avatar_url: string
+          city: string
+          full_name: string
+          id: string
+          mutual_count: number
+          username: string
         }[]
       }
       friends_going: {
@@ -2213,6 +3137,40 @@ export type Database = {
           payout_id: string
         }[]
       }
+      get_share_link: {
+        Args: { p_channel?: string; p_kind?: string; p_listing_id: string }
+        Returns: {
+          channel: string
+          clicks: number
+          code: string
+          created_at: string
+          created_by: string
+          host_id: string
+          id: string
+          kind: string
+          last_clicked_at: string | null
+          listing_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "share_links"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      group_is_public: { Args: { p_group: string }; Returns: boolean }
+      group_members: {
+        Args: { p_group: string }
+        Returns: {
+          avatar_url: string
+          full_name: string
+          role: string
+          status: string
+          user_id: string
+          username: string
+        }[]
+      }
+      guest_display_name: { Args: { p_user: string }; Returns: string }
       host_audience_profiles: {
         Args: { p_host_id: string }
         Returns: {
@@ -2236,6 +3194,15 @@ export type Database = {
           status: Database["public"]["Enums"]["team_member_status"]
         }[]
       }
+      invite_to_group: {
+        Args: { p_group: string; p_user: string }
+        Returns: undefined
+      }
+      is_group_associate: { Args: { p_group: string }; Returns: boolean }
+      is_group_member: { Args: { p_group: string }; Returns: boolean }
+      is_group_owner: { Args: { p_group: string }; Returns: boolean }
+      is_hq_admin: { Args: never; Returns: boolean }
+      is_split_participant: { Args: { p_split: string }; Returns: boolean }
       my_friends: {
         Args: never
         Returns: {
@@ -2244,6 +3211,64 @@ export type Database = {
           full_name: string
           requested_by: string
           status: Database["public"]["Enums"]["friend_status"]
+          username: string
+        }[]
+      }
+      my_groups: {
+        Args: never
+        Returns: {
+          description: string
+          id: string
+          is_private: boolean
+          listed: boolean
+          member_count: number
+          my_role: string
+          my_status: string
+          name: string
+          owner_id: string
+        }[]
+      }
+      my_split_inbox: {
+        Args: never
+        Returns: {
+          booking_id: string
+          created_at: string
+          fee_kobo: number
+          initiator_id: string
+          initiator_name: string
+          listing_id: string
+          listing_title: string
+          my_status: Database["public"]["Enums"]["split_share_status"]
+          qty: number
+          share_id: string
+          share_kobo: number
+          split_id: string
+          split_status: Database["public"]["Enums"]["split_status"]
+          ticket_total_kobo: number
+        }[]
+      }
+      notify_user: {
+        Args: {
+          p_dedupe?: string
+          p_message: string
+          p_payload?: Json
+          p_title: string
+          p_type: string
+          p_user: string
+        }
+        Returns: string
+      }
+      record_share_click: {
+        Args: {
+          p_code: string
+          p_is_bot?: boolean
+          p_referrer?: string
+          p_user_agent?: string
+        }
+        Returns: {
+          channel: string
+          kind: string
+          listing_id: string
         }[]
       }
       reserve_booking: {
@@ -2258,12 +3283,67 @@ export type Database = {
         }
         Returns: string
       }
+      search_guests: {
+        Args: { p_query: string }
+        Returns: {
+          avatar_url: string
+          city: string
+          full_name: string
+          id: string
+          link_status: Database["public"]["Enums"]["friend_status"]
+          requested_by: string
+          username: string
+        }[]
+      }
+      send_booking_reminders: { Args: never; Returns: number }
+      send_split_reminders: { Args: never; Returns: number }
+      share_link_stats: {
+        Args: { p_host_id: string; p_listing_id?: string }
+        Returns: {
+          bookings: number
+          channel: string
+          clicks: number
+          code: string
+          created_at: string
+          created_by: string
+          kind: string
+          last_clicked_at: string
+          link_id: string
+          listing_id: string
+          listing_title: string
+          sales_kobo: number
+        }[]
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      split_participants: {
+        Args: { p_split: string }
+        Returns: {
+          avatar_url: string
+          fee_kobo: number
+          full_name: string
+          is_initiator: boolean
+          share_id: string
+          share_kobo: number
+          status: Database["public"]["Enums"]["split_share_status"]
+          user_id: string
+          username: string
+        }[]
+      }
+      submit_host_verification: {
+        Args: {
+          p_host_id: string
+          p_legal_name: string
+          p_registration: string
+        }
+        Returns: undefined
+      }
       team_can: { Args: { host: string; perm: string }; Returns: boolean }
       team_host_ids: { Args: never; Returns: string[] }
       trove_generate_slug: { Args: { input: string }; Returns: string }
+      trove_invoke_job: { Args: { p_function_name: string }; Returns: number }
       unaccent: { Args: { "": string }; Returns: string }
+      username_available: { Args: { p_username: string }; Returns: boolean }
     }
     Enums: {
       booking_mode: "event" | "reservation" | "slot" | "pass" | "rsvp"
@@ -2294,6 +3374,14 @@ export type Database = {
       listing_status: "draft" | "live" | "paused" | "archived"
       listing_type: "venue" | "event" | "experience" | "accommodation"
       payout_status: "pending" | "processing" | "paid" | "failed"
+      split_share_status: "pending" | "accepted" | "declined" | "paid"
+      split_status:
+        | "pending"
+        | "ready"
+        | "completed"
+        | "declined"
+        | "cancelled"
+        | "expired"
       team_invite_status: "pending" | "accepted" | "revoked" | "expired"
       team_member_status: "active" | "suspended"
       team_role: "admin" | "manager" | "finance" | "scanner"
@@ -2313,12 +3401,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2342,11 +3430,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2367,11 +3455,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2392,11 +3480,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2409,11 +3497,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2455,6 +3543,15 @@ export const Constants = {
       listing_status: ["draft", "live", "paused", "archived"],
       listing_type: ["venue", "event", "experience", "accommodation"],
       payout_status: ["pending", "processing", "paid", "failed"],
+      split_share_status: ["pending", "accepted", "declined", "paid"],
+      split_status: [
+        "pending",
+        "ready",
+        "completed",
+        "declined",
+        "cancelled",
+        "expired",
+      ],
       team_invite_status: ["pending", "accepted", "revoked", "expired"],
       team_member_status: ["active", "suspended"],
       team_role: ["admin", "manager", "finance", "scanner"],

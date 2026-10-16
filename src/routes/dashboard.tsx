@@ -105,9 +105,9 @@ function Dashboard() {
             </div>
 
             <h2 className="mt-4 max-w-3xl font-display text-3xl font-bold tracking-[-0.03em] md:text-4xl">
-              {hostProfile?.verified
-                ? `Your ${workspace.shortLabel.toLowerCase()} workspace is live and reading from real host data.`
-                : `Your ${workspace.shortLabel.toLowerCase()} workspace is now real, but still staged behind verification.`}
+              {hostProfile?.tradesafe_status === "escrow_ready"
+                ? `Your ${workspace.shortLabel.toLowerCase()} workspace is ready to sell.`
+                : `Your ${workspace.shortLabel.toLowerCase()} workspace is set up. Add your payout account to sell paid ${workspace.shortLabel.toLowerCase()}.`}
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
               {verification.message} The navigation, creation flow, and dashboard language now stay
@@ -118,11 +118,7 @@ function Dashboard() {
               <SignalCard
                 label={`Live ${workspace.shortLabel.toLowerCase()}`}
                 value={liveListings.length.toString()}
-                hint={
-                  hostProfile?.verified
-                    ? "Visible to guests now"
-                    : "Will go live after verification"
-                }
+                hint="Visible to guests now"
                 icon={Layers3}
               />
               <SignalCard
@@ -143,19 +139,19 @@ function Dashboard() {
           <div className="rounded-[1.75rem] border border-white/8 bg-black/20 p-5">
             <p className="eyebrow text-white/55">Next moves</p>
             <div className="mt-4 space-y-3">
-              <ActionRow
-                title={
-                  hostProfile?.verified
-                    ? `Publish another ${workspace.singularLabel.toLowerCase()}`
-                    : `Keep building ${workspace.shortLabel.toLowerCase()} drafts`
-                }
-                body={
-                  hostProfile?.verified
-                    ? `Use the real ${workspace.singularLabel.toLowerCase().toLowerCase()} flow to add more inventory.`
-                    : "Verification is still the gate for going live, so draft quality matters right now."
-                }
-                to="/listings/new"
-              />
+              {hostProfile?.tradesafe_status === "escrow_ready" ? (
+                <ActionRow
+                  title={`Publish another ${workspace.singularLabel.toLowerCase()}`}
+                  body={`Add more inventory. It goes live as soon as you create it.`}
+                  to="/listings/new"
+                />
+              ) : (
+                <ActionRow
+                  title="Set up your payout account"
+                  body="Guests pay into TradeSafe escrow, so paid listings need your payout account before they can go live."
+                  to="/settings"
+                />
+              )}
               <ActionRow
                 title={`Refine your ${workspace.profileLabel.toLowerCase()}`}
                 body="Tighten the public business story and keep the host identity consistent."

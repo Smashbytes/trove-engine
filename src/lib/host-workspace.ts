@@ -171,31 +171,37 @@ export function getHostWorkspace(hostType?: HostType | null) {
   return WORKSPACES[hostType ?? "venue"];
 }
 
+/**
+ * TROVE verification is the "Verified Partner" badge, not a licence to sell:
+ * any Spot can publish (paid listings only need a TradeSafe payout account).
+ */
 export function getVerificationCopy(kycStatus: KycStatus | null | undefined) {
   switch (kycStatus) {
     case "verified":
       return {
-        label: "Verified",
+        label: "Verified Partner",
         tone: "success" as const,
-        message: "Live publishing is unlocked across this workspace.",
+        message: "Your Spot carries the TROVE Verified Partner badge.",
       };
     case "submitted":
       return {
-        label: "Pending review",
+        label: "Badge review pending",
         tone: "warning" as const,
-        message: "You can keep building drafts while Trove reviews the account.",
+        message:
+          "TROVE is reviewing your documents for the Verified Partner badge. You can publish and sell in the meantime.",
       };
     case "rejected":
       return {
-        label: "Action needed",
+        label: "Badge: action needed",
         tone: "destructive" as const,
-        message: "Update the business details before anything can go live again.",
+        message:
+          "Your Verified Partner badge needs updated business details. You can still publish and sell.",
       };
     default:
       return {
         label: "Not verified",
         tone: "muted" as const,
-        message: "Finish verification to move listings from draft to live.",
+        message: "You can publish and sell now. Verification adds the TROVE Verified Partner badge.",
       };
   }
 }

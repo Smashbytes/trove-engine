@@ -835,6 +835,46 @@ export function useCheckInBooking() {
   });
 }
 
+/**
+ * Publish / pause / un-publish a listing. The database enforces the rules:
+ * paid listings need a TradeSafe-ready payout account (ESCROW_NOT_READY
+ * trigger) and a suspended Spot can't sell (RLS). Errors come back in words.
+ */
+export function useSetListingStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ listingId, status }: { listingId: string; status: "live" | "paused" | "draft" }) => {
+      const { data, error } = await supabase
+        .from("listings")
+        .update({ status })
+        .eq("id", listingId)
+        .select("id, status")
+        .maybeSingle();
+      if (error) {
+        if (error.message.includes("ESCROW_NOT_READY")) {
+          throw new Error(
+            "Set up your payout account first: paid listings need TradeSafe before they can go live.",
+          );
+        }
+        if (error.code === "42501") {
+          throw new Error("This Spot can't publish listings right now. Contact TROVE support.");
+        }
+        throw error;
+      }
+      if (!data) throw new Error("You don't have permission to change this listing.");
+      return data;
+    },
+    onSuccess: async (_data, vars) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: listingQueryKeys.all }),
+        queryClient.invalidateQueries({ queryKey: listingQueryKeys.detail(vars.listingId) }),
+        queryClient.invalidateQueries({ queryKey: ["dashboard-kpis"] }),
+      ]);
+    },
+  });
+}
+
 export function useDeleteListing() {
   const queryClient = useQueryClient();
 
