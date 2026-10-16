@@ -54,7 +54,7 @@ function JoinPage() {
   }, [isAuthenticated, isLoading, token, openAuthModal, refreshProfile, navigate]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-6">
+    <main className="flex min-h-screen items-center justify-center bg-background px-6">
       <div className="w-full max-w-md rounded-2xl border border-border/60 bg-card p-10 text-center shadow-card">
         <div className="mb-6 flex justify-center">
           <TroveLogo />
@@ -108,6 +108,6 @@ function JoinPage() {
           </>
         )}
       </div>
-    </div>
+    </main>
   );
 }

@@ -84,6 +84,23 @@ const IMG = {
   },
 };
 
+/** Responsive srcset for a Pexels URL: same crop, served at several widths so
+ *  phones don't download 1300-1900px images for ~350px slots. */
+function pexelsSrcSet(src: string) {
+  const url = new URL(src);
+  const w = Number(url.searchParams.get("w"));
+  const h = Number(url.searchParams.get("h"));
+  return [400, 800, 1200, 1600]
+    .filter((width) => width < w)
+    .concat(w)
+    .map((width) => {
+      url.searchParams.set("w", String(width));
+      url.searchParams.set("h", String(Math.round((h * width) / w)));
+      return `${url.toString()} ${width}w`;
+    })
+    .join(", ");
+}
+
 const TICKER = [
   "Johannesburg",
   "Cape Town",
@@ -176,16 +193,16 @@ function Landing() {
         <div className="mx-auto flex h-[68px] max-w-7xl items-center justify-between px-6">
           <TroveLogo />
           <nav className="hidden items-center gap-7 text-sm text-muted-foreground lg:flex">
-            <a href="#features" className="transition-colors hover:text-foreground">
+            <a href="#features" className="py-2 transition-colors hover:text-foreground">
               How it works
             </a>
-            <a href="#host-types" className="transition-colors hover:text-foreground">
+            <a href="#host-types" className="py-2 transition-colors hover:text-foreground">
               Host types
             </a>
-            <a href="#get-paid" className="transition-colors hover:text-foreground">
+            <a href="#get-paid" className="py-2 transition-colors hover:text-foreground">
               Get paid
             </a>
-            <a href="#partner" className="transition-colors hover:text-foreground">
+            <a href="#partner" className="py-2 transition-colors hover:text-foreground">
               Partner
             </a>
           </nav>
@@ -210,6 +227,8 @@ function Landing() {
           </div>
         </div>
       </header>
+
+      <main>
 
       {/* ── Hero ── */}
       <section className="relative overflow-hidden">
@@ -257,11 +276,13 @@ function Landing() {
 
           {/* Photo collage */}
           <Reveal delay={120} className="relative">
-            <div className="absolute -inset-6 rounded-[2.5rem] bg-gradient-brand opacity-15 blur-3xl" />
+            <div className="absolute -inset-6 rounded-hero bg-gradient-brand opacity-15 blur-3xl" />
             <div className="relative grid grid-cols-5 gap-3 md:gap-4">
               <div className="col-span-3 overflow-hidden rounded-3xl border border-white/10">
                 <img
                   src={IMG.heroDj.src}
+                  srcSet={pexelsSrcSet(IMG.heroDj.src)}
+                  sizes="(min-width: 768px) 340px, 50vw"
                   alt={IMG.heroDj.alt}
                   className="h-full min-h-[320px] w-full object-cover md:min-h-[420px]"
                   fetchPriority="high"
@@ -271,6 +292,8 @@ function Landing() {
                 <div className="overflow-hidden rounded-3xl border border-white/10">
                   <img
                     src={IMG.heroCrowd.src}
+                    srcSet={pexelsSrcSet(IMG.heroCrowd.src)}
+                    sizes="(min-width: 768px) 220px, 33vw"
                     alt={IMG.heroCrowd.alt}
                     className="h-full w-full object-cover"
                   />
@@ -278,6 +301,8 @@ function Landing() {
                 <div className="overflow-hidden rounded-3xl border border-white/10">
                   <img
                     src={IMG.heroRooftop.src}
+                    srcSet={pexelsSrcSet(IMG.heroRooftop.src)}
+                    sizes="(min-width: 768px) 220px, 33vw"
                     alt={IMG.heroRooftop.alt}
                     className="h-full w-full object-cover"
                   />
@@ -316,9 +341,11 @@ function Landing() {
         </Reveal>
 
         <div className="mt-12 grid items-center gap-8 lg:grid-cols-2 lg:gap-14">
-          <Reveal className="overflow-hidden rounded-[2rem] border border-white/8">
+          <Reveal className="overflow-hidden rounded-panel border border-white/8">
             <img
               src={IMG.rowListing.src}
+              srcSet={pexelsSrcSet(IMG.rowListing.src)}
+              sizes="(min-width: 1024px) 600px, 100vw"
               alt={IMG.rowListing.alt}
               loading="lazy"
               className="aspect-[13/9] w-full object-cover"
@@ -369,9 +396,11 @@ function Landing() {
               ))}
             </ul>
           </Reveal>
-          <Reveal className="order-1 overflow-hidden rounded-[2rem] border border-white/8 lg:order-2">
+          <Reveal className="order-1 overflow-hidden rounded-panel border border-white/8 lg:order-2">
             <img
               src={IMG.rowScanner.src}
+              srcSet={pexelsSrcSet(IMG.rowScanner.src)}
+              sizes="(min-width: 1024px) 600px, 100vw"
               alt={IMG.rowScanner.alt}
               loading="lazy"
               className="aspect-[13/9] w-full object-cover"
@@ -418,9 +447,11 @@ function Landing() {
               },
             ].map((tile, i) => (
               <Reveal key={tile.title} delay={i * 50} className={`${tile.span} group`}>
-                <div className="relative h-72 overflow-hidden rounded-[2rem] border border-white/8 md:h-80">
+                <div className="relative h-72 overflow-hidden rounded-panel border border-white/8 md:h-80">
                   <img
                     src={tile.img.src}
+                    srcSet={pexelsSrcSet(tile.img.src)}
+                    sizes="(min-width: 1024px) 720px, 100vw"
                     alt={tile.img.alt}
                     loading="lazy"
                     className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
@@ -443,7 +474,7 @@ function Landing() {
 
       {/* ── Get paid ── */}
       <section id="get-paid" className="scroll-mt-24 px-6 py-20 md:py-28">
-        <Reveal className="mx-auto max-w-7xl overflow-hidden rounded-[2.5rem] border border-white/8 bg-gradient-brand-soft">
+        <Reveal className="mx-auto max-w-7xl overflow-hidden rounded-hero border border-white/8 bg-gradient-brand-soft">
           <div className="grid gap-10 p-8 md:p-14 lg:grid-cols-[1fr_auto] lg:items-center">
             <div>
               <h2 className="max-w-xl font-brand text-3xl font-bold tracking-tight md:text-4xl">
@@ -574,6 +605,8 @@ function Landing() {
       <section className="relative overflow-hidden">
         <img
           src={IMG.ctaCapeTown.src}
+          srcSet={pexelsSrcSet(IMG.ctaCapeTown.src)}
+          sizes="100vw"
           alt={IMG.ctaCapeTown.alt}
           loading="lazy"
           className="absolute inset-0 h-full w-full object-cover"
@@ -599,6 +632,8 @@ function Landing() {
         </div>
       </section>
 
+      </main>
+
       {/* ── Footer ── */}
       <footer className="border-t border-white/5">
         <div className="mx-auto grid max-w-7xl gap-10 px-6 py-14 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
@@ -611,32 +646,32 @@ function Landing() {
           <div>
             <p className="text-sm font-semibold">Product</p>
             <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
-              <li><a href="#features" className="hover:text-foreground">How it works</a></li>
-              <li><a href="#host-types" className="hover:text-foreground">Host types</a></li>
-              <li><a href="#get-paid" className="hover:text-foreground">Get paid</a></li>
-              <li><a href="#partner" className="hover:text-foreground">Partner</a></li>
+              <li><a href="#features" className="inline-block py-1.5 hover:text-foreground">How it works</a></li>
+              <li><a href="#host-types" className="inline-block py-1.5 hover:text-foreground">Host types</a></li>
+              <li><a href="#get-paid" className="inline-block py-1.5 hover:text-foreground">Get paid</a></li>
+              <li><a href="#partner" className="inline-block py-1.5 hover:text-foreground">Partner</a></li>
             </ul>
           </div>
           <div>
             <p className="text-sm font-semibold">TROVE</p>
             <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
               <li>
-                <a href={SITE} target="_blank" rel="noreferrer" className="hover:text-foreground">
+                <a href={SITE} target="_blank" rel="noreferrer" className="inline-block py-1.5 hover:text-foreground">
                   welovetrove.co.za
                 </a>
               </li>
               <li>
-                <a href={GUEST_APP} target="_blank" rel="noreferrer" className="hover:text-foreground">
+                <a href={GUEST_APP} target="_blank" rel="noreferrer" className="inline-block py-1.5 hover:text-foreground">
                   Guest app
                 </a>
               </li>
               <li>
-                <a href={`${SITE}/pricing`} target="_blank" rel="noreferrer" className="hover:text-foreground">
+                <a href={`${SITE}/pricing`} target="_blank" rel="noreferrer" className="inline-block py-1.5 hover:text-foreground">
                   Pricing
                 </a>
               </li>
               <li>
-                <a href={`${SITE}/contact`} target="_blank" rel="noreferrer" className="hover:text-foreground">
+                <a href={`${SITE}/contact`} target="_blank" rel="noreferrer" className="inline-block py-1.5 hover:text-foreground">
                   Contact
                 </a>
               </li>
@@ -646,22 +681,22 @@ function Landing() {
             <p className="text-sm font-semibold">Legal</p>
             <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
               <li>
-                <a href={`${SITE}/legal/terms-of-use`} target="_blank" rel="noreferrer" className="hover:text-foreground">
+                <a href={`${SITE}/legal/terms-of-use`} target="_blank" rel="noreferrer" className="inline-block py-1.5 hover:text-foreground">
                   Terms of Use
                 </a>
               </li>
               <li>
-                <a href={`${SITE}/legal/privacy`} target="_blank" rel="noreferrer" className="hover:text-foreground">
+                <a href={`${SITE}/legal/privacy`} target="_blank" rel="noreferrer" className="inline-block py-1.5 hover:text-foreground">
                   Privacy Policy
                 </a>
               </li>
               <li>
-                <a href={`${SITE}/legal/refund-policy`} target="_blank" rel="noreferrer" className="hover:text-foreground">
+                <a href={`${SITE}/legal/refund-policy`} target="_blank" rel="noreferrer" className="inline-block py-1.5 hover:text-foreground">
                   Refund Policy
                 </a>
               </li>
               <li>
-                <a href={`${SITE}/legal/cookies`} target="_blank" rel="noreferrer" className="hover:text-foreground">
+                <a href={`${SITE}/legal/cookies`} target="_blank" rel="noreferrer" className="inline-block py-1.5 hover:text-foreground">
                   Cookies
                 </a>
               </li>
@@ -676,7 +711,7 @@ function Landing() {
                 href="https://www.instagram.com/trove_gem"
                 target="_blank"
                 rel="noreferrer"
-                className="hover:text-foreground"
+                className="inline-block py-1.5 hover:text-foreground"
               >
                 Instagram
               </a>
@@ -684,7 +719,7 @@ function Landing() {
                 href="https://www.tiktok.com/@trove7576"
                 target="_blank"
                 rel="noreferrer"
-                className="hover:text-foreground"
+                className="inline-block py-1.5 hover:text-foreground"
               >
                 TikTok
               </a>
@@ -692,7 +727,7 @@ function Landing() {
                 href="https://www.pexels.com"
                 target="_blank"
                 rel="noreferrer"
-                className="hover:text-foreground"
+                className="inline-block py-1.5 hover:text-foreground"
               >
                 Photography from Pexels
               </a>

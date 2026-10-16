@@ -17,13 +17,13 @@ function NotificationsPage() {
       <PageHeader
         eyebrow="Activity feed"
         title="Inbox"
-        subtitle="Verification, booking, and operational updates now read from the real notifications table for the signed-in user."
+        subtitle="Updates about your bookings, payouts and verification."
       />
 
       <div className="space-y-4">
         {notifications.length === 0 && (
-          <div className="rounded-[1.75rem] border border-border/60 bg-card p-12 text-center shadow-card">
-            <h3 className="font-display text-2xl font-semibold">No notifications yet</h3>
+          <div className="rounded-card border border-border/60 bg-card p-12 text-center shadow-card">
+            <h2 className="font-display text-2xl font-semibold">No notifications yet</h2>
             <p className="mt-2 text-sm text-muted-foreground">
               Once the platform starts writing notifications for this user, they will appear here in
               real time.
@@ -34,7 +34,7 @@ function NotificationsPage() {
         {notifications.map((notification) => (
           <article
             key={notification.id}
-            className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card"
+            className="rounded-card border border-border/60 bg-card p-6 shadow-card"
           >
             <div className="flex items-center justify-between gap-4">
               <div>
@@ -44,7 +44,7 @@ function NotificationsPage() {
                 </p>
               </div>
               <span
-                className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${notification.read_at ? "bg-white/10 text-white/70" : "bg-primary/12 text-primary"}`}
+                className={`rounded-full px-3 py-1 text-2xs font-semibold uppercase tracking-[0.18em] ${notification.read_at ? "bg-white/10 text-white/70" : "bg-primary/12 text-primary"}`}
               >
                 {notification.read_at ? "Read" : "Unread"}
               </span>

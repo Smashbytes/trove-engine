@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { getHostWorkspace, getVerificationCopy } from "@/lib/host-workspace";
 import { useDashboardKpis, useHostListings, useRecentBookings, useSalesByDay } from "@/lib/queries";
+import { formatZar } from "@/lib/format";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -33,19 +34,13 @@ export const Route = createFileRoute("/dashboard")({
       {
         name: "description",
         content:
-          "Role-specific host dashboard with real listings, bookings, verification state, and revenue activity.",
+          "Your TROVE Engine dashboard: listings, bookings, revenue and payouts at a glance.",
       },
     ],
   }),
   component: Dashboard,
 });
 
-const formatZar = (kobo: number) =>
-  new Intl.NumberFormat("en-ZA", {
-    style: "currency",
-    currency: "ZAR",
-    maximumFractionDigits: 0,
-  }).format(kobo / 100);
 
 function Dashboard() {
   const { hostProfile } = useAuth();
@@ -65,11 +60,11 @@ function Dashboard() {
   const isEmpty = !listingsQuery.isLoading && listings.length === 0;
 
   const heroActions = (
-    <Link to="/listings/new">
-      <Button className="bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95">
+    <Button className="bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95" asChild>
+      <Link to="/listings/new">
         Create {workspace.singularLabel.toLowerCase()}
-      </Button>
-    </Link>
+      </Link>
+    </Button>
   );
 
   return (
@@ -81,16 +76,16 @@ function Dashboard() {
         actions={heroActions}
       />
 
-      <section className="relative overflow-hidden rounded-[2rem] border border-white/8 bg-[linear-gradient(145deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] p-6 shadow-card">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,0,115,0.16),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(144,94,255,0.12),transparent_26%)]" />
+      <section className="relative overflow-hidden rounded-panel border border-white/8 bg-[linear-gradient(145deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] p-6 shadow-card">
+        <div className="pointer-events-none absolute inset-0 bg-corner-glow" />
         <div className="relative grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-primary/35 bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+              <span className="rounded-full border border-primary/35 bg-primary/10 px-3 py-1 text-2xs font-semibold uppercase tracking-[0.18em] text-primary">
                 {workspace.label}
               </span>
               <span
-                className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
+                className={`rounded-full px-3 py-1 text-2xs font-semibold uppercase tracking-[0.18em] ${
                   verification.tone === "success"
                     ? "bg-success/12 text-success"
                     : verification.tone === "warning"
@@ -110,8 +105,7 @@ function Dashboard() {
                 : `Your ${workspace.shortLabel.toLowerCase()} workspace is set up. Add your payout account to sell paid ${workspace.shortLabel.toLowerCase()}.`}
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {verification.message} The navigation, creation flow, and dashboard language now stay
-              aligned to this host type instead of exposing unrelated platform systems.
+              {verification.message}
             </p>
 
             <div className="mt-6 grid gap-3 md:grid-cols-3">
@@ -124,7 +118,7 @@ function Dashboard() {
               <SignalCard
                 label="Drafts in progress"
                 value={draftListings.length.toString()}
-                hint="Ready for internal preparation"
+                hint="Only you can see these until you publish"
                 icon={Clock3}
               />
               <SignalCard
@@ -136,7 +130,7 @@ function Dashboard() {
             </div>
           </div>
 
-          <div className="rounded-[1.75rem] border border-white/8 bg-black/20 p-5">
+          <div className="rounded-card border border-white/8 bg-black/20 p-5">
             <p className="eyebrow text-white/55">Next moves</p>
             <div className="mt-4 space-y-3">
               {hostProfile?.tradesafe_status === "escrow_ready" ? (
@@ -159,7 +153,7 @@ function Dashboard() {
               />
               <ActionRow
                 title={`Monitor ${workspace.bookingModeLabel.toLowerCase()}`}
-                body="Recent activity and issued codes update from the actual booking records."
+                body="See new bookings and check guests in at the door."
                 to="/scanner"
               />
             </div>
@@ -180,7 +174,7 @@ function Dashboard() {
         <MetricCard
           label={`${workspace.bookingModeLabel} · 7d`}
           value={kpis?.bookings7d?.toString() ?? "—"}
-          detail="Real bookings on this host account"
+          detail="Bookings in the last 7 days"
           icon={Ticket}
         />
         <MetricCard
@@ -198,12 +192,12 @@ function Dashboard() {
       </div>
 
       <div className="mt-6 grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
-        <div className="rounded-[1.75rem] border border-border/60 bg-card p-5 shadow-card">
+        <div className="rounded-card border border-border/60 bg-card p-5 shadow-card">
           <div className="mb-4 flex items-end justify-between gap-4">
             <div>
               <h3 className="font-display text-xl font-semibold">Revenue pulse</h3>
               <p className="text-xs text-muted-foreground">
-                The last 14 days of real booking revenue from this host workspace.
+                Your booking revenue over the last 14 days.
               </p>
             </div>
             <span className="text-xs text-muted-foreground">
@@ -260,10 +254,10 @@ function Dashboard() {
           </div>
         </div>
 
-        <div className="rounded-[1.75rem] border border-border/60 bg-card p-5 shadow-card">
+        <div className="rounded-card border border-border/60 bg-card p-5 shadow-card">
           <h3 className="font-display text-xl font-semibold">Recent activity</h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            Bookings are now pulled from the signed-in host account instead of seeded demo data.
+            Your latest bookings, newest first.
           </p>
           <div className="mt-5 space-y-3">
             {(recentBookingsQuery.data?.length ?? 0) === 0 && (
@@ -292,7 +286,7 @@ function Dashboard() {
                     {formatZar(booking.total_kobo)}
                   </span>
                 </div>
-                <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
+                <div className="mt-3 flex items-center justify-between text-caption text-muted-foreground">
                   <span className="capitalize">{booking.status}</span>
                   <span>{new Date(booking.created_at).toLocaleDateString("en-ZA")}</span>
                 </div>
@@ -300,28 +294,28 @@ function Dashboard() {
                   <Link
                     to="/support/new"
                     search={{ category: "refund", bookingId: booking.id }}
-                    className="rounded-full border border-border/60 bg-white/[0.03] px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground hover:border-primary/40 hover:text-primary"
+                    className="rounded-full border border-border/60 bg-white/[0.03] px-2.5 py-1 text-2xs font-medium uppercase tracking-wider text-muted-foreground hover:border-primary/40 hover:text-primary"
                   >
                     Refund
                   </Link>
                   <Link
                     to="/support/new"
                     search={{ category: "cancellation", bookingId: booking.id }}
-                    className="rounded-full border border-border/60 bg-white/[0.03] px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground hover:border-warning/40 hover:text-warning"
+                    className="rounded-full border border-border/60 bg-white/[0.03] px-2.5 py-1 text-2xs font-medium uppercase tracking-wider text-muted-foreground hover:border-warning/40 hover:text-warning"
                   >
                     Cancel
                   </Link>
                   <Link
                     to="/support/new"
                     search={{ category: "complaint", bookingId: booking.id }}
-                    className="rounded-full border border-border/60 bg-white/[0.03] px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground hover:border-destructive/40 hover:text-destructive"
+                    className="rounded-full border border-border/60 bg-white/[0.03] px-2.5 py-1 text-2xs font-medium uppercase tracking-wider text-muted-foreground hover:border-destructive/40 hover:text-destructive"
                   >
                     Complaint
                   </Link>
                   <Link
                     to="/support/new"
                     search={{ category: "flag", bookingId: booking.id }}
-                    className="rounded-full border border-border/60 bg-white/[0.03] px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground hover:border-destructive/40 hover:text-destructive"
+                    className="rounded-full border border-border/60 bg-white/[0.03] px-2.5 py-1 text-2xs font-medium uppercase tracking-wider text-muted-foreground hover:border-destructive/40 hover:text-destructive"
                   >
                     Flag
                   </Link>
@@ -333,7 +327,7 @@ function Dashboard() {
       </div>
 
       <div className="mt-6 grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-        <div className="rounded-[1.75rem] border border-border/60 bg-card p-5 shadow-card">
+        <div className="rounded-card border border-border/60 bg-card p-5 shadow-card">
           <div className="mb-4 flex items-end justify-between gap-4">
             <div>
               <h3 className="font-display text-xl font-semibold">{workspace.shortLabel}</h3>
@@ -369,7 +363,7 @@ function Dashboard() {
                     </p>
                   </div>
                   <span
-                    className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${statusTone(listing.status)}`}
+                    className={`rounded-full px-2.5 py-1 text-2xs font-semibold uppercase tracking-[0.18em] ${statusTone(listing.status)}`}
                   >
                     {listing.status}
                   </span>
@@ -390,27 +384,26 @@ function Dashboard() {
           </div>
         </div>
 
-        <div className="rounded-[1.75rem] border border-border/60 bg-card p-5 shadow-card">
+        <div className="rounded-card border border-border/60 bg-card p-5 shadow-card">
           <h3 className="font-display text-xl font-semibold">Pipeline health</h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            A simple rollout view so you know what is live, what is being prepared, and what is
-            shelved.
+            What guests can book now, what you're still preparing, and what you've archived.
           </p>
           <div className="mt-5 space-y-4">
             <PipelineRow
               label="Live"
               count={liveListings.length}
-              body="Visible to the guest-facing platform right now."
+              body="Guests can find and book these now."
             />
             <PipelineRow
               label="Draft"
               count={draftListings.length}
-              body="Still internal. Safe for refinement while you pitch and verify partners."
+              body="Only you can see these. Finish them and publish when ready."
             />
             <PipelineRow
               label="Archived"
               count={archivedListings.length}
-              body="Inactive inventory preserved for reference."
+              body="No longer bookable. Kept for your records."
             />
           </div>
         </div>
@@ -434,7 +427,7 @@ function MetricCard({
 }) {
   return (
     <div
-      className={`relative overflow-hidden rounded-[1.5rem] p-5 ${featured ? "bg-gradient-brand text-primary-foreground shadow-glow-sm" : "card-flat"}`}
+      className={`relative overflow-hidden rounded-tile p-5 ${featured ? "bg-gradient-brand text-primary-foreground shadow-glow-sm" : "card-flat"}`}
     >
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -466,7 +459,7 @@ function SignalCard({
   icon: typeof Layers3;
 }) {
   return (
-    <div className="rounded-[1.5rem] border border-white/8 bg-white/[0.04] p-4">
+    <div className="rounded-tile border border-white/8 bg-white/[0.04] p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="eyebrow text-white/55">{label}</p>
@@ -501,7 +494,7 @@ function ActionRow({ title, body, to }: { title: string; body: string; to: strin
 function ListingMiniStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+      <p className="text-2xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
         {label}
       </p>
       <p className="mt-1 font-display text-lg font-bold">{value}</p>
@@ -523,21 +516,20 @@ function PipelineRow({ label, count, body }: { label: string; count: number; bod
 
 function EmptyWorkspace() {
   return (
-    <div className="mt-6 rounded-[2rem] border border-primary/30 bg-gradient-brand-soft p-6">
+    <div className="mt-6 rounded-panel border border-primary/30 bg-gradient-brand-soft p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="eyebrow text-primary">First real record</p>
-          <h3 className="mt-1 font-display text-2xl font-semibold">Nothing seeded here anymore.</h3>
+          <p className="eyebrow text-primary">Get started</p>
+          <h3 className="mt-1 font-display text-2xl font-semibold">Create your first listing</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Start with a real host listing and the workspace will begin filling itself with actual
-            activity.
+            Once your first listing is up, your bookings, revenue and guests will show here.
           </p>
         </div>
-        <Link to="/listings/new">
-          <Button className="bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95">
+        <Button className="bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95" asChild>
+          <Link to="/listings/new">
             Create listing
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
     </div>
   );

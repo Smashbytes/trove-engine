@@ -53,7 +53,7 @@ function CalendarPage() {
       />
 
       <div className="grid gap-6 lg:grid-cols-[auto_1fr]">
-        <section className="rounded-[1.75rem] border border-border/60 bg-card p-5 shadow-card">
+        <section className="rounded-card border border-border/60 bg-card p-5 shadow-card">
           <Calendar
             mode="single"
             selected={selectedDate}
@@ -70,7 +70,7 @@ function CalendarPage() {
           </p>
         </section>
 
-        <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+        <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
           <h2 className="font-display text-lg font-semibold">
             {selectedDate ? dayLabel(selectedDate) : "Select a date"}
           </h2>

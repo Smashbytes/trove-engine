@@ -1,8 +1,9 @@
-import { useState, useEffect, memo } from "react";
+import { useState, useEffect, useRef, memo } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DESKTOP_QUERY, useMediaQuery } from "@/hooks/use-media-query";
 import { useAuth } from "@/lib/auth";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, ArrowRight, Sparkles, X, MailCheck } from "lucide-react";
@@ -28,12 +29,68 @@ const SLIDES = [
   },
 ];
 
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export function AuthModal({ open, dismissible = false }: { open: boolean; dismissible?: boolean }) {
   if (!open) return null;
+  return <AuthDialog dismissible={dismissible} />;
+}
+
+// Accessible full-screen dialog: focus moves in on open, Tab is trapped inside,
+// Escape closes it when it's dismissible, and focus returns to the trigger on
+// close. The page behind is made `inert` by EngineAuthGate (__root.tsx).
+function AuthDialog({ dismissible }: { dismissible: boolean }) {
+  const { closeAuthModal } = useAuth();
+  const ref = useRef<HTMLDivElement>(null);
+  // Desktop-only slideshow: don't mount it (or download its images) on phones.
+  const isDesktop = useMediaQuery(DESKTOP_QUERY);
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    ref.current?.querySelector<HTMLElement>("input")?.focus();
+    return () => previouslyFocused?.focus?.();
+  }, []);
+
+  // Escape is handled on window, not the dialog element: focus can briefly
+  // fall to <body> (e.g. while the submit button is disabled mid-request).
+  useEffect(() => {
+    if (!dismissible) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeAuthModal();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [dismissible, closeAuthModal]);
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== "Tab" || !ref.current) return;
+    const items = [...ref.current.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
+      (el) => el.offsetParent !== null,
+    );
+    if (items.length === 0) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex min-h-screen bg-background">
+    <div
+      ref={ref}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="auth-title"
+      onKeyDown={onKeyDown}
+      className="fixed inset-0 z-50 flex min-h-screen overflow-y-auto bg-background"
+    >
       <AuthFormPanel dismissible={dismissible} />
-      <SlideshowPanel />
+      {isDesktop && <SlideshowPanel />}
     </div>
   );
 }
@@ -63,12 +120,50 @@ function AuthFormPanel({ dismissible }: { dismissible: boolean }) {
   const [spotName, setSpotName] = useState("");
   const [code, setCode] = useState("");
   const [resendIn, setResendIn] = useState(0);
+  // Inline error under the active form. Toasts sit outside the dialog, so this
+  // is what screen-reader users actually hear (role="alert").
+  const [formError, setFormError] = useState<string | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (resendIn <= 0) return;
     const id = setTimeout(() => setResendIn((n) => n - 1), 1000);
     return () => clearTimeout(id);
   }, [resendIn]);
+
+  // When the view changes, clear the old error and move focus to its first
+  // field so keyboard users land in the right place.
+  useEffect(() => {
+    setFormError(null);
+    const id = setTimeout(() => panelRef.current?.querySelector<HTMLElement>("input")?.focus(), 260);
+    return () => clearTimeout(id);
+  }, [view, tab]);
+
+  function fail(message: string) {
+    setFormError(message);
+    toast.error(message);
+  }
+
+  // Every handler resets `busy` in finally: if a request throws (network drop)
+  // instead of returning an error, the button must not stay on "Signing in…".
+  async function run(task: () => Promise<void>) {
+    // The submit button is disabled while busy, which drops focus to <body>;
+    // put focus back where the user was once the request settles.
+    const focused = document.activeElement as HTMLElement | null;
+    setBusy(true);
+    setFormError(null);
+    try {
+      await task();
+    } catch (err) {
+      console.error("[auth]", err);
+      fail("We couldn't reach TROVE. Check your connection and try again.");
+    } finally {
+      setBusy(false);
+      requestAnimationFrame(() => {
+        if (focused?.isConnected && document.activeElement === document.body) focused.focus();
+      });
+    }
+  }
 
   function goToCodeStep() {
     setCode("");
@@ -89,93 +184,110 @@ function AuthFormPanel({ dismissible }: { dismissible: boolean }) {
     setShowPw(false);
   }
 
-  async function handleSignIn(e: React.FormEvent) {
+  function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true);
-    const { error, unconfirmed } = await signInWithEmail(email, password);
-    if (unconfirmed) {
-      // Account exists but the sign-up code was never entered: send a fresh
-      // one and take them straight to the code step.
-      const resent = await resendSignupCode(email);
-      setBusy(false);
-      if (resent.error) toast.error(resent.error);
-      else toast.success("Confirm your email first — we've sent you a new code.");
-      goToCodeStep();
-      return;
-    }
-    setBusy(false);
-    if (error) toast.error(error);
-    else afterSignIn();
+    void run(async () => {
+      const { error, unconfirmed } = await signInWithEmail(email, password);
+      if (unconfirmed) {
+        // Account exists but the sign-up code was never entered: send a fresh
+        // one and take them straight to the code step.
+        const resent = await resendSignupCode(email);
+        if (resent.error) fail(resent.error);
+        else toast.success("Confirm your email first — we've sent you a new code.");
+        goToCodeStep();
+        return;
+      }
+      if (error)
+        fail(
+          /invalid login credentials/i.test(error)
+            ? "That email and password don't match. Try again, or reset your password."
+            : error,
+        );
+      else afterSignIn();
+    });
   }
 
-  async function handleSignUp(e: React.FormEvent) {
+  function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true);
-    const { error, needsCode, alreadyRegistered } = await signUpWithEmail(email, password, spotName);
-    setBusy(false);
-    if (error) {
-      toast.error(error);
-      return;
-    }
-    if (alreadyRegistered) {
-      toast.error("That email already has a TROVE account — sign in instead.");
-      switchTab("signin");
-      return;
-    }
-    if (needsCode) {
-      toast.success("We've emailed you a verification code.");
-      goToCodeStep();
-      return;
-    }
-    // Email confirmation is off — already signed in.
-    navigate({ to: "/onboarding" });
+    void run(async () => {
+      const { error, needsCode, alreadyRegistered } = await signUpWithEmail(
+        email,
+        password,
+        spotName,
+      );
+      if (error) {
+        fail(error);
+        return;
+      }
+      if (alreadyRegistered) {
+        switchTab("signin");
+        fail("That email already has a TROVE account — sign in instead.");
+        return;
+      }
+      if (needsCode) {
+        toast.success("We've emailed you a verification code.");
+        goToCodeStep();
+        return;
+      }
+      // Email confirmation is off — already signed in.
+      navigate({ to: "/onboarding" });
+    });
   }
 
-  async function handleVerify(e: React.FormEvent) {
+  function handleVerify(e: React.FormEvent) {
     e.preventDefault();
     if (code.length < 6) return;
-    setBusy(true);
-    const { error } = await verifySignupCode(email, code);
-    setBusy(false);
-    if (error) {
-      toast.error(
-        /expired|invalid/i.test(error)
-          ? "That code is wrong or has expired. Check the latest email, or send a new code."
-          : error,
-      );
-      return;
-    }
-    toast.success("Email confirmed — let's set up your Spot.");
-    navigate({ to: "/onboarding" });
+    void run(async () => {
+      const { error } = await verifySignupCode(email, code);
+      if (error) {
+        fail(
+          /expired|invalid/i.test(error)
+            ? "That code is wrong or has expired. Check the latest email, or send a new code."
+            : error,
+        );
+        return;
+      }
+      toast.success("Email confirmed — let's set up your Spot.");
+      navigate({ to: "/onboarding" });
+    });
   }
 
-  async function handleResend() {
+  function handleResend() {
     if (resendIn > 0) return;
-    setBusy(true);
-    const { error } = await resendSignupCode(email);
-    setBusy(false);
-    if (error) toast.error(error);
-    else {
-      toast.success("New code sent — check your inbox (and spam).");
-      setCode("");
-      setResendIn(RESEND_COOLDOWN_S);
-    }
+    void run(async () => {
+      const { error } = await resendSignupCode(email);
+      if (error) fail(error);
+      else {
+        toast.success("New code sent — check your inbox (and spam).");
+        setCode("");
+        setResendIn(RESEND_COOLDOWN_S);
+      }
+    });
   }
 
-  async function handleForgot(e: React.FormEvent) {
+  function handleForgot(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true);
-    const { error } = await resetPassword(email);
-    setBusy(false);
-    if (error) toast.error(error);
-    else {
-      toast.success("Password reset email sent — check your inbox.");
-      setView("signin");
-    }
+    void run(async () => {
+      const { error } = await resetPassword(email);
+      if (error) fail(error);
+      else {
+        toast.success("Password reset email sent — check your inbox.");
+        setView("signin");
+      }
+    });
   }
+
+  const errorAlert = formError ? (
+    <p role="alert" className="text-sm font-medium text-destructive">
+      {formError}
+    </p>
+  ) : null;
 
   return (
-    <div className="relative flex w-full flex-col justify-center px-8 py-12 sm:px-12 lg:w-[46%] xl:px-16">
+    <div
+      ref={panelRef}
+      className="relative flex w-full flex-col justify-center px-6 py-12 sm:px-12 lg:w-[46%] xl:px-16"
+    >
       <div className="grid-bg pointer-events-none absolute inset-0 opacity-25" />
 
       {dismissible && (
@@ -211,7 +323,9 @@ function AuthFormPanel({ dismissible }: { dismissible: boolean }) {
               transition={{ duration: 0.22, ease: "easeOut" }}
             >
               <p className="eyebrow text-primary mb-1">Account recovery</p>
-              <h1 className="mb-1 font-display text-3xl font-bold">Reset password</h1>
+              <h1 id="auth-title" className="mb-1 font-display text-3xl font-bold">
+                Reset password
+              </h1>
               <p className="mb-7 text-sm text-muted-foreground">
                 Enter your email and we'll send you a reset link instantly.
               </p>
@@ -220,11 +334,13 @@ function AuthFormPanel({ dismissible }: { dismissible: boolean }) {
                   id="fp-email"
                   label="Email"
                   type="email"
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@email.com"
                   required
                 />
+                {errorAlert}
                 <GradientButton busy={busy} label="Send reset link" busyLabel="Sending…" />
                 <button
                   type="button"
@@ -250,7 +366,9 @@ function AuthFormPanel({ dismissible }: { dismissible: boolean }) {
                 <MailCheck className="h-5 w-5" />
               </div>
               <p className="eyebrow text-primary mb-1">One last step</p>
-              <h1 className="mb-1 font-display text-3xl font-bold">Check your email</h1>
+              <h1 id="auth-title" className="mb-1 font-display text-3xl font-bold">
+                Check your email
+              </h1>
               <p className="mb-7 text-sm text-muted-foreground">
                 We sent a verification code to{" "}
                 <span className="font-medium text-foreground">{email}</span>. Enter it below to
@@ -276,6 +394,7 @@ function AuthFormPanel({ dismissible }: { dismissible: boolean }) {
                     Codes expire after a while. If yours doesn&apos;t work, send a new one.
                   </p>
                 </div>
+                {errorAlert}
                 <button
                   type="submit"
                   disabled={busy || code.length < 6}
@@ -323,7 +442,7 @@ function AuthFormPanel({ dismissible }: { dismissible: boolean }) {
               <p className="eyebrow text-primary mb-1">
                 {tab === "signin" ? "Welcome back" : "Get started free"}
               </p>
-              <h1 className="mb-7 font-display text-3xl font-bold leading-tight">
+              <h1 id="auth-title" className="mb-7 font-display text-3xl font-bold leading-tight">
                 {tab === "signin" ? "Sign in to your Engine" : "Start your Spot"}
               </h1>
 
@@ -334,6 +453,7 @@ function AuthFormPanel({ dismissible }: { dismissible: boolean }) {
                     key={t}
                     type="button"
                     onClick={() => switchTab(t)}
+                    aria-pressed={tab === t}
                     className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-all duration-200 ${
                       tab === t
                         ? "bg-gradient-brand text-primary-foreground shadow-glow-sm"
@@ -360,6 +480,7 @@ function AuthFormPanel({ dismissible }: { dismissible: boolean }) {
                       id="si-email"
                       label="Email"
                       type="email"
+                      autoComplete="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="you@email.com"
@@ -373,19 +494,21 @@ function AuthFormPanel({ dismissible }: { dismissible: boolean }) {
                         <button
                           type="button"
                           onClick={() => setView("forgot")}
-                          className="text-xs text-primary transition-opacity hover:opacity-75"
+                          className="-my-1.5 py-1.5 text-xs text-primary transition-opacity hover:opacity-75"
                         >
                           Forgot password?
                         </button>
                       </div>
                       <PwInput
                         id="si-pw"
+                        autoComplete="current-password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         show={showPw}
                         onToggle={() => setShowPw((s) => !s)}
                       />
                     </div>
+                    {errorAlert}
                     <GradientButton busy={busy} label="Sign in" busyLabel="Signing in…" />
                   </motion.form>
                 )}
@@ -403,6 +526,8 @@ function AuthFormPanel({ dismissible }: { dismissible: boolean }) {
                     <AuthField
                       id="su-name"
                       label="Spot Name"
+                      autoComplete="organization"
+                      maxLength={80}
                       value={spotName}
                       onChange={(e) => setSpotName(e.target.value)}
                       placeholder="Your spot or business name"
@@ -412,6 +537,7 @@ function AuthFormPanel({ dismissible }: { dismissible: boolean }) {
                       id="su-email"
                       label="Email"
                       type="email"
+                      autoComplete="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="you@email.com"
@@ -423,6 +549,7 @@ function AuthFormPanel({ dismissible }: { dismissible: boolean }) {
                       </Label>
                       <PwInput
                         id="su-pw"
+                        autoComplete="new-password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         show={showPw}
@@ -431,6 +558,7 @@ function AuthFormPanel({ dismissible }: { dismissible: boolean }) {
                         minLength={8}
                       />
                     </div>
+                    {errorAlert}
                     <GradientButton
                       busy={busy}
                       label="Create account & continue"
@@ -472,11 +600,13 @@ function AuthFormPanel({ dismissible }: { dismissible: boolean }) {
 // Owns its own slideshow timer, independent of the form state.
 const SlideshowPanel = memo(function SlideshowPanel() {
   const [imgIdx, setImgIdx] = useState(0);
+  const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 
   useEffect(() => {
+    if (reducedMotion) return;
     const id = setInterval(() => setImgIdx((i) => (i + 1) % SLIDES.length), 4500);
     return () => clearInterval(id);
-  }, []);
+  }, [reducedMotion]);
 
   return (
     <div className="relative hidden overflow-hidden lg:flex lg:flex-1">
@@ -518,24 +648,31 @@ const SlideshowPanel = memo(function SlideshowPanel() {
           </motion.p>
         </AnimatePresence>
         <div className="flex items-center gap-2">
-          {SLIDES.map((_, i) => (
+          {SLIDES.map((slide, i) => (
+            // 24px hit area around the thin bar (WCAG 2.2 target size).
             <button
               key={i}
               type="button"
               onClick={() => setImgIdx(i)}
-              className={`h-[3px] rounded-full transition-all duration-500 ${
-                i === imgIdx
-                  ? "w-8 bg-primary shadow-glow-sm"
-                  : "w-2.5 bg-white/35 hover:bg-white/60"
-              }`}
-            />
+              aria-label={`Show slide ${i + 1}: ${slide.caption}`}
+              aria-current={i === imgIdx}
+              className="group flex h-6 items-center"
+            >
+              <span
+                className={`block h-[3px] rounded-full transition-all duration-500 ${
+                  i === imgIdx
+                    ? "w-8 bg-primary shadow-glow-sm"
+                    : "w-2.5 bg-white/35 group-hover:bg-white/60"
+                }`}
+              />
+            </button>
           ))}
         </div>
       </div>
 
       <div className="absolute right-6 top-6 z-10">
         <div className="rounded-full border border-white/20 bg-black/30 px-4 py-2 backdrop-blur-sm">
-          <span className="font-display text-[11px] font-semibold uppercase tracking-[0.18em] text-white/90">
+          <span className="font-display text-caption font-semibold uppercase tracking-[0.18em] text-white/90">
             Trove Engine
           </span>
         </div>
@@ -550,6 +687,8 @@ function AuthField({
   id,
   label,
   type = "text",
+  autoComplete,
+  maxLength,
   value,
   onChange,
   placeholder,
@@ -558,6 +697,8 @@ function AuthField({
   id: string;
   label: string;
   type?: string;
+  autoComplete?: string;
+  maxLength?: number;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
@@ -571,6 +712,8 @@ function AuthField({
       <Input
         id={id}
         type={type}
+        autoComplete={autoComplete}
+        maxLength={maxLength}
         value={value}
         onChange={onChange}
         placeholder={placeholder}
@@ -583,6 +726,7 @@ function AuthField({
 
 function PwInput({
   id,
+  autoComplete,
   value,
   onChange,
   show,
@@ -591,6 +735,7 @@ function PwInput({
   minLength,
 }: {
   id: string;
+  autoComplete?: string;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   show: boolean;
@@ -602,6 +747,7 @@ function PwInput({
     <div className="relative">
       <Input
         id={id}
+        autoComplete={autoComplete}
         type={show ? "text" : "password"}
         value={value}
         onChange={onChange}
@@ -613,7 +759,10 @@ function PwInput({
       <button
         type="button"
         onClick={onToggle}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+        aria-label={show ? "Hide password" : "Show password"}
+        aria-pressed={show}
+        aria-controls={id}
+        className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground"
       >
         {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
       </button>

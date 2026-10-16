@@ -16,18 +16,13 @@ import {
   useUpcomingEventGuests,
   type AudienceProfile,
 } from "@/lib/crm";
+import { formatZar } from "@/lib/format";
 
 export const Route = createFileRoute("/audience/")({
   head: () => ({ meta: [{ title: "Audience · Trove Engine" }] }),
   component: AudiencePage,
 });
 
-const formatZar = (kobo: number) =>
-  new Intl.NumberFormat("en-ZA", {
-    style: "currency",
-    currency: "ZAR",
-    maximumFractionDigits: 0,
-  }).format(kobo / 100);
 
 const formatDate = (value: string | null) =>
   value
@@ -98,9 +93,9 @@ function EmptyState({
   body: string;
 }) {
   return (
-    <div className="rounded-[1.75rem] border border-border/60 bg-card p-12 text-center shadow-card">
+    <div className="rounded-card border border-border/60 bg-card p-12 text-center shadow-card">
       <Icon className="mx-auto h-8 w-8 text-muted-foreground" />
-      <h3 className="mt-3 font-display text-lg font-semibold">{title}</h3>
+      <h2 className="mt-3 font-display text-lg font-semibold">{title}</h2>
       <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">{body}</p>
     </div>
   );
@@ -187,7 +182,7 @@ function AudiencePage() {
               body="When people follow your spot in the Trove app they'll show up here. Share your profile to grow your audience."
             />
           ) : (
-            <ul className="divide-y divide-border/60 overflow-hidden rounded-[1.75rem] border border-border/60 bg-card shadow-card">
+            <ul className="divide-y divide-border/60 overflow-hidden rounded-card border border-border/60 bg-card shadow-card">
               {followers.map((follower) => {
                 const profile = profiles?.get(follower.userId);
                 const isGuest = guestIds.has(follower.userId);
@@ -234,7 +229,7 @@ function AudiencePage() {
               body="Guests who buy tickets or book with you appear here, with their spend and history. Open one to manage them."
             />
           ) : (
-            <ul className="divide-y divide-border/60 overflow-hidden rounded-[1.75rem] border border-border/60 bg-card shadow-card">
+            <ul className="divide-y divide-border/60 overflow-hidden rounded-card border border-border/60 bg-card shadow-card">
               {guests.map((guest) => {
                 const profile = profiles?.get(guest.guestId);
                 return (
@@ -280,7 +275,7 @@ function AudiencePage() {
             upcoming.map((event) => (
               <section
                 key={event.listingId}
-                className="overflow-hidden rounded-[1.75rem] border border-border/60 bg-card shadow-card"
+                className="overflow-hidden rounded-card border border-border/60 bg-card shadow-card"
               >
                 <div className="flex items-center justify-between gap-4 border-b border-border/60 px-5 py-4">
                   <div className="min-w-0">

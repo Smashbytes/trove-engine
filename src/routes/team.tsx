@@ -160,7 +160,7 @@ function TeamManager() {
         {members.length === 0 && invites.length === 0 && (
           <div className="rounded-2xl border border-border/60 bg-card p-12 text-center shadow-card">
             <Users className="mx-auto h-8 w-8 text-muted-foreground" />
-            <h3 className="mt-3 font-display text-lg font-semibold">No team members yet</h3>
+            <h2 className="mt-3 font-display text-lg font-semibold">No team members yet</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Invite staff to help run your spot.
             </p>

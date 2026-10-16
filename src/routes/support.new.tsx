@@ -19,6 +19,7 @@ import {
   type TicketCategory,
   type TicketPriority,
 } from "@/lib/support";
+import { friendlyError } from "@/lib/errors";
 
 interface NewTicketSearch {
   category?: TicketCategory;
@@ -73,7 +74,7 @@ function NewTicketPage() {
       toast.success(`Ticket ${result.ticket_number} opened`);
       navigate({ to: "/support/$ticketId", params: { ticketId: result.id } });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not open ticket");
+      toast.error(friendlyError(err, "Could not open ticket"));
     }
   }
 
@@ -97,13 +98,17 @@ function NewTicketPage() {
 
       <form
         onSubmit={handleSubmit}
-        className="space-y-5 rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card"
+        className="space-y-5 rounded-card border border-border/60 bg-card p-6 shadow-card"
       >
         <div>
-          <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          <p id="ticket-category-label" className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             Category
-          </label>
-          <div className="mt-2 grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+          </p>
+          <div
+            role="group"
+            aria-labelledby="ticket-category-label"
+            className="mt-2 grid gap-2 md:grid-cols-2 lg:grid-cols-3"
+          >
             {TICKET_CATEGORIES.map((c) => {
               const active = c.value === category;
               return (
@@ -111,6 +116,7 @@ function NewTicketPage() {
                   key={c.value}
                   type="button"
                   onClick={() => setCategory(c.value)}
+                  aria-pressed={active}
                   className={`rounded-2xl border p-3 text-left transition-colors ${
                     active
                       ? "border-primary/55 bg-primary/8"
@@ -131,11 +137,13 @@ function NewTicketPage() {
 
         <div className="grid gap-5 md:grid-cols-[1fr_auto]">
           <div>
-            <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            <label htmlFor="ticket-title" className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Title
             </label>
             <input
+              id="ticket-title"
               type="text"
+              maxLength={140}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Refund needed for cancelled booking #ABC123"
@@ -143,11 +151,11 @@ function NewTicketPage() {
             />
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            <label htmlFor="ticket-priority" className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Priority
             </label>
             <Select value={priority} onValueChange={(v) => setPriority(v as TicketPriority)}>
-              <SelectTrigger className="mt-2 h-10 w-full rounded-lg border-border/60 bg-white/[0.03] px-3 text-sm text-foreground hover:border-primary/40 focus:border-primary/60 focus:ring-0 md:w-40">
+              <SelectTrigger id="ticket-priority" className="mt-2 h-10 w-full rounded-lg border-border/60 bg-white/[0.03] px-3 text-sm text-foreground hover:border-primary/40 focus:border-primary/60 focus:ring-0 md:w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="border-border/60 bg-card text-foreground">
@@ -166,10 +174,12 @@ function NewTicketPage() {
         </div>
 
         <div>
-          <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          <label htmlFor="ticket-details" className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             Details
           </label>
           <textarea
+            id="ticket-details"
+            maxLength={5000}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={5}
@@ -185,9 +195,9 @@ function NewTicketPage() {
         )}
 
         <div>
-          <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             Photos (optional, up to 6)
-          </label>
+          </p>
           <div className="mt-2 flex flex-wrap items-center gap-3">
             {files.map((file, idx) => (
               <div
@@ -202,21 +212,22 @@ function NewTicketPage() {
                 <button
                   type="button"
                   onClick={() => removeFile(idx)}
-                  className="absolute right-1 top-1 rounded-full bg-black/70 p-0.5 text-white/90 hover:bg-black"
+                  aria-label={`Remove ${file.name}`}
+                  className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white/90 hover:bg-black"
                 >
                   <X className="h-3 w-3" />
                 </button>
               </div>
             ))}
             {files.length < 6 && (
-              <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-border/60 bg-white/[0.02] text-muted-foreground hover:border-primary/40 hover:text-primary">
+              <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-border/60 bg-white/[0.02] text-muted-foreground hover:border-primary/40 hover:text-primary focus-within:ring-2 focus-within:ring-ring">
                 <ImagePlus className="h-5 w-5" />
-                <span className="mt-1 text-[10px]">Add photo</span>
+                <span className="mt-1 text-2xs">Add photo</span>
                 <input
                   type="file"
                   accept="image/*"
                   multiple
-                  className="hidden"
+                  className="sr-only"
                   onChange={(e) => handleFilesPicked(e.target.files)}
                 />
               </label>

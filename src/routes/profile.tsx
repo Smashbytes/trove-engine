@@ -5,13 +5,14 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/trove/AppShell";
 import { ImageUpload } from "@/components/trove/ImageUpload";
 import { PageHeader } from "@/components/trove/PageHeader";
+import { Field } from "@/components/trove/Field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth";
 import { getHostWorkspace, getVerificationCopy } from "@/lib/host-workspace";
 import { useHostListings, useUpdateWorkspaceProfile } from "@/lib/queries";
+import { friendlyError } from "@/lib/errors";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({ meta: [{ title: "Profile - Trove Engine" }] }),
@@ -96,7 +97,8 @@ function ProfilePage() {
   const listingsQuery = useHostListings();
   const updateProfile = useUpdateWorkspaceProfile();
 
-  const [fullName, setFullName] = useState(profile?.full_name ?? "");
+  // Spot name guests see on TROVE (host_profiles.display_name).
+  const [displayName, setDisplayName] = useState(hostProfile?.display_name ?? "");
   const [phone, setPhone] = useState(profile?.phone ?? "");
   const [slug, setSlug] = useState(hostProfile?.slug ?? "");
   const [city, setCity] = useState(hostProfile?.city ?? "");
@@ -107,7 +109,7 @@ function ProfilePage() {
   );
 
   useEffect(() => {
-    setFullName(profile?.full_name ?? "");
+    setDisplayName(hostProfile?.display_name ?? "");
     setPhone(profile?.phone ?? "");
     setSlug(hostProfile?.slug ?? "");
     setCity(hostProfile?.city ?? "");
@@ -119,14 +121,18 @@ function ProfilePage() {
   const listings = listingsQuery.data ?? [];
 
   const handleSave = async () => {
+    if (!displayName.trim()) {
+      toast.error("Add your Spot name. It's what guests see on TROVE.");
+      return;
+    }
     if (!slug.trim()) {
-      toast.error("Public slug is required.");
+      toast.error("Add a web address for your Spot.");
       return;
     }
 
     try {
       await updateProfile.mutateAsync({
-        fullName,
+        displayName,
         phone,
         slug,
         city,
@@ -136,7 +142,7 @@ function ProfilePage() {
       });
       toast.success("Workspace profile updated.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not update profile.");
+      toast.error(friendlyError(error, "Could not update profile."));
     }
   };
 
@@ -145,10 +151,10 @@ function ProfilePage() {
       <PageHeader
         eyebrow="Brand & business identity"
         title={workspace.profileLabel}
-        subtitle="This screen now edits the real host and profile records instead of a local mock persona."
+        subtitle="How your Spot appears to guests on TROVE."
       />
 
-      <div className="mb-6 overflow-hidden rounded-[2rem] border border-white/8 shadow-card">
+      <div className="mb-6 overflow-hidden rounded-panel border border-white/8 shadow-card">
         <div className="relative h-72 overflow-hidden">
           {heroUrl ? (
             <img
@@ -157,26 +163,26 @@ function ProfilePage() {
               className="h-full w-full object-cover"
             />
           ) : (
-            <div className="h-full w-full bg-[linear-gradient(140deg,rgba(255,0,115,0.22),rgba(121,57,255,0.18),rgba(255,255,255,0.02))]" />
+            <div className="h-full w-full bg-cover-placeholder" />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-card via-card/65 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-primary/35 bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+              <span className="rounded-full border border-primary/35 bg-primary/10 px-3 py-1 text-2xs font-semibold uppercase tracking-[0.18em] text-primary">
                 {workspace.label}
               </span>
               <span
-                className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${verificationTone(verification.tone)}`}
+                className={`rounded-full px-3 py-1 text-2xs font-semibold uppercase tracking-[0.18em] ${verificationTone(verification.tone)}`}
               >
                 {verification.label}
               </span>
             </div>
             <h2 className="mt-4 font-display text-3xl font-bold tracking-[-0.03em] md:text-4xl">
-              {fullName || workspace.label}
+              {displayName || workspace.label}
             </h2>
             <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
               {bio ||
-                "Use this profile to give the platform and future partners a real sense of the business behind this workspace."}
+                "Add a short bio so guests know what your Spot is about."}
             </p>
             {SOCIAL_FIELDS.some((field) => socials[field.key]?.trim()) && (
               <div className="mt-4 flex flex-wrap gap-2">
@@ -199,16 +205,23 @@ function ProfilePage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_0.42fr]">
-        <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+        <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
           <h2 className="font-display text-2xl font-semibold">Workspace identity</h2>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
-            <Field label="Public business name">
-              <Input value={fullName} onChange={(event) => setFullName(event.target.value)} />
+            <Field
+              label="Spot name (shown on TROVE)"
+              hint="What guests see on your profile, listings and tickets. Your registered business name for TradeSafe is in Settings."
+            >
+              <Input
+                value={displayName}
+                onChange={(event) => setDisplayName(event.target.value)}
+                maxLength={80}
+              />
             </Field>
             <Field label="Phone">
               <Input value={phone} onChange={(event) => setPhone(event.target.value)} />
             </Field>
-            <Field label="Public slug">
+            <Field label="Web address" hint="welovetrove.co.za/… · lowercase letters, numbers and dashes">
               <Input value={slug} onChange={(event) => setSlug(event.target.value)} />
             </Field>
             <Field label="City">
@@ -260,7 +273,7 @@ function ProfilePage() {
         </section>
 
         <aside className="space-y-6">
-          <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+          <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
             <p className="eyebrow text-primary">Status</p>
             <div className="mt-4 space-y-3">
               <MiniCard
@@ -276,7 +289,7 @@ function ProfilePage() {
               <MiniCard
                 label="Public URL"
                 value={`/${slug || "slug-missing"}`}
-                body="The host slug now comes from the real host profile row."
+                body="Your Spot's web address on TROVE."
               />
             </div>
           </section>
@@ -286,19 +299,11 @@ function ProfilePage() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-2">
-      <Label>{label}</Label>
-      {children}
-    </div>
-  );
-}
 
 function MiniCard({ label, value, body }: { label: string; value: string; body: string }) {
   return (
     <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+      <p className="text-2xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
         {label}
       </p>
       <p className="mt-2 font-display text-xl font-bold">{value}</p>

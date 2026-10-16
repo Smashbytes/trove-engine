@@ -3,6 +3,7 @@ import { ArrowLeft, LifeBuoy, Phone, StickyNote, Trash2 } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/trove/AppShell";
+import { Field as SharedField } from "@/components/trove/Field";
 import { PageHeader } from "@/components/trove/PageHeader";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -28,18 +29,14 @@ import {
   type TicketCategory,
   type TicketPriority,
 } from "@/lib/support";
+import { formatZar } from "@/lib/format";
+import { friendlyError } from "@/lib/errors";
 
 export const Route = createFileRoute("/audience/$guestId")({
   head: () => ({ meta: [{ title: "Guest · Audience · Trove Engine" }] }),
   component: ManageGuestPage,
 });
 
-const formatZar = (kobo: number) =>
-  new Intl.NumberFormat("en-ZA", {
-    style: "currency",
-    currency: "ZAR",
-    maximumFractionDigits: 0,
-  }).format(kobo / 100);
 
 const formatDate = (value: string) =>
   new Date(value).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" });
@@ -106,7 +103,7 @@ function ManageGuestPage() {
       await createNote.mutateAsync(noteBody);
       setNoteBody("");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not save note");
+      toast.error(friendlyError(err, "Could not save note"));
     }
   }
 
@@ -136,7 +133,7 @@ function ManageGuestPage() {
       toast.success(`Ticket ${result.ticket_number} opened for this guest`);
       navigate({ to: "/support/$ticketId", params: { ticketId: result.id } });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not open ticket");
+      toast.error(friendlyError(err, "Could not open ticket"));
     }
   }
 
@@ -158,7 +155,7 @@ function ManageGuestPage() {
       />
 
       {/* Identity + stats */}
-      <div className="mb-6 flex flex-col gap-5 rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-6 flex flex-col gap-5 rounded-card border border-border/60 bg-card p-6 shadow-card sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <Avatar className="h-14 w-14">
             {profile?.avatar_url && <AvatarImage src={profile.avatar_url} alt={guestName} />}
@@ -190,7 +187,7 @@ function ManageGuestPage() {
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         {/* Bookings + ticket */}
         <div className="space-y-6">
-          <section className="overflow-hidden rounded-[1.75rem] border border-border/60 bg-card shadow-card">
+          <section className="overflow-hidden rounded-card border border-border/60 bg-card shadow-card">
             <div className="border-b border-border/60 px-5 py-4">
               <h2 className="font-display text-lg font-semibold">Bookings with you</h2>
             </div>
@@ -209,7 +206,7 @@ function ManageGuestPage() {
                       </p>
                     </div>
                     <span
-                      className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${
+                      className={`shrink-0 rounded-full px-2.5 py-1 text-2xs font-semibold uppercase tracking-[0.12em] ${
                         STATUS_TONE[booking.status] ?? "bg-muted text-muted-foreground"
                       }`}
                     >
@@ -224,7 +221,7 @@ function ManageGuestPage() {
             )}
           </section>
 
-          <section className="rounded-[1.75rem] border border-border/60 bg-card p-5 shadow-card">
+          <section className="rounded-card border border-border/60 bg-card p-5 shadow-card">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <LifeBuoy className="h-4 w-4 text-primary" />
@@ -336,7 +333,7 @@ function ManageGuestPage() {
         </div>
 
         {/* Internal notes */}
-        <section className="rounded-[1.75rem] border border-border/60 bg-card p-5 shadow-card">
+        <section className="rounded-card border border-border/60 bg-card p-5 shadow-card">
           <div className="flex items-center gap-2">
             <StickyNote className="h-4 w-4 text-primary" />
             <h2 className="font-display text-lg font-semibold">Internal notes</h2>
@@ -371,7 +368,7 @@ function ManageGuestPage() {
                 >
                   <p className="whitespace-pre-wrap text-sm leading-6">{note.body}</p>
                   <div className="mt-2 flex items-center justify-between">
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-caption text-muted-foreground">
                       {formatDateTime(note.created_at)}
                     </span>
                     <button
@@ -396,7 +393,7 @@ function ManageGuestPage() {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="text-right sm:text-left">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+      <p className="text-caption font-semibold uppercase tracking-[0.16em] text-muted-foreground">
         {label}
       </p>
       <p className="mt-1 font-display text-lg font-semibold">{value}</p>
@@ -406,11 +403,11 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div>
-      <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-        {label}
-      </label>
-      <div className="mt-2">{children}</div>
-    </div>
+    <SharedField
+      label={label}
+      labelClassName="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+    >
+      {children}
+    </SharedField>
   );
 }

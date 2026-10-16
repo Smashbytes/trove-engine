@@ -7,25 +7,21 @@ import { PageHeader } from "@/components/trove/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   useAddAvailability,
   useDeleteAvailability,
   useListing,
   useListingAvailability,
 } from "@/lib/queries";
+import { Field } from "@/components/trove/Field";
+import { friendlyError } from "@/lib/errors";
+import { formatZar, randsToCents } from "@/lib/format";
 
 export const Route = createFileRoute("/listings/$listingId/slots")({
   head: () => ({ meta: [{ title: "Slots · Listing · Trove Engine" }] }),
   component: ListingSlotsPage,
 });
 
-const formatZar = (kobo: number) =>
-  new Intl.NumberFormat("en-ZA", {
-    style: "currency",
-    currency: "ZAR",
-    maximumFractionDigits: 0,
-  }).format(kobo / 100);
 
 const dayKey = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -101,9 +97,9 @@ function ListingSlotsPage() {
       toast.error("Capacity must be a positive number.");
       return;
     }
-    const priceNum = price.trim() ? Number(price) : null;
-    if (priceNum !== null && (!Number.isFinite(priceNum) || priceNum < 0)) {
-      toast.error("Price must be a positive amount.");
+    const priceCents = price.trim() ? randsToCents(price) : null;
+    if (priceCents !== null && (Number.isNaN(priceCents) || priceCents < 0)) {
+      toast.error("Enter the price in Rands, e.g. 150 or 149.99.");
       return;
     }
 
@@ -113,13 +109,13 @@ function ListingSlotsPage() {
         startsAt,
         endsAt,
         capacityOverride,
-        priceOverrideKobo: priceNum !== null ? Math.round(priceNum * 100) : null,
+        priceOverrideKobo: priceCents,
       });
       toast.success("Slot added.");
       setCapacity("");
       setPrice("");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not add slot.");
+      toast.error(friendlyError(error, "We couldn't add this slot. Please try again."));
     }
   }
 
@@ -128,7 +124,7 @@ function ListingSlotsPage() {
       await deleteSlot.mutateAsync({ id, listingId });
       toast.success("Slot removed.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not remove slot.");
+      toast.error(friendlyError(error, "We couldn't remove this slot. Please try again."));
     }
   }
 
@@ -154,7 +150,7 @@ function ListingSlotsPage() {
 
       <div className="grid gap-6 lg:grid-cols-[auto_1fr]">
         {/* Calendar + add form */}
-        <section className="rounded-[1.75rem] border border-border/60 bg-card p-5 shadow-card">
+        <section className="rounded-card border border-border/60 bg-card p-5 shadow-card">
           <Calendar
             mode="single"
             selected={selectedDate}
@@ -198,11 +194,10 @@ function ListingSlotsPage() {
                   onChange={(e) => setCapacity(e.target.value)}
                 />
               </Slot>
-              <Slot label="Price override (ZAR)">
+              <Slot label="Price override (R)">
                 <Input
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
+                  type="text"
+                  inputMode="decimal"
                   placeholder="Listing default"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
@@ -221,7 +216,7 @@ function ListingSlotsPage() {
         </section>
 
         {/* Slots on selected day */}
-        <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+        <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
           <h2 className="font-display text-lg font-semibold">
             {selectedDate ? dayLabel(selectedDate.toISOString()) : "Select a date"}
           </h2>
@@ -271,9 +266,8 @@ function ListingSlotsPage() {
 
 function Slot({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-1.5">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
+    <Field label={label} className="space-y-1.5" labelClassName="text-xs text-muted-foreground">
       {children}
-    </div>
+    </Field>
   );
 }

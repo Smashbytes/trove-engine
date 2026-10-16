@@ -12,7 +12,7 @@ export const Route = createFileRoute("/support/")({
 
 const STATUS_TONE: Record<TicketStatus, string> = {
   open: "bg-warning/15 text-warning",
-  in_progress: "bg-[#00bfff]/15 text-[#00bfff]",
+  in_progress: "bg-info/15 text-info",
   resolved: "bg-success/15 text-success",
   closed: "bg-white/8 text-white/55",
 };
@@ -32,28 +32,28 @@ function SupportPage() {
         title="Get help from TROVE HQ"
         subtitle="Refunds, complaints, flagging, cancellations — open a ticket and the HQ team will pick it up."
         actions={
-          <Link to="/support/new">
-            <Button className="bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95">
+          <Button className="bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95" asChild>
+            <Link to="/support/new">
               <Plus className="mr-1.5 h-4 w-4" />
               New ticket
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         }
       />
 
       {tickets.length === 0 ? (
-        <div className="rounded-[1.75rem] border border-border/60 bg-card p-12 text-center shadow-card">
+        <div className="rounded-card border border-border/60 bg-card p-12 text-center shadow-card">
           <LifeBuoy className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-          <h3 className="font-display text-2xl font-semibold">No tickets yet</h3>
+          <h2 className="font-display text-2xl font-semibold">No tickets yet</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Need help with a booking, payout, or listing? Open your first ticket and HQ will respond
             with a status and updates here.
           </p>
-          <Link to="/support/new" className="mt-5 inline-block">
-            <Button className="bg-gradient-brand text-primary-foreground shadow-glow-sm">
+          <Button className="bg-gradient-brand text-primary-foreground shadow-glow-sm" asChild>
+            <Link to="/support/new" className="mt-5">
               Open a ticket
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       ) : (
         <div className="space-y-3">
@@ -70,15 +70,15 @@ function SupportPage() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+                      <span className="font-mono text-caption uppercase tracking-wider text-muted-foreground">
                         {ticket.ticket_number}
                       </span>
                       <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] ${STATUS_TONE[status]}`}
+                        className={`rounded-full px-2 py-0.5 text-2xs font-semibold uppercase tracking-[0.18em] ${STATUS_TONE[status]}`}
                       >
                         {status.replace("_", " ")}
                       </span>
-                      <span className="rounded-full bg-white/8 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white/65">
+                      <span className="rounded-full bg-white/8 px-2 py-0.5 text-2xs font-medium uppercase tracking-wider text-white/65">
                         {CATEGORY_LABEL[category] ?? category}
                       </span>
                     </div>
@@ -94,7 +94,7 @@ function SupportPage() {
                   <div className="text-right text-xs text-muted-foreground">
                     <p>{new Date(ticket.created_at).toLocaleDateString("en-ZA")}</p>
                     {ticket.attachment_urls && ticket.attachment_urls.length > 0 && (
-                      <p className="mt-1 text-[10px] uppercase tracking-wider">
+                      <p className="mt-1 text-2xs uppercase tracking-wider">
                         {ticket.attachment_urls.length} attachment
                         {ticket.attachment_urls.length === 1 ? "" : "s"}
                       </p>

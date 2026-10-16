@@ -2,6 +2,7 @@ import jsQR from "jsqr";
 import { Camera, ImageUp, Loader2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { friendlyError } from "@/lib/errors";
 
 interface BarcodeDetectorLike {
   detect(source: CanvasImageSource): Promise<Array<{ rawValue: string }>>;
@@ -195,7 +196,7 @@ export function QrScanner({ onDetected }: QrScannerProps) {
       if (result) { killStream(); setState("idle"); onDetected(result); }
       else { setErrMsg("No QR found. Try a clearer or closer crop."); setState("error"); }
     } catch (err) {
-      setErrMsg(err instanceof Error ? err.message : "Could not read that image.");
+      setErrMsg(friendlyError(err, "Could not read that image."));
       setState("error");
     } finally {
       if (fileRef.current) fileRef.current.value = "";
@@ -245,7 +246,7 @@ export function QrScanner({ onDetected }: QrScannerProps) {
 
         {/* Status pill */}
         <div
-          className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[9px] font-bold uppercase tracking-[0.3em]"
+          className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-2xs font-bold uppercase tracking-[0.3em]"
           style={{
             background: "rgba(0,0,0,0.65)",
             backdropFilter: "blur(8px)",
@@ -305,9 +306,9 @@ export function QrScanner({ onDetected }: QrScannerProps) {
               </div>
             )}
             {state === "idle" && (
-              <p className="text-xs leading-5 text-white/35">
-                Tap <strong className="text-white/55">Camera</strong> to open the live viewfinder or{" "}
-                <strong className="text-white/55">Upload</strong> a screenshot of a QR code.
+              <p className="text-xs leading-5 text-white/60">
+                Tap <strong className="text-white/85">Camera</strong> to open the live viewfinder or{" "}
+                <strong className="text-white/85">Upload</strong> a screenshot of a QR code.
               </p>
             )}
             {state === "error" && errMsg && (
@@ -327,7 +328,7 @@ export function QrScanner({ onDetected }: QrScannerProps) {
           onClick={state === "live" ? () => { killStream(); setState("idle"); } : startCamera}
           disabled={busy}
           className={cn(
-            "inline-flex h-12 items-center justify-center gap-2 rounded-xl text-[11px] font-bold uppercase tracking-[0.2em] transition-all disabled:opacity-40",
+            "inline-flex h-12 items-center justify-center gap-2 rounded-xl text-caption font-bold uppercase tracking-[0.2em] transition-all disabled:opacity-40",
             state === "live"
               ? "border border-white/15 bg-white/[0.05] text-white/80"
               : "bg-gradient-to-r from-[var(--primary)] to-[var(--violet,var(--primary))] text-white shadow-glow-sm",
@@ -341,7 +342,7 @@ export function QrScanner({ onDetected }: QrScannerProps) {
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={busy}
-          className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] text-[11px] font-bold uppercase tracking-[0.2em] text-white/80 transition-all hover:bg-white/[0.08] disabled:opacity-40"
+          className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.05] text-caption font-bold uppercase tracking-[0.2em] text-white/80 transition-all hover:bg-white/[0.08] disabled:opacity-40"
         >
           {state === "decoding" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageUp className="h-4 w-4" />}
           Upload

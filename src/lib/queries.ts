@@ -485,7 +485,8 @@ export function useCreateHostProfile() {
 }
 
 export interface UpdateWorkspaceProfileInput {
-  fullName: string;
+  /** The Spot name guests see (host_profiles.display_name). */
+  displayName: string;
   phone: string;
   slug: string;
   city: string;
@@ -523,15 +524,12 @@ export function useUpdateWorkspaceProfile() {
     mutationFn: async (input: UpdateWorkspaceProfileInput) => {
       if (!user || !activeHostId) throw new Error("Not authenticated");
 
-      // full_name / phone live on the OWNER's profile row (own-only RLS), so
-      // only update them when the owner is editing their own spot.
+      // phone lives on the OWNER's profile row (own-only RLS), so only update
+      // it when the owner is editing their own spot.
       if (isOwner) {
         const { error: profileError } = await supabase
           .from("profiles")
-          .update({
-            full_name: input.fullName.trim() || null,
-            phone: input.phone.trim() || null,
-          })
+          .update({ phone: input.phone.trim() || null })
           .eq("id", user.id);
         if (profileError) throw profileError;
       }
@@ -545,6 +543,9 @@ export function useUpdateWorkspaceProfile() {
       const { error: hostError } = await supabase
         .from("host_profiles")
         .update({
+          // The name guests see on TROVE. The registered legal name used by
+          // TradeSafe is separate and is not edited here.
+          display_name: input.displayName.trim(),
           slug: input.slug.trim(),
           city: input.city.trim() || null,
           bio: input.bio.trim() || null,

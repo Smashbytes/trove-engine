@@ -14,10 +14,11 @@ import {
   type TicketCategory,
   type TicketStatus,
 } from "@/lib/support";
+import { friendlyError } from "@/lib/errors";
 
 const STATUS_TONE: Record<TicketStatus, string> = {
   open: "bg-warning/15 text-warning",
-  in_progress: "bg-[#00bfff]/15 text-[#00bfff]",
+  in_progress: "bg-info/15 text-info",
   resolved: "bg-success/15 text-success",
   closed: "bg-white/8 text-white/55",
 };
@@ -91,7 +92,7 @@ function TicketDetailPage() {
       setReplyFiles([]);
       toast.success("Reply sent");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Reply failed");
+      toast.error(friendlyError(err, "Reply failed"));
     }
   }
 
@@ -144,14 +145,14 @@ function TicketDetailPage() {
         }
       />
 
-      <div className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+      <div className="rounded-card border border-border/60 bg-card p-6 shadow-card">
         <div className="flex flex-wrap items-center gap-2">
           <span
-            className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] ${STATUS_TONE[status]}`}
+            className={`rounded-full px-2.5 py-0.5 text-2xs font-semibold uppercase tracking-[0.18em] ${STATUS_TONE[status]}`}
           >
             {status.replace("_", " ")}
           </span>
-          <span className="rounded-full bg-white/8 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white/65">
+          <span className="rounded-full bg-white/8 px-2.5 py-0.5 text-2xs font-medium uppercase tracking-wider text-white/65">
             Priority: {ticket.priority}
           </span>
         </div>
@@ -207,12 +208,17 @@ function TicketDetailPage() {
       {status !== "closed" && status !== "resolved" && (
         <form
           onSubmit={handleReply}
-          className="space-y-3 rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card"
+          className="space-y-3 rounded-card border border-border/60 bg-card p-6 shadow-card"
         >
-          <label className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          <label
+            htmlFor="ticket-reply"
+            className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+          >
             Add a reply
           </label>
           <textarea
+            id="ticket-reply"
+            maxLength={5000}
             value={replyText}
             onChange={(e) => setReplyText(e.target.value)}
             rows={4}
@@ -233,21 +239,23 @@ function TicketDetailPage() {
                 <button
                   type="button"
                   onClick={() => setReplyFiles((p) => p.filter((_, i) => i !== idx))}
-                  className="absolute right-0.5 top-0.5 rounded-full bg-black/70 p-0.5 text-white/90 hover:bg-black"
+                  aria-label={`Remove ${file.name}`}
+                  className="absolute right-0.5 top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white/90 hover:bg-black"
                 >
                   <X className="h-3 w-3" />
                 </button>
               </div>
             ))}
             {replyFiles.length < 6 && (
-              <label className="flex h-16 w-16 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-border/60 bg-white/[0.02] text-muted-foreground hover:border-primary/40 hover:text-primary">
+              <label className="flex h-16 w-16 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-border/60 bg-white/[0.02] text-muted-foreground hover:border-primary/40 hover:text-primary focus-within:ring-2 focus-within:ring-ring">
                 <ImagePlus className="h-4 w-4" />
-                <span className="mt-0.5 text-[10px]">Add</span>
+                <span className="mt-0.5 text-2xs">Add</span>
                 <input
                   type="file"
                   accept="image/*"
                   multiple
-                  className="hidden"
+                  aria-label="Add photos to your reply"
+                  className="sr-only"
                   onChange={(e) => handleReplyFiles(e.target.files)}
                 />
               </label>

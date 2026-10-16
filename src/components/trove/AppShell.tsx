@@ -9,8 +9,9 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { DESKTOP_QUERY, useMediaQuery } from "@/hooks/use-media-query";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +28,28 @@ import { PayoutVerificationNotice } from "./PayoutVerificationNotice";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const isDesktop = useMediaQuery(DESKTOP_QUERY);
+  // On phones/tablets the sidebar is an off-canvas drawer. While it's closed
+  // it must be inert, otherwise Tab walks through invisible links.
+  const drawerHidden = !isDesktop && !mobileOpen;
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const asideRef = useRef<HTMLElement>(null);
+  const wasOpen = useRef(false);
+
+  useEffect(() => {
+    if (mobileOpen) {
+      wasOpen.current = true;
+      asideRef.current?.querySelector<HTMLElement>("a[href], button")?.focus();
+      const onKey = (e: KeyboardEvent) => {
+        if (e.key === "Escape") setMobileOpen(false);
+      };
+      window.addEventListener("keydown", onKey);
+      return () => window.removeEventListener("keydown", onKey);
+    }
+    // Return focus to the menu button after the drawer closes.
+    if (wasOpen.current && !isDesktop) menuButtonRef.current?.focus();
+    wasOpen.current = false;
+  }, [mobileOpen, isDesktop]);
   const {
     profile,
     hostProfile,
@@ -49,7 +72,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     navigate({ to: "/" });
   };
 
-  const initials = (profile?.full_name ?? "TR")
+  // The Spot name guests see; fall back to the sign-up name.
+  const spotName = hostProfile?.display_name?.trim() || profile?.full_name || "";
+  const initials = (spotName || "TR")
     .split(" ")
     .map((token) => token[0])
     .slice(0, 2)
@@ -59,17 +84,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen w-full bg-background">
       <aside
+        id="app-sidebar"
+        ref={asideRef}
+        aria-label="Main navigation"
+        inert={drawerHidden || undefined}
         className={`fixed inset-y-0 left-0 z-40 flex w-72 transform flex-col border-r border-sidebar-border bg-sidebar transition-transform lg:static lg:translate-x-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="flex h-16 shrink-0 items-center justify-between border-b border-sidebar-border px-5">
-          <Link to="/dashboard" onClick={() => setMobileOpen(false)}>
+          <Link to="/dashboard" onClick={() => setMobileOpen(false)} aria-label="TROVE Engine dashboard">
             <TroveLogo />
           </Link>
           <button
             type="button"
-            className="text-muted-foreground hover:text-foreground lg:hidden"
+            aria-label="Close menu"
+            className="-mr-2 flex h-10 w-10 items-center justify-center text-muted-foreground hover:text-foreground lg:hidden"
             onClick={() => setMobileOpen(false)}
           >
             <X className="h-5 w-5" />
@@ -137,7 +167,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   </p>
                 </div>
                 <span
-                  className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
+                  className={`rounded-full px-2.5 py-1 text-2xs font-semibold uppercase tracking-[0.18em] ${
                     verification.tone === "success"
                       ? "bg-success/15 text-success"
                       : verification.tone === "warning"
@@ -166,6 +196,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.to}
                   to={item.to}
+                  aria-current={active ? "page" : undefined}
                   onClick={() => setMobileOpen(false)}
                   className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
                     active
@@ -176,7 +207,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   {active && (
                     <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r bg-primary" />
                   )}
-                  <item.icon className={`h-4 w-4 ${active ? "text-primary" : ""}`} />
+                  <item.icon aria-hidden className={`h-4 w-4 ${active ? "text-primary" : ""}`} />
                   <span className="flex-1">{item.label}</span>
                 </Link>
               );
@@ -192,7 +223,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold">
-                  {profile?.full_name ?? "Trove host"}
+                  {spotName || "Trove host"}
                 </p>
                 <p className="truncate text-xs text-muted-foreground">
                   {hostProfile?.city ?? "Workspace still being set up"}
@@ -222,8 +253,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-16 items-center justify-between hairline-b bg-background/85 px-4 backdrop-blur-md lg:px-8">
           <button
+            ref={menuButtonRef}
             type="button"
-            className="text-foreground lg:hidden"
+            aria-label="Open menu"
+            aria-expanded={mobileOpen}
+            aria-controls="app-sidebar"
+            className="-ml-2 flex h-10 w-10 items-center justify-center text-foreground lg:hidden"
             onClick={() => setMobileOpen(true)}
           >
             <Menu className="h-5 w-5" />
@@ -234,15 +269,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex items-center gap-2">
             {can("listings.manage") && (
-              <Link to="/listings/new">
-                <Button
-                  size="sm"
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
-                >
+              <Button
+                size="sm"
+                className="bg-primary-fill text-primary-foreground hover:bg-primary-fill/90"
+                asChild
+              >
+                <Link to="/listings/new">
                   <Sparkles className="mr-1.5 h-4 w-4" />
                   New {workspace.singularLabel.toLowerCase()}
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             )}
           </div>
         </header>

@@ -19,6 +19,7 @@ import {
   useListingTickets,
   type HostTicket,
 } from "@/lib/queries";
+import { friendlyError } from "@/lib/errors";
 
 export const Route = createFileRoute("/scanner")({
   head: () => ({
@@ -27,7 +28,7 @@ export const Route = createFileRoute("/scanner")({
       {
         name: "description",
         content:
-          "Inspect real issued codes and booking activity from the signed-in Trove host account.",
+          "Check guests in at the door by scanning or typing their ticket code.",
       },
     ],
   }),
@@ -75,7 +76,7 @@ function ScannerPage() {
       await checkIn.mutateAsync({ bookingId, listingId: activeListingId });
       toast.success("Guest checked in.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not check guest in.");
+      toast.error(friendlyError(error, "Could not check guest in."));
     }
   };
 
@@ -125,7 +126,7 @@ function ScannerPage() {
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <section
-          className="overflow-hidden rounded-[1.75rem] border bg-card shadow-card"
+          className="overflow-hidden rounded-card border bg-card shadow-card"
           style={{ borderColor: "var(--hairline-strong, rgba(255,255,255,0.10))" }}
         >
           {/* Instrument header: monospace eyebrow + the listing picker, side by side */}
@@ -133,10 +134,11 @@ function ScannerPage() {
             className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3"
             style={{ borderColor: "var(--hairline, rgba(255,255,255,0.06))" }}
           >
-            <p className="font-mono text-[10px] uppercase tracking-[0.32em] text-muted-foreground">
+            <p className="font-mono text-2xs uppercase tracking-[0.32em] text-muted-foreground">
               {workspace.scannerLabel}
             </p>
             <select
+              aria-label="Listing to scan for"
               value={activeListingId ?? ""}
               onChange={(event) => setListingId(event.target.value)}
               className="h-9 max-w-[260px] rounded-md border bg-transparent px-2.5 text-xs"
@@ -179,7 +181,7 @@ function ScannerPage() {
                   Inspect
                 </Button>
               </div>
-              <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              <p className="mt-2 font-mono text-2xs uppercase tracking-[0.22em] text-muted-foreground">
                 Camera, image upload, or manual code · all read the same ticket table
               </p>
             </div>
@@ -204,11 +206,11 @@ function ScannerPage() {
           </div>
         </section>
 
-        <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+        <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
           <h2 className="font-display text-2xl font-semibold">Lookup result</h2>
           {!lookupValue && workspace.hostType !== "accommodation" && (
             <p className="mt-3 text-sm text-muted-foreground">
-              Enter a ticket code to inspect a real issued record.
+              Enter a ticket code to look it up.
             </p>
           )}
           {workspace.hostType !== "accommodation" && lookupValue && !matchingTicket && (
@@ -248,7 +250,7 @@ function ScannerPage() {
         </section>
       </div>
 
-      <section className="mt-6 rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+      <section className="mt-6 rounded-card border border-border/60 bg-card p-6 shadow-card">
         <h2 className="font-display text-2xl font-semibold">
           {workspace.hostType === "accommodation" ? "Reservation records" : "Issued ticket records"}
         </h2>
@@ -326,15 +328,18 @@ function SmartphoneScannerView({
 
   return (
     <div className="flex flex-col gap-4 pb-8">
+      {/* Visually compact on phones, but every page keeps one h1. */}
+      <h1 className="sr-only">{isAccommodation ? "Reservation desk" : "Entry desk"}</h1>
       {/* Compact instrument header */}
       <div
         className="flex items-center justify-between gap-2 rounded-2xl border bg-card px-3 py-2"
         style={{ borderColor: "var(--hairline-strong, rgba(255,255,255,0.10))" }}
       >
-        <p className="font-mono text-[10px] uppercase tracking-[0.32em] text-muted-foreground">
+        <p className="font-mono text-2xs uppercase tracking-[0.32em] text-muted-foreground">
           {workspace.scannerLabel}
         </p>
         <select
+          aria-label="Listing to scan for"
           value={activeListingId ?? ""}
           onChange={(e) => setListingId(e.target.value)}
           className="h-8 max-w-[180px] truncate rounded-md border bg-transparent px-2 text-xs"
@@ -355,17 +360,17 @@ function SmartphoneScannerView({
       {/* Camera scanner — full width, square viewfinder */}
       {!isAccommodation && (
         <div
-          className="overflow-hidden rounded-[1.75rem] border bg-card shadow-card"
+          className="overflow-hidden rounded-card border bg-card shadow-card"
           style={{ borderColor: "var(--hairline-strong, rgba(255,255,255,0.10))" }}
         >
           <div
             className="flex items-center justify-between border-b px-4 py-2.5"
             style={{ borderColor: "var(--hairline, rgba(255,255,255,0.06))" }}
           >
-            <p className="font-mono text-[10px] uppercase tracking-[0.32em] text-muted-foreground">
+            <p className="font-mono text-2xs uppercase tracking-[0.32em] text-muted-foreground">
               Scan
             </p>
-            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            <p className="font-mono text-2xs uppercase tracking-[0.22em] text-muted-foreground">
               Camera or image
             </p>
           </div>
@@ -388,7 +393,7 @@ function SmartphoneScannerView({
 
       {/* Result card */}
       {!isAccommodation && (
-        <div className="rounded-[1.75rem] border border-border/60 bg-card p-4 shadow-card">
+        <div className="rounded-card border border-border/60 bg-card p-4 shadow-card">
           <p className="font-display text-lg font-semibold">Result</p>
           {!lookupValue && (
             <p className="mt-2 text-sm text-muted-foreground">Scan or type a code above.</p>
@@ -421,7 +426,7 @@ function SmartphoneScannerView({
 
       {/* Telemetry strip — instrument-style, monospace counters */}
       <div
-        className="grid grid-cols-3 overflow-hidden rounded-[1.5rem] border bg-card shadow-card"
+        className="grid grid-cols-3 overflow-hidden rounded-tile border bg-card shadow-card"
         style={{ borderColor: "var(--hairline-strong, rgba(255,255,255,0.10))" }}
       >
         <Telemetry label="Bookings" value={bookings.length} compact />
@@ -435,7 +440,7 @@ function SmartphoneScannerView({
       </div>
 
       {/* Records */}
-      <div className="rounded-[1.75rem] border border-border/60 bg-card p-4 shadow-card">
+      <div className="rounded-card border border-border/60 bg-card p-4 shadow-card">
         <p className="font-display text-lg font-semibold">
           {isAccommodation ? "Reservations" : "Ticket records"}
         </p>
@@ -489,7 +494,7 @@ function Telemetry({
           : undefined
       }
     >
-      <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
+      <p className="font-mono text-2xs uppercase tracking-[0.28em] text-muted-foreground">
         {label}
       </p>
       <p
@@ -535,7 +540,7 @@ function CheckInTable({
   }
 
   return (
-    <div className="mt-5 overflow-x-auto rounded-2xl border border-border/60">
+    <div className="mt-5 overflow-x-auto rounded-2xl border border-border/60" tabIndex={0} role="region" aria-label="Scrollable table">
       <table className="w-full text-sm">
         <thead className="bg-muted/35 text-xs uppercase tracking-[0.18em] text-muted-foreground">
           <tr>
@@ -583,7 +588,7 @@ function CheckInTable({
 
 function RecordsTable({ head, rows, empty }: { head: string[]; rows: string[][]; empty: string }) {
   return (
-    <div className="mt-5 overflow-x-auto rounded-2xl border border-border/60">
+    <div className="mt-5 overflow-x-auto rounded-2xl border border-border/60" tabIndex={0} role="region" aria-label="Scrollable table">
       <table className="w-full text-sm">
         <thead className="bg-muted/35 text-xs uppercase tracking-[0.18em] text-muted-foreground">
           <tr>
