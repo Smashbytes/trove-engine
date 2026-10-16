@@ -293,6 +293,7 @@ export function ShareKit({ listing }: { listing: ListingWithCapacity }) {
               )}
             </div>
             <Textarea
+              aria-label="Social caption"
               className="mt-2 min-h-[120px] text-sm"
               value={caption}
               onChange={(e) => setCaptionDraft(e.target.value)}

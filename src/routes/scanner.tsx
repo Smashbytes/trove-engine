@@ -168,6 +168,8 @@ function ScannerPage() {
               <QrScanner onDetected={handleScanned} />
               <div className="mt-4 flex items-stretch gap-2">
                 <Input
+                  aria-label="Ticket code"
+                  autoComplete="off"
                   placeholder="TRV-AB12CD34"
                   value={code}
                   onChange={(event) => setCode(event.target.value)}
@@ -378,6 +380,8 @@ function SmartphoneScannerView({
             <QrScanner onDetected={handleScanned} />
             <div className="mt-3 flex items-stretch gap-2">
               <Input
+                aria-label="Ticket code"
+                autoComplete="off"
                 placeholder="TRV-AB12CD34"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}

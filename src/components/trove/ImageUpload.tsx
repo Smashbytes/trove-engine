@@ -84,6 +84,9 @@ export function ImageUpload({
             JPG, PNG, or WebP, up to 8 MB. Or paste a public image URL below.
           </p>
           <Input
+            aria-label={`${label} URL`}
+            type="url"
+            inputMode="url"
             value={value}
             onChange={(event) => onChange(event.target.value)}
             placeholder="https://..."
