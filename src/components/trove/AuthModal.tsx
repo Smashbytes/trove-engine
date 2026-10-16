@@ -1,14 +1,17 @@
 import { useState, useEffect, memo } from "react";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, ArrowRight, Sparkles, X } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, Sparkles, X, MailCheck } from "lucide-react";
 
 const SITE = "https://www.welovetrove.co.za";
 
-type View = "signin" | "signup" | "forgot";
+type View = "signin" | "signup" | "forgot" | "verify";
+
+const RESEND_COOLDOWN_S = 60;
 
 const SLIDES = [
   {
@@ -39,8 +42,17 @@ export function AuthModal({ open, dismissible = false }: { open: boolean; dismis
 // email/password doesn't re-render the slideshow or its framer-motion tree —
 // that was causing dropped frames + unresponsive input on tablets and phones.
 function AuthFormPanel({ dismissible }: { dismissible: boolean }) {
-  const { signInWithEmail, signUpWithEmail, resetPassword, authModalView, closeAuthModal } =
-    useAuth();
+  const {
+    signInWithEmail,
+    signUpWithEmail,
+    verifySignupCode,
+    resendSignupCode,
+    resetPassword,
+    authModalView,
+    closeAuthModal,
+  } = useAuth();
+  const navigate = useNavigate();
+  const pathname = useRouterState({ select: (st) => st.location.pathname });
   const [tab, setTab] = useState<"signin" | "signup">(authModalView);
   const [view, setView] = useState<View>(authModalView);
   const [busy, setBusy] = useState(false);
@@ -49,6 +61,27 @@ function AuthFormPanel({ dismissible }: { dismissible: boolean }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [spotName, setSpotName] = useState("");
+  const [code, setCode] = useState("");
+  const [resendIn, setResendIn] = useState(0);
+
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const id = setTimeout(() => setResendIn((n) => n - 1), 1000);
+    return () => clearTimeout(id);
+  }, [resendIn]);
+
+  function goToCodeStep() {
+    setCode("");
+    setResendIn(RESEND_COOLDOWN_S);
+    setView("verify");
+  }
+
+  // The landing page is a public route, so nothing else moves a host on once
+  // they're signed in — send them into the app. On protected routes the modal
+  // is the auth wall and the page they asked for renders by itself.
+  function afterSignIn() {
+    if (pathname === "/") navigate({ to: "/dashboard" });
+  }
 
   function switchTab(v: "signin" | "signup") {
     setTab(v);
@@ -59,18 +92,74 @@ function AuthFormPanel({ dismissible }: { dismissible: boolean }) {
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
-    const { error } = await signInWithEmail(email, password);
+    const { error, unconfirmed } = await signInWithEmail(email, password);
+    if (unconfirmed) {
+      // Account exists but the sign-up code was never entered: send a fresh
+      // one and take them straight to the code step.
+      const resent = await resendSignupCode(email);
+      setBusy(false);
+      if (resent.error) toast.error(resent.error);
+      else toast.success("Confirm your email first — we've sent you a new code.");
+      goToCodeStep();
+      return;
+    }
     setBusy(false);
     if (error) toast.error(error);
+    else afterSignIn();
   }
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
-    const { error } = await signUpWithEmail(email, password, spotName);
+    const { error, needsCode, alreadyRegistered } = await signUpWithEmail(email, password, spotName);
+    setBusy(false);
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    if (alreadyRegistered) {
+      toast.error("That email already has a TROVE account — sign in instead.");
+      switchTab("signin");
+      return;
+    }
+    if (needsCode) {
+      toast.success("We've emailed you a verification code.");
+      goToCodeStep();
+      return;
+    }
+    // Email confirmation is off — already signed in.
+    navigate({ to: "/onboarding" });
+  }
+
+  async function handleVerify(e: React.FormEvent) {
+    e.preventDefault();
+    if (code.length < 6) return;
+    setBusy(true);
+    const { error } = await verifySignupCode(email, code);
+    setBusy(false);
+    if (error) {
+      toast.error(
+        /expired|invalid/i.test(error)
+          ? "That code is wrong or has expired. Check the latest email, or send a new code."
+          : error,
+      );
+      return;
+    }
+    toast.success("Email confirmed — let's set up your Spot.");
+    navigate({ to: "/onboarding" });
+  }
+
+  async function handleResend() {
+    if (resendIn > 0) return;
+    setBusy(true);
+    const { error } = await resendSignupCode(email);
     setBusy(false);
     if (error) toast.error(error);
-    else toast.success("Check your email to confirm your account.");
+    else {
+      toast.success("New code sent — check your inbox (and spam).");
+      setCode("");
+      setResendIn(RESEND_COOLDOWN_S);
+    }
   }
 
   async function handleForgot(e: React.FormEvent) {
@@ -148,8 +237,82 @@ function AuthFormPanel({ dismissible }: { dismissible: boolean }) {
             </motion.div>
           )}
 
+          {/* ── Enter the sign-up code ── */}
+          {view === "verify" && (
+            <motion.div
+              key="verify"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+            >
+              <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                <MailCheck className="h-5 w-5" />
+              </div>
+              <p className="eyebrow text-primary mb-1">One last step</p>
+              <h1 className="mb-1 font-display text-3xl font-bold">Check your email</h1>
+              <p className="mb-7 text-sm text-muted-foreground">
+                We sent a verification code to{" "}
+                <span className="font-medium text-foreground">{email}</span>. Enter it below to
+                confirm your account.
+              </p>
+              <form onSubmit={handleVerify} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="otp-code" className="text-sm font-medium">
+                    Verification code
+                  </Label>
+                  <Input
+                    id="otp-code"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    autoFocus
+                    placeholder="123456"
+                    aria-describedby="otp-help"
+                    className="h-14 rounded-xl border-border/60 bg-surface-1 text-center font-mono text-2xl tracking-[0.5em] focus:border-primary/60 focus:ring-1 focus:ring-primary/30"
+                  />
+                  <p id="otp-help" className="text-xs text-muted-foreground">
+                    Codes expire after a while. If yours doesn&apos;t work, send a new one.
+                  </p>
+                </div>
+                <button
+                  type="submit"
+                  disabled={busy || code.length < 6}
+                  className="group flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-brand py-3 text-sm font-semibold text-primary-foreground shadow-glow-sm transition-all hover:opacity-95 hover:shadow-glow disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {busy ? (
+                    "Checking…"
+                  ) : (
+                    <>
+                      Verify &amp; continue
+                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                    </>
+                  )}
+                </button>
+                <div className="flex items-center justify-between text-xs">
+                  <button
+                    type="button"
+                    onClick={handleResend}
+                    disabled={busy || resendIn > 0}
+                    className="text-primary transition-opacity hover:opacity-75 disabled:cursor-not-allowed disabled:text-muted-foreground"
+                  >
+                    {resendIn > 0 ? `Resend code in ${resendIn}s` : "Resend code"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => switchTab("signup")}
+                    className="text-muted-foreground transition-colors hover:text-foreground hover:underline underline-offset-4"
+                  >
+                    Use a different email
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          )}
+
           {/* ── Sign in / Sign up tabs ── */}
-          {view !== "forgot" && (
+          {view !== "forgot" && view !== "verify" && (
             <motion.div
               key="tabs"
               initial={{ opacity: 0, x: -20 }}

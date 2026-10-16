@@ -52,12 +52,25 @@ interface AuthContextValue {
   authModalView: "signin" | "signup";
   openAuthModal: (view?: "signin" | "signup") => void;
   closeAuthModal: () => void;
-  signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
+  /** `unconfirmed` = right password but the sign-up code was never entered. */
+  signInWithEmail: (
+    email: string,
+    password: string,
+  ) => Promise<{ error: string | null; unconfirmed: boolean }>;
+  /**
+   * Create the account. `needsCode` is true when Supabase sent a sign-up code
+   * (email confirmation on) — the caller must collect it via verifySignupCode.
+   * `alreadyRegistered` means the email already has a confirmed account.
+   */
   signUpWithEmail: (
     email: string,
     password: string,
     spotName: string,
-  ) => Promise<{ error: string | null }>;
+  ) => Promise<{ error: string | null; needsCode: boolean; alreadyRegistered: boolean }>;
+  /** Confirm a new account with the code from the sign-up email. Signs the user in. */
+  verifySignupCode: (email: string, code: string) => Promise<{ error: string | null }>;
+  /** Send the sign-up code again (also used when an unconfirmed user tries to sign in). */
+  resendSignupCode: (email: string) => Promise<{ error: string | null }>;
   resetPassword: (email: string) => Promise<{ error: string | null }>;
   updateEmail: (email: string) => Promise<{ error: string | null }>;
   updatePassword: (password: string) => Promise<{ error: string | null }>;
@@ -153,7 +166,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (session.user.id !== loadedForUserId) {
         loadedForUserId = session.user.id;
-        void fetchProfile(session.user.id, { showLoader: true });
+        const userId = session.user.id;
+        // Never call Supabase from inside this callback: supabase-js still holds
+        // its auth lock while listeners run, and every query asks that same
+        // lock for the access token. Querying here deadlocked
+        // signInWithPassword / verifyOtp — the session was saved but the call
+        // never resolved, so the modal sat on "Signing in…" forever.
+        setTimeout(() => {
+          if (!cancelled) void fetchProfile(userId, { showLoader: true });
+        }, 0);
       }
     });
 
@@ -250,19 +271,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signInWithEmail = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message ?? null };
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    const unconfirmed =
+      !!error && (error.code === "email_not_confirmed" || /email not confirmed/i.test(error.message));
+    return { error: error?.message ?? null, unconfirmed };
   };
 
   const signUpWithEmail = async (email: string, password: string, spotName: string) => {
     const trimmedSpotName = spotName.trim();
-    const { error } = await supabase.auth.signUp({
-      email,
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
       password,
       options: {
         data: { full_name: trimmedSpotName, spot_name: trimmedSpotName },
         emailRedirectTo: `${window.location.origin}/onboarding`,
       },
+    });
+    if (error) return { error: error.message, needsCode: false, alreadyRegistered: false };
+    // Supabase hides whether an email is taken: for an already-CONFIRMED
+    // account it returns a user with no identities and sends nothing.
+    const alreadyRegistered = !!data.user && (data.user.identities?.length ?? 0) === 0;
+    return { error: null, needsCode: !data.session && !alreadyRegistered, alreadyRegistered };
+  };
+
+  const verifySignupCode = async (email: string, code: string) => {
+    const { error } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: code.trim(),
+      type: "signup",
+    });
+    return { error: error?.message ?? null };
+  };
+
+  const resendSignupCode = async (email: string) => {
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: email.trim(),
+      options: { emailRedirectTo: `${window.location.origin}/onboarding` },
     });
     return { error: error?.message ?? null };
   };
@@ -333,6 +378,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         closeAuthModal: () => setShowAuthModal(false),
         signInWithEmail,
         signUpWithEmail,
+        verifySignupCode,
+        resendSignupCode,
         resetPassword,
         updateEmail,
         updatePassword,
