@@ -344,6 +344,8 @@ function ManageGuestPage() {
 
           <form onSubmit={submitNote} className="mt-4 space-y-2">
             <textarea
+              aria-label="New internal note"
+              maxLength={2000}
               value={noteBody}
               onChange={(e) => setNoteBody(e.target.value)}
               rows={3}
