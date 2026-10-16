@@ -8,8 +8,7 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { AuthModal } from "@/components/trove/AuthModal";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/lib/auth";
 
@@ -45,9 +44,14 @@ function AuthGateLoader() {
 
 import appCss from "../styles.css?url";
 
+// The auth dialog (and the animation library it uses, ~120 KB) is loaded on
+// demand so it isn't part of the bundle every visitor downloads first.
+const loadAuthModal = () => import("@/components/trove/AuthModal");
+const AuthModal = lazy(() => loadAuthModal().then((m) => ({ default: m.AuthModal })));
+
 function NotFoundComponent() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <main className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
         <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
@@ -57,13 +61,13 @@ function NotFoundComponent() {
         <div className="mt-6">
           <Link
             to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex items-center justify-center rounded-md bg-primary-fill px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-fill/90"
           >
             Go home
           </Link>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
 
@@ -127,12 +131,17 @@ function EngineAuthGate() {
   const { isAuthenticated, isLoading, hasWorkspace, profile, showAuthModal } = useAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  // An unknown URL should show the 404 page, not the sign-in wall.
+  const isNotFound = useRouterState({
+    select: (state) => state.matches.some((match) => match.globalNotFound),
+  });
   // /reset-password and /auth/confirm must be reachable without a full
   // session: Supabase drops the user there from an email link with a
   // one-shot token, and we need to render the form/verifier even while
   // the auth listener is still settling. /join is the team-invite acceptance
   // route — a signed-in user without their own spot must reach it.
   const isPublicRoute =
+    isNotFound ||
     pathname === "/" ||
     pathname === "/reset-password" ||
     pathname === "/auth/confirm" ||
@@ -150,6 +159,19 @@ function EngineAuthGate() {
     }
   }, [isAuthenticated, hasWorkspace, isLoading, navigate, pathname, profile, isPublicRoute]);
 
+  // Warm the auth dialog chunk once the page is idle (signed-out visitors only).
+  useEffect(() => {
+    if (isLoading || isAuthenticated) return;
+    const idle =
+      typeof window.requestIdleCallback === "function"
+        ? window.requestIdleCallback(() => void loadAuthModal())
+        : window.setTimeout(() => void loadAuthModal(), 2000);
+    return () => {
+      if (typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(idle);
+      else window.clearTimeout(idle);
+    };
+  }, [isLoading, isAuthenticated]);
+
   if (isLoading) {
     return <AuthGateLoader />;
   }
@@ -159,10 +181,20 @@ function EngineAuthGate() {
 
   return (
     <>
-      {canRenderOutlet && <Outlet />}
+      {/* While the auth dialog is open the page behind it is inert: no Tab
+          stops, no clicks, hidden from screen readers. */}
+      {canRenderOutlet && (
+        <div inert={shouldOpenAuthModal || undefined}>
+          <Outlet />
+        </div>
+      )}
       {/* On public routes the modal is opt-in (opened by a CTA or ?auth= link),
           so hosts can close it. On protected routes it is the auth wall. */}
-      <AuthModal open={shouldOpenAuthModal} dismissible={isPublicRoute} />
+      {shouldOpenAuthModal && (
+        <Suspense fallback={<div className="fixed inset-0 z-50 bg-background" />}>
+          <AuthModal open dismissible={isPublicRoute} />
+        </Suspense>
+      )}
       <Toaster theme="dark" position="top-right" richColors />
     </>
   );

@@ -4,7 +4,10 @@
 // We never call posthog.identify() — events stay anonymous — and the opt-out
 // persists locally. Events are tagged app:"engine" so the shared PostHog
 // project segments cleanly across the website, guest app and engine.
-import posthog from "posthog-js";
+//
+// The SDK is loaded with a dynamic import so it isn't part of the entry bundle
+// every visitor downloads before the page can render.
+import type { PostHog } from "posthog-js";
 import type { AnyRouter } from "@tanstack/react-router";
 
 const KEY = import.meta.env.VITE_POSTHOG_KEY as string | undefined;
@@ -13,30 +16,38 @@ const HOST =
   "https://eu.i.posthog.com";
 const STORAGE_KEY = "trove-engine:analytics";
 
-let initCalled = false;
+/** Resolves to the initialised client; null until init() has been called. */
+let client: Promise<PostHog> | null = null;
 
-function loaded(): boolean {
-  return (posthog as unknown as { __loaded?: boolean }).__loaded === true;
+function loaded(ph: PostHog): boolean {
+  return (ph as unknown as { __loaded?: boolean }).__loaded === true;
 }
 
-function init() {
-  if (!KEY || typeof window === "undefined" || initCalled) return;
-  initCalled = true;
-  posthog.init(KEY, {
-    api_host: HOST,
-    capture_pageview: false, // captured on router resolution instead
-    capture_pageleave: true,
-    person_profiles: "identified_only", // never identified → stays anonymous
-    autocapture: false, // pageviews + explicit events only
-    loaded: (ph) => {
-      // Clear a persisted SDK opt-out left over from an earlier session if
-      // the host has since re-enabled analytics in Settings.
-      if (isAnalyticsEnabled() && ph.has_opted_out_capturing()) {
-        ph.opt_in_capturing();
-      }
-    },
+function init(): Promise<PostHog> | null {
+  if (!KEY || typeof window === "undefined") return null;
+  if (client) return client;
+  client = import("posthog-js").then(({ default: posthog }) => {
+    posthog.init(KEY, {
+      api_host: HOST,
+      capture_pageview: false, // captured on router resolution instead
+      capture_pageleave: true,
+      person_profiles: "identified_only", // never identified → stays anonymous
+      autocapture: false, // pageviews + explicit events only
+      loaded: (ph) => {
+        // Honour the host's choice, including one made while the SDK was
+        // still downloading, and clear a stale SDK opt-out if they re-enabled.
+        if (!isAnalyticsEnabled()) ph.opt_out_capturing();
+        else if (ph.has_opted_out_capturing()) ph.opt_in_capturing();
+      },
+    });
+    posthog.register({ app: "engine" });
+    return posthog;
   });
-  posthog.register({ app: "engine" });
+  client.catch((error) => {
+    console.error("[analytics] failed to load PostHog:", error);
+    client = null;
+  });
+  return client;
 }
 
 export function isAnalyticsEnabled(): boolean {
@@ -55,26 +66,26 @@ export function setAnalyticsEnabled(enabled: boolean) {
     // Storage unavailable — the in-memory opt-out below still applies.
   }
   if (enabled) {
-    if (loaded()) {
-      if (posthog.has_opted_out_capturing()) posthog.opt_in_capturing();
-    } else {
-      init();
-    }
-  } else if (loaded() && !posthog.has_opted_out_capturing()) {
-    posthog.opt_out_capturing();
+    void init()?.then((ph) => {
+      if (loaded(ph) && ph.has_opted_out_capturing()) ph.opt_in_capturing();
+    });
+  } else {
+    // Only touch the SDK if it was ever loaded; never download it to opt out.
+    void client?.then((ph) => {
+      if (loaded(ph) && !ph.has_opted_out_capturing()) ph.opt_out_capturing();
+    });
   }
 }
 
 let lastUrl: string | null = null;
 
 function capturePageview() {
-  // capture() queues safely while the SDK is still async-loading, and no-ops
-  // when the host has opted out — only skip if init was never called at all.
-  if (!initCalled || !isAnalyticsEnabled()) return;
+  if (!client || !isAnalyticsEnabled()) return;
   const url = window.location.href;
   if (url === lastUrl) return; // dedupe: initial load may also emit onResolved
   lastUrl = url;
-  posthog.capture("$pageview", { $current_url: url });
+  // capture() no-ops when the host has opted out.
+  client.then((ph) => ph.capture("$pageview", { $current_url: url })).catch(() => {});
 }
 
 /** Call once from getRouter(); captures a $pageview per navigation. */

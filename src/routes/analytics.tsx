@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/trove/PageHeader";
 import { PermissionGate } from "@/components/trove/PermissionGate";
 import { useAuth } from "@/lib/auth";
 import { summarizeShareLinks, useShareLinks, type ShareLinkRow } from "@/lib/share-links";
+import { formatZar } from "@/lib/format";
 
 export const Route = createFileRoute("/analytics")({
   head: () => ({ meta: [{ title: "Analytics · Trove Engine" }] }),
@@ -88,20 +89,20 @@ function AnalyticsPage() {
         </div>
 
         {linksQuery.isLoading ? (
-          <div className="mt-6 rounded-[1.75rem] border border-border/60 bg-card p-12 text-center text-sm text-muted-foreground shadow-card">
+          <div className="mt-6 rounded-card border border-border/60 bg-card p-12 text-center text-sm text-muted-foreground shadow-card">
             Loading share stats…
           </div>
         ) : links.length === 0 ? (
-          <div className="mt-6 rounded-[1.75rem] border border-border/60 bg-card p-12 text-center shadow-card">
+          <div className="mt-6 rounded-card border border-border/60 bg-card p-12 text-center shadow-card">
             <Link2 className="mx-auto h-8 w-8 text-muted-foreground" />
-            <h3 className="mt-3 font-display text-lg font-semibold">No share links yet</h3>
+            <h2 className="mt-3 font-display text-lg font-semibold">No share links yet</h2>
             <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
               Open any listing and use its Share kit to grab a WhatsApp, Instagram or poster link.
               Clicks and bookings from each one show up here.
             </p>
             <Link
               to="/listings"
-              className="mt-4 inline-flex rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+              className="mt-4 inline-flex rounded-full bg-primary-fill px-4 py-2 text-sm font-semibold text-primary-foreground"
             >
               Go to listings
             </Link>
@@ -113,7 +114,7 @@ function AnalyticsPage() {
           </div>
         )}
 
-        <div className="mt-6 rounded-[1.75rem] border border-border/60 bg-card p-8 text-center shadow-card">
+        <div className="mt-6 rounded-card border border-border/60 bg-card p-8 text-center shadow-card">
           <BarChart3 className="mx-auto h-7 w-7 text-muted-foreground" />
           <h3 className="mt-3 font-display text-base font-semibold">More analytics on the way</h3>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
@@ -128,8 +129,8 @@ function AnalyticsPage() {
 
 function Kpi({ icon: Icon, label, value }: { icon: typeof Link2; label: string; value: string }) {
   return (
-    <div className="rounded-[1.5rem] border border-border/60 bg-card p-4 shadow-card">
-      <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+    <div className="rounded-tile border border-border/60 bg-card p-4 shadow-card">
+      <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
         <Icon className="h-3.5 w-3.5" />
         {label}
       </p>
@@ -141,7 +142,7 @@ function Kpi({ icon: Icon, label, value }: { icon: typeof Link2; label: string; 
 function BreakdownTable({ title, firstColumn, rows }: { title: string; firstColumn: string; rows: Bucket[] }) {
   const showSales = rows.some((r) => r.salesKobo != null);
   return (
-    <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+    <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
       <h2 className="font-display text-xl font-semibold">{title}</h2>
       <div className="mt-4 overflow-x-auto rounded-2xl border border-border/60">
         <table className="w-full text-sm">
@@ -180,11 +181,3 @@ function rate(bookings: number, clicks: number) {
   return `${((bookings / clicks) * 100).toFixed(bookings / clicks < 0.1 ? 1 : 0)}%`;
 }
 
-function formatZar(kobo: number) {
-  // `_kobo` is only the column name — values are ZAR cents.
-  return new Intl.NumberFormat("en-ZA", {
-    style: "currency",
-    currency: "ZAR",
-    maximumFractionDigits: 0,
-  }).format(kobo / 100);
-}

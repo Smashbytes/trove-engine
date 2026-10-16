@@ -147,8 +147,8 @@ function ResetPasswordPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-6 py-12">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,0,115,0.16),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(143,92,255,0.12),transparent_28%)]" />
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-6 py-12">
+      <div className="pointer-events-none absolute inset-0 bg-corner-glow" />
       <div className="grid-bg pointer-events-none absolute inset-0 opacity-25" />
 
       <motion.div
@@ -271,6 +271,6 @@ function ResetPasswordPage() {
           </>
         )}
       </motion.div>
-    </div>
+    </main>
   );
 }

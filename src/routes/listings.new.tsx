@@ -6,11 +6,13 @@ import { AppShell } from "@/components/trove/AppShell";
 import { ImageUpload } from "@/components/trove/ImageUpload";
 import { PageHeader } from "@/components/trove/PageHeader";
 import { PermissionGate } from "@/components/trove/PermissionGate";
+import { Field } from "@/components/trove/Field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth";
+import { friendlyError } from "@/lib/errors";
+import { randsToCents } from "@/lib/format";
 import { getHostWorkspace } from "@/lib/host-workspace";
 import { useCreateListing, useHostCategories } from "@/lib/queries";
 
@@ -20,13 +22,38 @@ export const Route = createFileRoute("/listings/new")({
       { title: "New Listing - Trove Engine" },
       {
         name: "description",
-        content:
-          "Create a real host listing that matches the signed-in Trove host type and verification state.",
+        content: "Create a new listing for your Spot on TROVE.",
       },
     ],
   }),
   component: NewListing,
 });
+
+// Repeating rows (tiers, slots, rooms, questions) need a stable React key.
+// Keying on an editable value remounts the row on every keystroke and the
+// input loses focus.
+function rowId() {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+const isPositiveInt = (value: string) => /^\d+$/.test(value.trim()) && Number(value) > 0;
+
+/** Validate every row; returns row-id → message for the rows that need fixing. */
+function validateRows<T extends { id: string }>(
+  rows: T[],
+  check: (row: T) => string | null,
+): Record<string, string> {
+  const errors: Record<string, string> = {};
+  for (const row of rows) {
+    const message = check(row);
+    if (message) errors[row.id] = message;
+  }
+  return errors;
+}
+
+const PRICE_HINT = "In Rands, e.g. 150 or 149.99";
 
 function NewListing() {
   const navigate = useNavigate();
@@ -50,7 +77,7 @@ function NewListing() {
   const [doorsOpen, setDoorsOpen] = useState("");
   const [doorsClose, setDoorsClose] = useState("");
   const [ticketTiers, setTicketTiers] = useState<
-    Array<{ name: string; price: string; capacity: string }>
+    Array<{ id: string; name: string; price: string; capacity: string }>
   >([]);
 
   const [durationMinutes, setDurationMinutes] = useState("");
@@ -58,19 +85,29 @@ function NewListing() {
   const [maxGroup, setMaxGroup] = useState("");
   const [safetyNotes, setSafetyNotes] = useState("");
   const [availability, setAvailability] = useState<
-    Array<{ startsAt: string; endsAt: string; capacity: string; price: string }>
+    Array<{ id: string; startsAt: string; endsAt: string; capacity: string; price: string }>
   >([]);
 
   const [checkIn, setCheckIn] = useState("14:00");
   const [checkOut, setCheckOut] = useState("10:00");
   const [rooms, setRooms] = useState<
-    Array<{ name: string; capacity: string; price: string; description: string }>
+    Array<{ id: string; name: string; capacity: string; price: string; description: string }>
   >([]);
 
   // Extra checkout questions guests answer when booking this listing.
   const [customQuestions, setCustomQuestions] = useState<
-    Array<{ label: string; type: "text" | "textarea" | "select"; options: string; required: boolean }>
+    Array<{
+      id: string;
+      label: string;
+      type: "text" | "textarea" | "select";
+      options: string;
+      required: boolean;
+    }>
   >([]);
+
+  // Inline validation: field errors keyed by field name, row errors by row id.
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
 
   const categoryOptions = useMemo(() => {
     const categories = categoriesQuery.data ?? [];
@@ -94,12 +131,62 @@ function NewListing() {
     setAddress((current) => current || hostProfile.address || "");
   }, [hostProfile]);
 
+  const priceError = (price: string) =>
+    Number.isNaN(randsToCents(price)) || randsToCents(price) <= 0
+      ? "Enter a price in Rands, e.g. 150"
+      : null;
+
+  // Validate everything up front and show messages next to the fields, so
+  // nothing the host typed is silently dropped.
+  const validate = () => {
+    const fields: Record<string, string> = {};
+    if (!title.trim()) fields.title = `Give your ${workspace.singularLabel.toLowerCase()} a title.`;
+
+    let rows: Record<string, string> = {};
+    if (workspace.hostType === "organiser") {
+      if (!eventDate) fields.eventDate = "Add the event date and time.";
+      if (ticketTiers.length === 0) fields.tiers = "Add at least one ticket tier.";
+      rows = validateRows(ticketTiers, (tier) => {
+        if (!tier.name.trim()) return "Name this tier, e.g. General or VIP.";
+        const price = priceError(tier.price);
+        if (price) return price;
+        if (!isPositiveInt(tier.capacity)) return "Capacity must be a whole number above 0.";
+        return null;
+      });
+    }
+    if (workspace.hostType === "experience") {
+      rows = validateRows(availability, (slot) => {
+        if (!slot.startsAt || !slot.endsAt) return "Add a start and end time for this slot.";
+        if (new Date(slot.endsAt) <= new Date(slot.startsAt)) return "The slot must end after it starts.";
+        if (!isPositiveInt(slot.capacity)) return "Capacity must be a whole number above 0.";
+        return priceError(slot.price);
+      });
+    }
+    if (workspace.hostType === "accommodation") {
+      if (rooms.length === 0) fields.rooms = "Add at least one room type.";
+      rows = validateRows(rooms, (room) => {
+        if (!room.name.trim()) return "Name this room type.";
+        if (!isPositiveInt(room.capacity)) return "Sleeps must be a whole number above 0.";
+        return priceError(room.price);
+      });
+    }
+
+    setFieldErrors(fields);
+    setRowErrors(rows);
+    const count = Object.keys(fields).length + Object.keys(rows).length;
+    if (count > 0) {
+      toast.error(count === 1 ? "Fix the highlighted field." : `Fix the ${count} highlighted fields.`);
+      // Move keyboard/screen-reader focus to the first problem.
+      requestAnimationFrame(() => {
+        document.querySelector<HTMLElement>("[aria-invalid='true']")?.focus();
+      });
+    }
+    return count === 0;
+  };
+
   const handleSubmit = async () => {
     if (!hostProfile) return;
-    if (!title.trim()) {
-      toast.error(`Add a ${workspace.singularLabel.toLowerCase()} title first.`);
-      return;
-    }
+    if (!validate()) return;
 
     try {
       const trimmedAmenities = splitItems(amenities);
@@ -115,23 +202,12 @@ function NewListing() {
         .filter((q) => q.label);
 
       if (workspace.hostType === "organiser") {
-        if (!eventDate) {
-          toast.error("Add the event date and time.");
-          return;
-        }
-
-        const normalizedTiers = ticketTiers
-          .map((tier) => ({
-            name: tier.name.trim(),
-            price: Number(tier.price),
-            capacity: Number(tier.capacity),
-          }))
-          .filter((tier) => tier.name && tier.price > 0 && tier.capacity > 0);
-
-        if (normalizedTiers.length === 0) {
-          toast.error("Add at least one ticket tier.");
-          return;
-        }
+        // validate() guarantees every tier is complete; prices are cents.
+        const normalizedTiers = ticketTiers.map((tier) => ({
+          name: tier.name.trim(),
+          price: randsToCents(tier.price),
+          capacity: Number(tier.capacity),
+        }));
 
         const created = await createListing.mutateAsync({
           listing: {
@@ -172,14 +248,12 @@ function NewListing() {
       }
 
       if (workspace.hostType === "experience") {
-        const normalizedAvailability = availability
-          .map((slot) => ({
-            startsAt: slot.startsAt,
-            endsAt: slot.endsAt,
-            capacity: Number(slot.capacity),
-            price: Number(slot.price),
-          }))
-          .filter((slot) => slot.startsAt && slot.endsAt && slot.capacity > 0 && slot.price > 0);
+        const normalizedAvailability = availability.map((slot) => ({
+          startsAt: slot.startsAt,
+          endsAt: slot.endsAt,
+          capacity: Number(slot.capacity),
+          price: randsToCents(slot.price),
+        }));
 
         const created = await createListing.mutateAsync({
           listing: {
@@ -224,19 +298,12 @@ function NewListing() {
       }
 
       if (workspace.hostType === "accommodation") {
-        const normalizedRooms = rooms
-          .map((room) => ({
-            name: room.name.trim(),
-            capacity: Number(room.capacity),
-            price_kobo: Number(room.price),
-            description: room.description.trim() || undefined,
-          }))
-          .filter((room) => room.name && room.capacity > 0 && room.price_kobo > 0);
-
-        if (normalizedRooms.length === 0) {
-          toast.error("Add at least one room type.");
-          return;
-        }
+        const normalizedRooms = rooms.map((room) => ({
+          name: room.name.trim(),
+          capacity: Number(room.capacity),
+          price_kobo: randsToCents(room.price),
+          description: room.description.trim() || undefined,
+        }));
 
         const created = await createListing.mutateAsync({
           listing: {
@@ -301,7 +368,7 @@ function NewListing() {
       toast.success(status === "live" ? "Venue listing published." : "Venue draft created.");
       navigate({ to: "/listings/$listingId", params: { listingId: created.id } });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not create listing.");
+      toast.error(friendlyError(error, "We couldn't save this listing. Please try again."));
     }
   };
 
@@ -311,11 +378,11 @@ function NewListing() {
       <PageHeader
         eyebrow={workspace.heroEyebrow}
         title={`New ${workspace.singularLabel.toLowerCase()}`}
-        subtitle={`This form is filtered for the signed-in ${workspace.label.toLowerCase()} account and writes only real schema-backed data.`}
+        subtitle={`Add the details guests need to discover and book your ${workspace.singularLabel.toLowerCase()}.`}
       />
 
       {!escrowReady && (
-        <div className="mb-6 rounded-[1.75rem] border border-warning/35 bg-warning/8 p-5">
+        <div className="mb-6 rounded-card border border-warning/35 bg-warning/8 p-5">
           <p className="eyebrow text-warning">Payout account needed</p>
           <p className="mt-2 font-display text-2xl font-semibold">
             This will save as a draft until your payout account is set up.
@@ -329,14 +396,15 @@ function NewListing() {
 
       <div className="grid gap-6 xl:grid-cols-[1fr_0.44fr]">
         <div className="space-y-6">
-          <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+          <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
             <h2 className="font-display text-2xl font-semibold">Core details</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Set the real identity of this {workspace.singularLabel.toLowerCase()} first.
+              Start with what guests see first.
             </p>
             <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <Field label={`${workspace.singularLabel} title`}>
+              <Field label={`${workspace.singularLabel} title`} error={fieldErrors.title}>
                 <Input
+                  maxLength={120}
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}
                   placeholder={`Name this ${workspace.singularLabel.toLowerCase()}`}
@@ -393,7 +461,7 @@ function NewListing() {
             </div>
           </section>
 
-          <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+          <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="font-display text-2xl font-semibold">More info from guests</h2>
@@ -407,7 +475,7 @@ function NewListing() {
                 onClick={() =>
                   setCustomQuestions((current) => [
                     ...current,
-                    { label: "", type: "text", options: "", required: false },
+                    { id: rowId(), label: "", type: "text", options: "", required: false },
                   ])
                 }
               >
@@ -418,7 +486,7 @@ function NewListing() {
 
             <div className="mt-5 space-y-3">
               {customQuestions.map((q, index) => (
-                <div key={index} className="rounded-2xl border border-border/60 bg-background/45 p-4">
+                <div key={q.id} className="rounded-2xl border border-border/60 bg-background/45 p-4">
                   <div className="grid gap-3 md:grid-cols-[1fr_0.5fr_auto]">
                     <Field label="Question">
                       <Input
@@ -447,6 +515,7 @@ function NewListing() {
                     <button
                       type="button"
                       onClick={() => removeArrayItem(setCustomQuestions, index)}
+                      aria-label={`Remove question ${index + 1}`}
                       className="mt-7 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/60 text-muted-foreground transition-colors hover:text-destructive"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -482,10 +551,10 @@ function NewListing() {
           </section>
 
           {workspace.hostType === "organiser" && (
-            <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+            <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
               <h2 className="font-display text-2xl font-semibold">Event schedule & ticketing</h2>
               <div className="mt-5 grid gap-4 md:grid-cols-3">
-                <Field label="Event date and time">
+                <Field label="Event date and time" error={fieldErrors.eventDate}>
                   <Input
                     type="datetime-local"
                     value={eventDate}
@@ -512,15 +581,23 @@ function NewListing() {
                 <div>
                   <p className="font-semibold">Ticket tiers</p>
                   <p className="text-sm text-muted-foreground">
-                    These create real `ticket_types` rows for the event.
+                    Each tier is a ticket type guests can buy, e.g. Early bird, General, VIP.
                   </p>
+                  {fieldErrors.tiers && (
+                    <p role="alert" className="mt-1 text-xs font-medium text-destructive">
+                      {fieldErrors.tiers}
+                    </p>
+                  )}
                 </div>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={() =>
-                    setTicketTiers((current) => [...current, { name: "", price: "", capacity: "" }])
+                    setTicketTiers((current) => [
+                      ...current,
+                      { id: rowId(), name: "", price: "", capacity: "" },
+                    ])
                   }
                 >
                   <Plus className="mr-1 h-4 w-4" />
@@ -531,21 +608,27 @@ function NewListing() {
               <div className="mt-4 space-y-3">
                 {ticketTiers.map((tier, index) => (
                   <div
-                    key={`${tier.name}-${index}`}
+                    key={tier.id}
                     className="rounded-2xl border border-border/60 bg-background/45 p-4"
                   >
                     <div className="grid gap-3 md:grid-cols-[1.5fr_1fr_1fr_auto]">
                       <Field label="Tier name">
                         <Input
+                          maxLength={60}
+                          aria-invalid={!!rowErrors[tier.id] && !tier.name.trim()}
                           value={tier.name}
                           onChange={(event) =>
                             updateArrayItem(setTicketTiers, index, { name: event.target.value })
                           }
                         />
                       </Field>
-                      <Field label="Price in kobo">
+                      <Field label="Price (R)">
                         <Input
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="150"
+                          title={PRICE_HINT}
+                          aria-invalid={!!rowErrors[tier.id] && !!priceError(tier.price)}
                           value={tier.price}
                           onChange={(event) =>
                             updateArrayItem(setTicketTiers, index, { price: event.target.value })
@@ -555,6 +638,10 @@ function NewListing() {
                       <Field label="Capacity">
                         <Input
                           type="number"
+                          inputMode="numeric"
+                          min={1}
+                          step={1}
+                          aria-invalid={!!rowErrors[tier.id] && !isPositiveInt(tier.capacity)}
                           value={tier.capacity}
                           onChange={(event) =>
                             updateArrayItem(setTicketTiers, index, { capacity: event.target.value })
@@ -564,11 +651,13 @@ function NewListing() {
                       <button
                         type="button"
                         onClick={() => removeArrayItem(setTicketTiers, index)}
+                        aria-label={`Remove tier ${tier.name.trim() || index + 1}`}
                         className="mt-7 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/60 text-muted-foreground transition-colors hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
+                    <RowError message={rowErrors[tier.id]} />
                   </div>
                 ))}
               </div>
@@ -577,12 +666,14 @@ function NewListing() {
 
           {workspace.hostType === "experience" && (
             <>
-              <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+              <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
                 <h2 className="font-display text-2xl font-semibold">Experience rules</h2>
                 <div className="mt-5 grid gap-4 md:grid-cols-3">
                   <Field label="Duration (minutes)">
                     <Input
                       type="number"
+                      inputMode="numeric"
+                      min={1}
                       value={durationMinutes}
                       onChange={(event) => setDurationMinutes(event.target.value)}
                     />
@@ -614,12 +705,12 @@ function NewListing() {
                 </div>
               </section>
 
-              <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+              <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="font-display text-2xl font-semibold">Availability slots</h2>
                     <p className="text-sm text-muted-foreground">
-                      These create real `availability` rows.
+                      The dates and times guests can book this experience.
                     </p>
                   </div>
                   <Button
@@ -629,7 +720,7 @@ function NewListing() {
                     onClick={() =>
                       setAvailability((current) => [
                         ...current,
-                        { startsAt: "", endsAt: "", capacity: "", price: "" },
+                        { id: rowId(), startsAt: "", endsAt: "", capacity: "", price: "" },
                       ])
                     }
                   >
@@ -641,7 +732,7 @@ function NewListing() {
                 <div className="mt-4 space-y-3">
                   {availability.map((slot, index) => (
                     <div
-                      key={`${slot.startsAt}-${index}`}
+                      key={slot.id}
                       className="rounded-2xl border border-border/60 bg-background/45 p-4"
                     >
                       <div className="grid gap-3 md:grid-cols-[1.4fr_1.4fr_0.9fr_0.9fr_auto]">
@@ -670,6 +761,10 @@ function NewListing() {
                         <Field label="Capacity">
                           <Input
                             type="number"
+                            inputMode="numeric"
+                            min={1}
+                            step={1}
+                            aria-invalid={!!rowErrors[slot.id] && !isPositiveInt(slot.capacity)}
                             value={slot.capacity}
                             onChange={(event) =>
                               updateArrayItem(setAvailability, index, {
@@ -678,9 +773,13 @@ function NewListing() {
                             }
                           />
                         </Field>
-                        <Field label="Price in kobo">
+                        <Field label="Price (R)">
                           <Input
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
+                            placeholder="350"
+                            title={PRICE_HINT}
+                            aria-invalid={!!rowErrors[slot.id] && !!priceError(slot.price)}
                             value={slot.price}
                             onChange={(event) =>
                               updateArrayItem(setAvailability, index, { price: event.target.value })
@@ -690,11 +789,13 @@ function NewListing() {
                         <button
                           type="button"
                           onClick={() => removeArrayItem(setAvailability, index)}
+                          aria-label={`Remove slot ${index + 1}`}
                           className="mt-7 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/60 text-muted-foreground transition-colors hover:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
+                      <RowError message={rowErrors[slot.id]} />
                     </div>
                   ))}
                 </div>
@@ -704,7 +805,7 @@ function NewListing() {
 
           {workspace.hostType === "accommodation" && (
             <>
-              <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+              <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
                 <h2 className="font-display text-2xl font-semibold">Stay policies</h2>
                 <div className="mt-5 grid gap-4 md:grid-cols-2">
                   <Field label="Check-in time">
@@ -724,13 +825,18 @@ function NewListing() {
                 </div>
               </section>
 
-              <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+              <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="font-display text-2xl font-semibold">Room types</h2>
                     <p className="text-sm text-muted-foreground">
-                      Rooms are stored in the listing metadata for this property.
+                      The room types guests can book, with the price per night.
                     </p>
+                    {fieldErrors.rooms && (
+                      <p role="alert" className="mt-1 text-xs font-medium text-destructive">
+                        {fieldErrors.rooms}
+                      </p>
+                    )}
                   </div>
                   <Button
                     type="button"
@@ -739,7 +845,7 @@ function NewListing() {
                     onClick={() =>
                       setRooms((current) => [
                         ...current,
-                        { name: "", capacity: "", price: "", description: "" },
+                        { id: rowId(), name: "", capacity: "", price: "", description: "" },
                       ])
                     }
                   >
@@ -751,30 +857,40 @@ function NewListing() {
                 <div className="mt-4 space-y-3">
                   {rooms.map((room, index) => (
                     <div
-                      key={`${room.name}-${index}`}
+                      key={room.id}
                       className="rounded-2xl border border-border/60 bg-background/45 p-4"
                     >
                       <div className="grid gap-3 md:grid-cols-[1.3fr_0.8fr_0.9fr_auto]">
                         <Field label="Room name">
                           <Input
+                            maxLength={60}
+                            aria-invalid={!!rowErrors[room.id] && !room.name.trim()}
                             value={room.name}
                             onChange={(event) =>
                               updateArrayItem(setRooms, index, { name: event.target.value })
                             }
                           />
                         </Field>
-                        <Field label="Capacity">
+                        <Field label="Sleeps">
                           <Input
                             type="number"
+                            inputMode="numeric"
+                            min={1}
+                            step={1}
+                            aria-invalid={!!rowErrors[room.id] && !isPositiveInt(room.capacity)}
                             value={room.capacity}
                             onChange={(event) =>
                               updateArrayItem(setRooms, index, { capacity: event.target.value })
                             }
                           />
                         </Field>
-                        <Field label="Price in kobo">
+                        <Field label="Price per night (R)">
                           <Input
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
+                            placeholder="1200"
+                            title={PRICE_HINT}
+                            aria-invalid={!!rowErrors[room.id] && !!priceError(room.price)}
                             value={room.price}
                             onChange={(event) =>
                               updateArrayItem(setRooms, index, { price: event.target.value })
@@ -784,11 +900,13 @@ function NewListing() {
                         <button
                           type="button"
                           onClick={() => removeArrayItem(setRooms, index)}
+                          aria-label={`Remove room ${room.name.trim() || index + 1}`}
                           className="mt-7 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/60 text-muted-foreground transition-colors hover:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
+                      <RowError message={rowErrors[room.id]} />
                       <div className="mt-3">
                         <Field label="Description">
                           <Textarea
@@ -808,7 +926,7 @@ function NewListing() {
           )}
 
           {workspace.hostType === "venue" && (
-            <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+            <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
               <h2 className="font-display text-2xl font-semibold">Venue context</h2>
               <div className="mt-5 grid gap-4 md:grid-cols-3">
                 <Field label="Venue capacity">
@@ -838,17 +956,17 @@ function NewListing() {
         </div>
 
         <aside className="space-y-6">
-          <section className="sticky top-24 rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+          <section className="sticky top-24 rounded-card border border-border/60 bg-card p-6 shadow-card">
             <p className="eyebrow text-primary">Preview</p>
             <h2 className="mt-3 font-display text-3xl font-bold">
               {title || `Untitled ${workspace.singularLabel}`}
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
               {description ||
-                `This ${workspace.singularLabel.toLowerCase()} will appear inside the focused ${workspace.label.toLowerCase()} workspace.`}
+                `Guests will see this description on TROVE once your ${workspace.singularLabel.toLowerCase()} is live.`}
             </p>
 
-            <div className="mt-5 space-y-3 rounded-[1.5rem] border border-white/8 bg-white/[0.03] p-4">
+            <div className="mt-5 space-y-3 rounded-tile border border-white/8 bg-white/[0.03] p-4">
               <PreviewItem label="Host type" value={workspace.label} />
               <PreviewItem
                 label="Publish state"
@@ -880,19 +998,19 @@ function NewListing() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function RowError({ message }: { message?: string }) {
+  if (!message) return null;
   return (
-    <div className="space-y-2">
-      <Label>{label}</Label>
-      {children}
-    </div>
+    <p role="alert" className="mt-3 text-xs font-medium text-destructive">
+      {message}
+    </p>
   );
 }
 
 function PreviewItem({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+      <p className="text-2xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
         {label}
       </p>
       <p className="mt-1 text-sm">{value}</p>

@@ -17,13 +17,13 @@ function ReviewsPage() {
       <PageHeader
         eyebrow="Guest sentiment"
         title="Reviews"
-        subtitle="Real review rows tied to this host now land here instead of a generic empty placeholder."
+        subtitle="What guests are saying about your Spot."
       />
 
       <div className="space-y-4">
         {reviews.length === 0 && (
-          <div className="rounded-[1.75rem] border border-border/60 bg-card p-12 text-center shadow-card">
-            <h3 className="font-display text-2xl font-semibold">No reviews yet</h3>
+          <div className="rounded-card border border-border/60 bg-card p-12 text-center shadow-card">
+            <h2 className="font-display text-2xl font-semibold">No reviews yet</h2>
             <p className="mt-2 text-sm text-muted-foreground">
               Reviews will appear here once guests complete bookings and leave feedback.
             </p>
@@ -33,7 +33,7 @@ function ReviewsPage() {
         {reviews.map((review) => (
           <article
             key={review.id}
-            className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card"
+            className="rounded-card border border-border/60 bg-card p-6 shadow-card"
           >
             <div className="flex items-center justify-between gap-4">
               <div>

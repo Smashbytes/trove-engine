@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Loader2, Lock, ShieldCheck, Upload } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
+import { Field } from "@/components/trove/Field";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,10 +13,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth";
 import { useHasKycDocument, useUploadKycDocument, useVerifyPayoutAccount } from "@/lib/queries";
 import { SA_BANKS } from "@/lib/sa-banks";
+import { friendlyError } from "@/lib/errors";
 
 const SELECT_CLASS = "flex h-10 w-full rounded-md border border-input bg-input px-3 text-sm";
 
@@ -119,7 +120,7 @@ export function VerifyPayoutDialog({
         toast.error(result.error ?? "TradeSafe couldn't verify these details. Check them and retry.");
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Verification failed. Please retry.");
+      toast.error(friendlyError(error, "Verification failed. Please retry."));
     }
   };
 
@@ -231,13 +232,13 @@ export function VerifyPayoutDialog({
             {needsDoc && (
               <div className="sm:col-span-2">
                 <Field label="ID or CIPC document (PDF, PNG or JPG, max 10 MB)">
-                  <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border/70 bg-input/40 px-4 py-3 text-sm text-muted-foreground hover:border-primary/50">
+                  <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border/70 bg-input/40 px-4 py-3 text-sm text-muted-foreground hover:border-primary/50 focus-within:ring-2 focus-within:ring-ring">
                     <Upload className="h-4 w-4 text-primary" />
                     <span className="truncate">{file ? file.name : "Choose a file…"}</span>
                     <input
                       type="file"
                       accept="application/pdf,image/png,image/jpeg"
-                      className="hidden"
+                      className="sr-only"
                       onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                     />
                   </label>
@@ -277,11 +278,3 @@ export function VerifyPayoutDialog({
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="space-y-2">
-      <Label>{label}</Label>
-      {children}
-    </div>
-  );
-}

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useUploadListingImage } from "@/lib/queries";
+import { friendlyError } from "@/lib/errors";
 
 interface ImageUploadProps {
   value: string;
@@ -32,7 +33,7 @@ export function ImageUpload({
       onChange(result.url);
       toast.success("Image uploaded.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Upload failed.");
+      toast.error(friendlyError(error, "Upload failed."));
     }
   };
 

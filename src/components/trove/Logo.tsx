@@ -13,7 +13,7 @@ export function TroveLogo({ size = 32, withText = true }: { size?: number; withT
       {withText && (
         <div className="flex items-baseline gap-1.5 leading-none">
           <span className="font-display text-lg font-bold tracking-tight">TROVE</span>
-          <span className="font-display text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+          <span className="font-display text-caption font-medium uppercase tracking-[0.2em] text-muted-foreground">
             Engine
           </span>
         </div>

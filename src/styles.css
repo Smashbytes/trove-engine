@@ -17,6 +17,16 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
 
+  /* Named surface radii (were one-off rounded-[…] values across pages) */
+  --radius-tile: 1.5rem;   /* rounded-tile: stat tiles, inner panels */
+  --radius-card: 1.75rem;  /* rounded-card: standard page cards */
+  --radius-panel: 2rem;    /* rounded-panel: hero / feature panels */
+  --radius-hero: 2.5rem;   /* rounded-hero: landing showcase blocks */
+
+  /* Small type steps (were text-[10px] / text-[11px]); line-height inherits */
+  --text-2xs: 0.625rem;    /* 10px: eyebrows, pills, captions */
+  --text-caption: 0.6875rem; /* 11px: helper notes */
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -25,6 +35,7 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-fill: var(--primary-fill);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -37,6 +48,7 @@
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -70,6 +82,10 @@
 
   --primary: oklch(0.68 0.27 350);
   --primary-foreground: oklch(0.99 0 0);
+  /* Solid pink behind white text. --primary (#ff22af) is only 3.4:1 with white;
+     this deeper shade (~#db008b) passes WCAG AA 4.5:1 with margin. Keep --primary for pink
+     text, icons, rings and text-free fills. */
+  --primary-fill: oklch(0.565 0.27 350);
   --primary-glow: oklch(0.75 0.30 340);
   --primary-deep: oklch(0.55 0.28 320);
   --violet: oklch(0.58 0.25 305);
@@ -77,7 +93,7 @@
   --secondary: oklch(0.22 0.04 320);
   --secondary-foreground: oklch(0.97 0.01 320);
   --muted: oklch(0.20 0.03 320);
-  --muted-foreground: oklch(0.68 0.04 320);
+  --muted-foreground: oklch(0.72 0.04 320);
   --accent: oklch(0.25 0.06 320);
   --accent-foreground: oklch(0.97 0.01 320);
 
@@ -87,6 +103,7 @@
   --success-foreground: oklch(0.13 0.02 320);
   --warning: oklch(0.80 0.17 80);
   --warning-foreground: oklch(0.13 0.02 320);
+  --info: oklch(0.78 0.14 220);
 
   --border: oklch(0.27 0.04 320 / 60%);
   --input: oklch(0.22 0.04 320);
@@ -139,6 +156,12 @@
     -webkit-font-smoothing: antialiased;
   }
   h1, h2, h3, h4, .font-display { font-family: var(--font-display); letter-spacing: -0.02em; }
+  /* One consistent, visible keyboard focus style for every interactive element.
+     :where() keeps specificity at zero, so components with their own ring keep it. */
+  :where(a, button, [role="button"], [role="checkbox"], [role="switch"], input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
 }
 
 @layer utilities {
@@ -150,6 +173,16 @@
   }
   .bg-gradient-brand { background-image: var(--gradient-brand); }
   .bg-gradient-brand-soft { background-image: var(--gradient-brand-soft); }
+  /* Placeholder fill for a missing cover/hero image */
+  .bg-cover-placeholder {
+    background-image: linear-gradient(135deg, oklch(0.62 0.26 0 / 0.22), oklch(0.52 0.25 300 / 0.18), oklch(1 0 0 / 0.02));
+  }
+  /* Soft pink/violet corner glow behind hero cards and auth screens */
+  .bg-corner-glow {
+    background-image:
+      radial-gradient(circle at top right, oklch(0.62 0.26 0 / 0.16), transparent 32%),
+      radial-gradient(circle at bottom left, oklch(0.6 0.2 295 / 0.12), transparent 28%);
+  }
   .shadow-glow { box-shadow: var(--shadow-glow); }
   .shadow-glow-sm { box-shadow: var(--shadow-glow-sm); }
   .shadow-card { box-shadow: var(--shadow-card); }
@@ -256,10 +289,3 @@
   .ticker-track { animation: none; }
 }
 
-@font-face {
-  font-family: "Space Grotesk";
-  font-style: normal;
-  font-weight: 300 700;
-  font-display: swap;
-  src: url("https://fonts.gstatic.com/s/spacegrotesk/v16/V8mDoQDjQSkFtoMM3T6r8E7mF71Q-gOoraIAEj7aUUM.woff2") format("woff2");
-}

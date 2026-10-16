@@ -210,7 +210,7 @@ export function ShareKit({ listing }: { listing: ListingWithCapacity }) {
     .join(" · ");
 
   return (
-    <section className="mt-6 rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+    <section className="mt-6 rounded-card border border-border/60 bg-card p-6 shadow-card">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="font-display text-2xl font-semibold">Share kit</h2>
@@ -249,10 +249,10 @@ export function ShareKit({ listing }: { listing: ListingWithCapacity }) {
       <div className="mt-6 grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         {/* Preview — what the link looks like in a chat */}
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          <p className="text-2xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             How it looks when shared
           </p>
-          <div className="mt-3 rounded-[1.5rem] bg-[#0b141a] p-4">
+          <div className="mt-3 rounded-tile bg-[#0b141a] p-4">
             <div className="ml-auto max-w-[26rem] overflow-hidden rounded-2xl rounded-tr-sm bg-[#005c4b] text-white shadow-lg">
               <div className="m-1 overflow-hidden rounded-xl bg-[#025144]">
                 <img
@@ -264,7 +264,7 @@ export function ShareKit({ listing }: { listing: ListingWithCapacity }) {
                 <div className="px-3 py-2">
                   <p className="line-clamp-1 text-sm font-semibold">{listing.title}</p>
                   <p className="line-clamp-2 text-xs text-white/70">{previewDescription}</p>
-                  <p className="mt-1 text-[11px] text-white/50">{previewDomain}</p>
+                  <p className="mt-1 text-caption text-white/50">{previewDomain}</p>
                 </div>
               </div>
               <p className="whitespace-pre-line px-3 pb-2 pt-1 text-sm">
@@ -279,7 +279,7 @@ export function ShareKit({ listing }: { listing: ListingWithCapacity }) {
 
           <div className="mt-5">
             <div className="flex items-center justify-between">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              <p className="text-2xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Caption
               </p>
               {captionDraft !== null && (
@@ -306,7 +306,7 @@ export function ShareKit({ listing }: { listing: ListingWithCapacity }) {
 
         {/* Channels */}
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          <p className="text-2xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             Your links
           </p>
           <ul className="mt-3 space-y-2">
@@ -425,7 +425,7 @@ function Stat({
 }) {
   return (
     <div className="min-w-[8.5rem] rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3" title={hint}>
-      <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+      <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
         <Icon className="h-3.5 w-3.5" />
         {label}
       </p>

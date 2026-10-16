@@ -12,9 +12,9 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/trove/AppShell";
 import { PageHeader } from "@/components/trove/PageHeader";
 import { VerifyPayoutDialog } from "@/components/trove/VerifyPayoutDialog";
+import { Field } from "@/components/trove/Field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { isAnalyticsEnabled, setAnalyticsEnabled } from "@/lib/analytics";
 import { useAuth } from "@/lib/auth";
@@ -25,6 +25,7 @@ import {
   useStartWhatsAppConnect,
   useWhatsAppStatus,
 } from "@/lib/whatsapp";
+import { friendlyError } from "@/lib/errors";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({ meta: [{ title: "Settings · Trove Engine" }] }),
@@ -144,7 +145,7 @@ function SettingsPage() {
       await submitVerification.mutateAsync({ legalName, registration });
       toast.success("Verification submitted for review.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not submit verification.");
+      toast.error(friendlyError(error, "Could not submit verification."));
     }
   };
 
@@ -164,7 +165,7 @@ function SettingsPage() {
       await updatePrefs.mutateAsync(prefs);
       toast.success("Notification preferences saved.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not save preferences.");
+      toast.error(friendlyError(error, "Could not save preferences."));
     }
   };
 
@@ -232,7 +233,10 @@ function SettingsPage() {
         >
           <p className="mb-4 text-sm text-muted-foreground">{verification.message}</p>
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Registered legal name">
+            <Field
+              label="Registered business name"
+              hint="As registered with CIPC, e.g. Neon Underground (Pty) Ltd. Used by TradeSafe; guests see your Spot name instead."
+            >
               <Input
                 value={legalName}
                 onChange={(e) => setLegalName(e.target.value)}
@@ -311,11 +315,12 @@ function SettingsPage() {
                         <div className="flex justify-center">
                           {WIRED.has(`${event.key}.${channel.key}`) ? (
                             <Switch
+                              aria-label={`${event.label} by ${channel.label}`}
                               checked={prefs[event.key]?.[channel.key] ?? true}
                               onCheckedChange={(value) => togglePref(event.key, channel.key, value)}
                             />
                           ) : (
-                            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/60">
+                            <span className="text-2xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                               Soon
                             </span>
                           )}
@@ -451,7 +456,9 @@ function PrivacyDataCard() {
   return (
     <div className="flex flex-wrap items-center justify-between gap-4">
       <div className="max-w-xl">
-        <p className="text-sm font-medium">Product analytics</p>
+        <p id="analytics-label" className="text-sm font-medium">
+          Product analytics
+        </p>
         <p className="mt-1 text-sm leading-6 text-muted-foreground">
           Anonymous usage stats (PostHog) that help us improve the Engine. We
           never link them to your account. Details in the{" "}
@@ -459,26 +466,18 @@ function PrivacyDataCard() {
             href="https://www.welovetrove.co.za/legal/privacy"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-primary underline-offset-2 hover:underline"
+            className="text-primary underline underline-offset-2"
           >
             Privacy Policy
           </a>
           .
         </p>
       </div>
-      <Switch checked={analytics} onCheckedChange={toggle} />
+      <Switch aria-labelledby="analytics-label" checked={analytics} onCheckedChange={toggle} />
     </div>
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="space-y-2">
-      <Label>{label}</Label>
-      {children}
-    </div>
-  );
-}
 
 function LockedPref({
   label,
@@ -491,11 +490,11 @@ function LockedPref({
 }) {
   return (
     <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+      <p className="text-2xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
         {label}
       </p>
       <p className="mt-1 font-display text-lg font-semibold">{value}</p>
-      <p className="mt-1 text-[11px] text-muted-foreground">{note}</p>
+      <p className="mt-1 text-caption text-muted-foreground">{note}</p>
     </div>
   );
 }
@@ -522,9 +521,9 @@ function Section({
           ? "bg-destructive/15 text-destructive"
           : "bg-white/10 text-white/75";
   return (
-    <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
+    <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Icon className="h-4 w-4" />
           </div>
@@ -535,7 +534,7 @@ function Section({
         </div>
         {badge && (
           <span
-            className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${toneClass}`}
+            className={`max-w-full rounded-full px-3 py-1 text-2xs font-semibold uppercase tracking-[0.18em] ${toneClass}`}
           >
             {badge.label}
           </span>
@@ -570,7 +569,7 @@ function WhatsAppCard() {
       window.open(res.waLink, "_blank", "noopener");
       setWaiting(true);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't start the connection.");
+      toast.error(friendlyError(err, "Couldn't start the connection."));
     }
   };
 

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { getHostWorkspace } from "@/lib/host-workspace";
 import { useHostListings } from "@/lib/queries";
+import { formatZar } from "@/lib/format";
 
 export const Route = createFileRoute("/listings/")({
   head: () => ({
@@ -16,7 +17,7 @@ export const Route = createFileRoute("/listings/")({
       {
         name: "description",
         content:
-          "Real host listings grouped by live, draft, and archived state inside the focused Trove Engine workspace.",
+          "All your listings on TROVE: live, draft and archived.",
       },
     ],
   }),
@@ -51,14 +52,14 @@ function ListingsPage() {
       <PageHeader
         eyebrow={workspace.heroEyebrow}
         title={workspace.shortLabel}
-        subtitle={`Every real ${workspace.singularLabel.toLowerCase()} record for this ${workspace.label.toLowerCase()} account, kept inside the correct host workspace.`}
+        subtitle={`All your ${workspace.shortLabel.toLowerCase()} on TROVE, live, draft and archived.`}
         actions={
-          <Link to="/listings/new">
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+          <Button className="bg-primary-fill text-primary-foreground hover:bg-primary-fill/90" asChild>
+            <Link to="/listings/new">
               <Plus className="mr-1.5 h-4 w-4" />
               New {workspace.singularLabel.toLowerCase()}
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         }
       />
 
@@ -81,7 +82,7 @@ function ListingsPage() {
               onClick={() => setFilter(item.id)}
               className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ring-1 ${
                 active
-                  ? "ring-primary bg-primary text-primary-foreground"
+                  ? "ring-primary bg-primary-fill text-primary-foreground"
                   : "ring-[var(--hairline)] text-muted-foreground hover:text-foreground hover:ring-[var(--hairline-strong)]"
               }`}
             >
@@ -93,19 +94,18 @@ function ListingsPage() {
       </div>
 
       {filteredListings.length === 0 && (
-        <div className="rounded-[2rem] border border-dashed border-border/60 p-12 text-center">
+        <div className="rounded-panel border border-dashed border-border/60 p-12 text-center">
           <p className="font-display text-2xl font-semibold">
             No {filter === "all" ? workspace.shortLabel.toLowerCase() : filter} here yet.
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Create a real {workspace.singularLabel.toLowerCase()} and it will appear here instead of
-            seeded placeholder content.
+            Create a {workspace.singularLabel.toLowerCase()} and it will show up here.
           </p>
-          <Link to="/listings/new">
-            <Button className="mt-5 bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95">
+          <Button className="mt-5 bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95" asChild>
+            <Link to="/listings/new">
               Create {workspace.singularLabel.toLowerCase()}
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       )}
 
@@ -120,7 +120,7 @@ function ListingsPage() {
             <Link
               to="/listings/$listingId"
               params={{ listingId: listing.id }}
-              className="group block overflow-hidden rounded-[1.75rem] border border-border/60 bg-card shadow-card transition-all hover:border-primary/35 hover:shadow-lift"
+              className="group block overflow-hidden rounded-card border border-border/60 bg-card shadow-card transition-all hover:border-primary/35 hover:shadow-lift"
             >
               <div className="relative aspect-[16/10] overflow-hidden">
                 {listing.cover_url ? (
@@ -131,15 +131,15 @@ function ListingsPage() {
                     loading="lazy"
                   />
                 ) : (
-                  <div className="h-full w-full bg-[linear-gradient(135deg,rgba(255,0,115,0.2),rgba(121,57,255,0.18),rgba(255,255,255,0.02))]" />
+                  <div className="h-full w-full bg-cover-placeholder" />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-[var(--surface-2)] via-[var(--surface-2)]/35 to-transparent" />
                 <div className="absolute left-4 top-4 flex flex-wrap gap-2">
-                  <span className="rounded-full border border-white/12 bg-black/30 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/75 backdrop-blur">
+                  <span className="rounded-full border border-white/12 bg-black/30 px-2.5 py-1 text-2xs font-semibold uppercase tracking-[0.18em] text-white/75 backdrop-blur">
                     {workspace.singularLabel}
                   </span>
                   <span
-                    className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${statusTone(listing.status)}`}
+                    className={`rounded-full px-2.5 py-1 text-2xs font-semibold uppercase tracking-[0.18em] ${statusTone(listing.status)}`}
                   >
                     {listing.status}
                   </span>
@@ -162,7 +162,7 @@ function ListingsPage() {
 
                 <p className="mt-3 line-clamp-2 text-sm leading-6 text-muted-foreground">
                   {listing.description ||
-                    `This ${workspace.singularLabel.toLowerCase()} has been created on the real host account and is ready for richer detail.`}
+                    "No description yet. Add one so guests know what to expect."}
                 </p>
 
                 <div className="mt-4 grid gap-2 sm:grid-cols-3">
@@ -182,7 +182,7 @@ function ListingsPage() {
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+      <p className="text-2xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
         {label}
       </p>
       <p className="mt-1 font-display text-lg font-bold">{value}</p>
@@ -190,13 +190,6 @@ function MiniStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function formatZar(kobo: number) {
-  return new Intl.NumberFormat("en-ZA", {
-    style: "currency",
-    currency: "ZAR",
-    maximumFractionDigits: 0,
-  }).format(kobo / 100);
-}
 
 function statusTone(status: string) {
   if (status === "live") return "bg-success/12 text-success";

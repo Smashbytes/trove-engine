@@ -17,6 +17,8 @@ import {
   useRealtimeBookings,
   useSetListingStatus,
 } from "@/lib/queries";
+import { formatZar } from "@/lib/format";
+import { friendlyError } from "@/lib/errors";
 
 export const Route = createFileRoute("/listings/$listingId")({
   head: () => ({
@@ -25,7 +27,7 @@ export const Route = createFileRoute("/listings/$listingId")({
       {
         name: "description",
         content:
-          "Manage a real Trove host listing with live Supabase-backed detail, inventory, bookings, and issued codes.",
+          "Manage your listing: details, availability, bookings and tickets.",
       },
     ],
   }),
@@ -35,11 +37,11 @@ export const Route = createFileRoute("/listings/$listingId")({
       <div className="py-24 text-center">
         <h2 className="font-display text-3xl font-semibold">Listing not found</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          This listing either does not exist or is not available to the signed-in host.
+          This listing doesn't exist, or it belongs to a different Spot.
         </p>
-        <Link to="/listings">
-          <Button className="mt-5">Back to listings</Button>
-        </Link>
+        <Button className="mt-5" asChild>
+          <Link to="/listings">Back to listings</Link>
+        </Button>
       </div>
     </AppShell>
   ),
@@ -84,7 +86,7 @@ function ListingDetailPage() {
       await setListingStatus.mutateAsync({ listingId: listing.id, status });
       toast.success(status === "live" ? "Listing is live — guests can find and book it." : "Listing paused.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not update this listing.");
+      toast.error(friendlyError(error, "Could not update this listing."));
     }
   };
 
@@ -97,7 +99,7 @@ function ListingDetailPage() {
       toast.success("Listing removed.");
       navigate({ to: "/listings" });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not delete listing.");
+      toast.error(friendlyError(error, "Could not delete listing."));
     }
   };
 
@@ -111,7 +113,7 @@ function ListingDetailPage() {
         Back to {workspace.shortLabel.toLowerCase()}
       </Link>
 
-      <div className="overflow-hidden rounded-[2rem] border border-border/60 shadow-card">
+      <div className="overflow-hidden rounded-panel border border-border/60 shadow-card">
         <div className="relative aspect-[21/8] overflow-hidden">
           {listing.cover_url ? (
             <img
@@ -120,16 +122,16 @@ function ListingDetailPage() {
               className="h-full w-full object-cover"
             />
           ) : (
-            <div className="h-full w-full bg-[linear-gradient(135deg,rgba(255,0,115,0.22),rgba(121,57,255,0.18),rgba(255,255,255,0.02))]" />
+            <div className="h-full w-full bg-cover-placeholder" />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-card via-card/60 to-card/10" />
           <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
             <div className="flex flex-wrap gap-2">
-              <span className="rounded-full border border-white/12 bg-black/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/75 backdrop-blur">
+              <span className="rounded-full border border-white/12 bg-black/30 px-3 py-1 text-2xs font-semibold uppercase tracking-[0.18em] text-white/75 backdrop-blur">
                 {workspace.singularLabel}
               </span>
               <span
-                className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${statusTone(listing.status)}`}
+                className={`rounded-full px-3 py-1 text-2xs font-semibold uppercase tracking-[0.18em] ${statusTone(listing.status)}`}
               >
                 {listing.status}
               </span>
@@ -196,11 +198,11 @@ function ListingDetailPage() {
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+        <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
           <h2 className="font-display text-2xl font-semibold">Overview</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             {listing.description ||
-              `This ${workspace.singularLabel.toLowerCase()} is now a real record in the host workspace and can be iterated without relying on mock seed data.`}
+              "No description yet. Add one so guests know what to expect."}
           </p>
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             <InfoCard label="Address" value={listing.address || "Not set"} />
@@ -213,7 +215,7 @@ function ListingDetailPage() {
           </div>
         </section>
 
-        <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+        <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
           <h2 className="font-display text-2xl font-semibold">Operations snapshot</h2>
           <div className="mt-5 space-y-3">
             <SummaryRow label="Bookings" value={bookings.length.toString()} />
@@ -231,7 +233,7 @@ function ListingDetailPage() {
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+        <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
           <h2 className="font-display text-2xl font-semibold">Inventory</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             The inventory block shifts with the host type and reads from the real backing tables or
@@ -303,10 +305,10 @@ function ListingDetailPage() {
             })()}
         </section>
 
-        <section className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+        <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
           <h2 className="font-display text-2xl font-semibold">Bookings</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Every row here comes from `bookings`, scoped by the signed-in host account.
+            Everyone who has booked this listing.
           </p>
           <InventoryTable
             head={["Booking", "Status", "Party", "Total"]}
@@ -322,10 +324,10 @@ function ListingDetailPage() {
       </div>
 
       {workspace.hostType !== "accommodation" && (
-        <section className="mt-6 rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-card">
+        <section className="mt-6 rounded-card border border-border/60 bg-card p-6 shadow-card">
           <h2 className="font-display text-2xl font-semibold">Issued codes</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Scanner flows now inspect real issued codes instead of generated fake QR records.
+            The ticket codes guests show at the door. Scan them from the Scanner page.
           </p>
           <InventoryTable
             head={["Code", "Status", "Party", "Issued"]}
@@ -345,8 +347,8 @@ function ListingDetailPage() {
 
 function MetricTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[1.5rem] border border-border/60 bg-card p-4 shadow-card">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+    <div className="rounded-tile border border-border/60 bg-card p-4 shadow-card">
+      <p className="text-2xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
         {label}
       </p>
       <p className="mt-2 font-display text-2xl font-bold">{value}</p>
@@ -357,7 +359,7 @@ function MetricTile({ label, value }: { label: string; value: string }) {
 function InfoCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+      <p className="text-2xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
         {label}
       </p>
       <p className="mt-2 text-sm leading-6">{value}</p>
@@ -421,13 +423,6 @@ function InventoryTable({
   );
 }
 
-function formatZar(kobo: number) {
-  return new Intl.NumberFormat("en-ZA", {
-    style: "currency",
-    currency: "ZAR",
-    maximumFractionDigits: 0,
-  }).format(kobo / 100);
-}
 
 function statusTone(status: string) {
   if (status === "live") return "bg-success/12 text-success";
