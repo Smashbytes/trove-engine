@@ -49,6 +49,16 @@ import appCss from "../styles.css?url";
 const loadAuthModal = () => import("@/components/trove/AuthModal");
 const AuthModal = lazy(() => loadAuthModal().then((m) => ({ default: m.AuthModal })));
 
+// Start that download at page start (in parallel with the app, not after it)
+// when the dialog is about to be needed: a ?auth= deep link from the website,
+// or a visitor with no session cookie (sign-in wall / "Start hosting" CTA).
+// Signed-in hosts skip it until idle.
+if (typeof window !== "undefined") {
+  const wantsAuth = new URLSearchParams(window.location.search).has("auth");
+  const hasSession = document.cookie.includes("-auth-token");
+  if (wantsAuth || !hasSession) void loadAuthModal();
+}
+
 function NotFoundComponent() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4">
