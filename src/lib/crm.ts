@@ -23,6 +23,9 @@ import type {
 
 const GUEST_BOOKING_STATUSES: BookingStatus[] = ["confirmed", "completed"];
 
+/** Bounded audience queries; the newest rows are shown first. */
+const CRM_ROWS_CAP = 2000;
+
 export const crmKeys = {
   profiles: (hostId: string | undefined) => ["audience-profiles", hostId] as const,
   followers: (hostId: string | undefined) => ["audience-followers", hostId] as const,
@@ -75,7 +78,8 @@ export function useFollowers() {
         .from("follows")
         .select("user_id, created_at")
         .eq("host_id", activeHostId!)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(CRM_ROWS_CAP);
       if (error) throw error;
       return ((data ?? []) as Array<{ user_id: string; created_at: string | null }>).map((row) => ({
         userId: row.user_id,
@@ -115,7 +119,8 @@ export function useGuests() {
         )
         .eq("listings.host_id", activeHostId!)
         .in("status", GUEST_BOOKING_STATUSES)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(CRM_ROWS_CAP);
       if (error) throw error;
 
       const byGuest = new Map<string, GuestSummary>();
@@ -254,7 +259,8 @@ export function useGuestBookings(guestId: string | undefined) {
         )
         .eq("listings.host_id", activeHostId!)
         .eq("guest_id", guestId!)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(200);
       if (error) throw error;
       type Row = Pick<
         Booking,
