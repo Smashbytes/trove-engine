@@ -95,8 +95,12 @@ function ListingDetailPage() {
     if (!confirmed) return;
 
     try {
-      await deleteListing.mutateAsync(listing.id);
-      toast.success("Listing removed.");
+      const { archived } = await deleteListing.mutateAsync(listing.id);
+      toast.success(
+        archived
+          ? "This listing has bookings, so it was archived instead. Guests keep their tickets."
+          : "Listing removed.",
+      );
       navigate({ to: "/listings" });
     } catch (error) {
       toast.error(friendlyError(error, "Could not delete listing."));

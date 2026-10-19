@@ -133,23 +133,32 @@ export function useListingMedia(listingId: string | undefined) {
   });
 }
 
+/** Newest bookings/tickets shown per listing; older rows stay in the database. */
+export const LISTING_ROWS_CAP = 500;
+
+export type ListingBooking = Pick<
+  Booking,
+  "id" | "guest_id" | "status" | "party_size" | "total_kobo" | "created_at" | "checked_in_at" | "ticket_type_id" | "slot_id"
+>;
+
 export function useListingBookings(listingId: string | undefined) {
-  return useQuery<Booking[]>({
+  return useQuery<ListingBooking[]>({
     queryKey: listingQueryKeys.bookings(listingId),
     enabled: !!listingId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
-        .select("*")
+        .select("id, guest_id, status, party_size, total_kobo, created_at, checked_in_at, ticket_type_id, slot_id")
         .eq("listing_id", listingId!)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(LISTING_ROWS_CAP);
       if (error) throw error;
-      return (data ?? []) as Booking[];
+      return (data ?? []) as ListingBooking[];
     },
   });
 }
 
-export interface HostTicket extends Ticket {
+export interface HostTicket extends Omit<Ticket, "jwt_jti"> {
   booking_party_size: number;
   booking_status: Booking["status"];
   booking_created_at: string;
@@ -163,19 +172,19 @@ export function useListingTickets(listingId: string | undefined) {
       const { data, error } = await supabase
         .from("tickets")
         .select(
-          "id, booking_id, code, jwt_jti, ticket_type_id, status, scanned_at, scanned_by, scanned_device_id, created_at, bookings!inner(party_size, status, created_at, listing_id)",
+          "id, booking_id, code, ticket_type_id, status, scanned_at, scanned_by, scanned_device_id, created_at, bookings!inner(party_size, status, created_at, listing_id)",
         )
         .eq("bookings.listing_id", listingId!)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(LISTING_ROWS_CAP);
       if (error) throw error;
-      type TicketRow = Ticket & {
+      type TicketRow = Omit<Ticket, "jwt_jti"> & {
         bookings?: Pick<Booking, "party_size" | "status" | "created_at" | "listing_id"> | null;
       };
       return ((data ?? []) as TicketRow[]).map((ticket) => ({
         id: ticket.id,
         booking_id: ticket.booking_id,
         code: ticket.code,
-        jwt_jti: ticket.jwt_jti,
         ticket_type_id: ticket.ticket_type_id,
         status: ticket.status,
         scanned_at: ticket.scanned_at,
@@ -225,57 +234,21 @@ export function useDashboardKpis() {
   return useQuery<DashboardKpis>({
     queryKey: ["dashboard-kpis", activeHostId],
     enabled: !!activeHostId,
+    // Counted in the database (migration 0036), not by downloading rows.
     queryFn: async () => {
-      const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
-
-      const [{ data: bookings }, { data: listings }, { data: tickets }] = await Promise.all([
-        supabase
-          .from("bookings")
-          .select("id, total_kobo, fee_kobo, status, created_at, listings!inner(host_id)")
-          .eq("listings.host_id", activeHostId!)
-          .gte("created_at", sevenDaysAgo),
-        supabase
-          .from("listings_with_capacity")
-          .select("id, status, capacity, capacity_booked")
-          .eq("host_id", activeHostId!)
-          .eq("status", "live"),
-        supabase
-          .from("tickets")
-          .select("id, status, scanned_at, bookings!inner(listings!inner(host_id))")
-          .eq("bookings.listings.host_id", activeHostId!)
-          .eq("status", "used")
-          .gte("scanned_at", sevenDaysAgo),
-      ]);
-
-      const liveListings = (listings ?? []) as unknown as ListingWithCapacity[];
-      const recentBookings = (bookings ?? []) as Array<
-        Pick<Booking, "id" | "total_kobo" | "fee_kobo" | "status" | "created_at">
-      >;
-
-      const revenue = recentBookings
-        .filter((booking) => booking.status === "confirmed" || booking.status === "completed")
-        .reduce((sum, booking) => sum + (booking.total_kobo - booking.fee_kobo), 0);
-
-      const fillRate =
-        liveListings.length === 0
-          ? 0
-          : Math.round(
-              (liveListings.reduce((sum, listing) => {
-                if (!listing.capacity || listing.capacity <= 0) return sum;
-                return sum + Math.min(1, listing.capacity_booked / listing.capacity);
-              }, 0) /
-                liveListings.length) *
-                100,
-            );
-
+      const k = await untypedRpc<{
+        revenue_kobo_7d: number;
+        bookings_7d: number;
+        fill_rate_pct: number;
+        live_listings: number;
+        scans_7d: number;
+      }>("host_dashboard_kpis", { p_host_id: activeHostId });
       return {
-        revenueKobo7d: revenue,
-        bookings7d: recentBookings.filter(
-          (booking) => booking.status === "confirmed" || booking.status === "completed",
-        ).length,
-        fillRatePct: fillRate,
-        liveListings: liveListings.length,
-        scans7d: (tickets ?? []).length,
+        revenueKobo7d: Number(k.revenue_kobo_7d),
+        bookings7d: Number(k.bookings_7d),
+        fillRatePct: Number(k.fill_rate_pct),
+        liveListings: Number(k.live_listings),
+        scans7d: Number(k.scans_7d),
       };
     },
   });
@@ -291,31 +264,16 @@ export function useSalesByDay(days = 14) {
   return useQuery<DailySalesPoint[]>({
     queryKey: ["sales-by-day", activeHostId, days],
     enabled: !!activeHostId,
+    // One row per South African calendar day, summed in the database (0036).
     queryFn: async () => {
-      const start = new Date(Date.now() - days * 86_400_000);
-      const { data, error } = await supabase
-        .from("bookings")
-        .select("total_kobo, fee_kobo, status, created_at, listings!inner(host_id)")
-        .eq("listings.host_id", activeHostId!)
-        .gte("created_at", start.toISOString())
-        .in("status", ["confirmed", "completed"]);
-      if (error) throw error;
-
-      const buckets = new Map<string, number>();
-      for (let i = 0; i < days; i += 1) {
-        const day = new Date(Date.now() - (days - 1 - i) * 86_400_000);
-        buckets.set(dayKey(day), 0);
-      }
-
-      type SalesRow = Pick<Booking, "total_kobo" | "fee_kobo" | "status" | "created_at">;
-      for (const booking of (data ?? []) as SalesRow[]) {
-        const bucket = dayKey(new Date(booking.created_at));
-        if (buckets.has(bucket)) {
-          buckets.set(bucket, (buckets.get(bucket) ?? 0) + (booking.total_kobo - booking.fee_kobo));
-        }
-      }
-
-      return [...buckets.entries()].map(([date, revenueKobo]) => ({ date, revenueKobo }));
+      const rows = await untypedRpc<Array<{ day: string; revenue_kobo: number }>>("host_sales_by_day", {
+        p_host_id: activeHostId,
+        p_days: days,
+      });
+      return (rows ?? []).map((row) => {
+        const [, month, day] = row.day.split("-").map(Number);
+        return { date: `${month}/${day}`, revenueKobo: Number(row.revenue_kobo) };
+      });
     },
   });
 }
@@ -460,15 +418,13 @@ export function useCreateHostProfile() {
         },
       });
       if (error) {
-        const ctx = (error as { context?: Response }).context;
-        let message = error.message;
-        try {
-          const body = ctx ? await ctx.json() : null;
-          if (body?.error) message = body.error;
-        } catch {
-          /* keep the SDK message */
+        const body = await edgeErrorBody(error);
+        // 422/502 = the profile WAS saved but TradeSafe failed; the body still
+        // says where escrow stands, so onboarding can offer the retry step.
+        if (typeof body?.escrow_status === "string") {
+          return body as { escrow_status: string; token_id?: string; retryable?: boolean };
         }
-        throw new Error(message);
+        throw new Error(typeof body?.error === "string" ? body.error : error.message);
       }
       return data as { escrow_status: string; token_id?: string; retryable?: boolean };
     },
@@ -590,15 +546,9 @@ export function useVerifyPayoutAccount() {
         },
       });
       if (error) {
-        const ctx = (error as { context?: Response }).context;
-        let message = error.message;
-        try {
-          const body = ctx ? await ctx.json() : null;
-          if (body?.error) message = body.error;
-        } catch {
-          /* keep the SDK message */
-        }
-        throw new Error(message);
+        const body = await edgeErrorBody(error);
+        if (typeof body?.escrow_status === "string") return body as unknown as PayoutVerificationResult;
+        throw new Error(typeof body?.error === "string" ? body.error : error.message);
       }
       return data as PayoutVerificationResult;
     },
@@ -652,48 +602,75 @@ export function useCreateListing() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    // All-or-nothing: the listing is saved as a draft, its tiers/slots/media are
+    // added, and only then does it go live. If any step fails the draft is
+    // removed, so guests never see a listing without its tickets and a retry
+    // can't create a duplicate.
     mutationFn: async (input: CreateListingInput) => {
+      const wanted = input.listing.status ?? "draft";
       const { data: listing, error: listingError } = await supabase
         .from("listings")
-        .insert(input.listing)
+        .insert({ ...input.listing, status: "draft" })
         .select("*")
         .single();
       if (listingError) throw listingError;
 
       const listingId = listing.id;
+      try {
+        if (input.ticketTypes?.length) {
+          const { error } = await supabase.from("ticket_types").insert(
+            input.ticketTypes.map((ticketType, index) => ({
+              ...ticketType,
+              listing_id: listingId,
+              sort_order: ticketType.sort_order ?? index,
+            })),
+          );
+          if (error) throw error;
+        }
 
-      if (input.ticketTypes?.length) {
-        const { error } = await supabase.from("ticket_types").insert(
-          input.ticketTypes.map((ticketType, index) => ({
-            ...ticketType,
-            listing_id: listingId,
-            sort_order: ticketType.sort_order ?? index,
-          })),
-        );
-        if (error) throw error;
+        if (input.availability?.length) {
+          const { error } = await supabase.from("availability").insert(
+            input.availability.map((slot) => ({
+              ...slot,
+              listing_id: listingId,
+            })),
+          );
+          if (error) throw error;
+        }
+
+        if (input.media?.length) {
+          const { error } = await supabase.from("listing_media").insert(
+            input.media.map((media, index) => ({
+              ...media,
+              listing_id: listingId,
+              sort_order: media.sort_order ?? index,
+            })),
+          );
+          if (error) throw error;
+        }
+      } catch (childError) {
+        await supabase.from("listings").delete().eq("id", listingId);
+        throw childError;
       }
 
-      if (input.availability?.length) {
-        const { error } = await supabase.from("availability").insert(
-          input.availability.map((slot) => ({
-            ...slot,
-            listing_id: listingId,
-          })),
-        );
-        if (error) throw error;
+      if (wanted !== "draft") {
+        const { data: published, error: publishError } = await supabase
+          .from("listings")
+          .update({ status: wanted })
+          .eq("id", listingId)
+          .select("*")
+          .single();
+        if (publishError) {
+          // Saved but not published (e.g. payout setup missing): keep the draft.
+          if (publishError.message.includes("ESCROW_NOT_READY")) {
+            throw new Error(
+              "Saved as a draft. Set up your payout account to publish paid listings.",
+            );
+          }
+          throw publishError;
+        }
+        return published as Listing;
       }
-
-      if (input.media?.length) {
-        const { error } = await supabase.from("listing_media").insert(
-          input.media.map((media, index) => ({
-            ...media,
-            listing_id: listingId,
-            sort_order: media.sort_order ?? index,
-          })),
-        );
-        if (error) throw error;
-      }
-
       return listing as Listing;
     },
     onSuccess: async (listing) => {
@@ -806,7 +783,19 @@ export function useUploadKycDocument() {
 // and TradeSafe pays them directly on release, so TROVE never creates a
 // transfer recipient. The hook had no callers.
 
-// RPCs added in migration 0034 aren't in the generated types yet.
+/** JSON body of a non-2xx edge-function response (supabase-js keeps it on error.context). */
+async function edgeErrorBody(error: unknown): Promise<Record<string, unknown> | null> {
+  const ctx = (error as { context?: Response }).context;
+  if (!ctx || typeof ctx.json !== "function") return null;
+  try {
+    const body = await ctx.clone().json();
+    return body && typeof body === "object" ? (body as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
+// RPCs added in migrations 0034/0036 aren't in the generated types yet.
 async function untypedRpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
   const { data, error } = await (
     supabase as unknown as {
@@ -922,9 +911,22 @@ export function useDeleteListing() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (listingId: string) => {
+    // A listing with bookings is archived, never deleted: guests keep their
+    // tickets and the books stay complete (bookings reference the listing).
+    mutationFn: async (listingId: string): Promise<{ archived: boolean }> => {
+      const { count, error: countError } = await supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("listing_id", listingId);
+      if (countError) throw countError;
+      if ((count ?? 0) > 0) {
+        const { error } = await supabase.from("listings").update({ status: "archived" }).eq("id", listingId);
+        if (error) throw error;
+        return { archived: true };
+      }
       const { error } = await supabase.from("listings").delete().eq("id", listingId);
       if (error) throw error;
+      return { archived: false };
     },
     onSuccess: async () => {
       await Promise.all([
@@ -1168,7 +1170,10 @@ export function useInviteTeamMember() {
           origin: typeof window !== "undefined" ? window.location.origin : null,
         },
       });
-      if (error) throw error;
+      if (error) {
+        const body = await edgeErrorBody(error);
+        throw new Error(typeof body?.error === "string" ? body.error : "Could not send the invite. Please try again.");
+      }
       return data as { invite: TeamInvite };
     },
     onSuccess: async () => {

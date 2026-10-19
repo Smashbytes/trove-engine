@@ -8,7 +8,6 @@ import { QrScanner } from "@/components/trove/QrScanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth";
-import type { Booking } from "@/lib/database.types";
 import { getHostWorkspace } from "@/lib/host-workspace";
 import { useDevice } from "@/hooks/use-device";
 import { cn } from "@/lib/utils";
@@ -19,6 +18,7 @@ import {
   useListingTickets,
   useRedeemTicket,
   type HostTicket,
+  type ListingBooking,
   type RedeemTicketResult,
 } from "@/lib/queries";
 import { friendlyError } from "@/lib/errors";
@@ -286,7 +286,7 @@ interface SmartphoneScannerViewProps {
   result: RedeemTicketResult | null;
   redeemPending: boolean;
   onAdmitTyped: () => void;
-  bookings: Booking[];
+  bookings: ListingBooking[];
   tickets: HostTicket[];
   checkIn: ReturnType<typeof useCheckInBooking>;
   handleScanned: (raw: string) => void;
@@ -549,7 +549,7 @@ function CheckInTable({
   isPendingId,
   onCheckIn,
 }: {
-  bookings: Booking[];
+  bookings: ListingBooking[];
   isPendingId: string | null;
   onCheckIn: (bookingId: string) => void;
 }) {
