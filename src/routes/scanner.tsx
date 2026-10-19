@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/trove/AppShell";
 import { PageHeader } from "@/components/trove/PageHeader";
@@ -17,7 +17,9 @@ import {
   useHostListings,
   useListingBookings,
   useListingTickets,
+  useRedeemTicket,
   type HostTicket,
+  type RedeemTicketResult,
 } from "@/lib/queries";
 import { friendlyError } from "@/lib/errors";
 
@@ -44,7 +46,8 @@ function ScannerPage() {
 
   const [listingId, setListingId] = useState("");
   const [code, setCode] = useState("");
-  const [lookupValue, setLookupValue] = useState("");
+  const [result, setResult] = useState<RedeemTicketResult | null>(null);
+  const lastScan = useRef<{ code: string; at: number } | null>(null);
 
   const activeListingId = listingId || listings[0]?.id;
   const selectedListing = listings.find((listing) => listing.id === activeListingId);
@@ -52,22 +55,32 @@ function ScannerPage() {
   const ticketsQuery = useListingTickets(activeListingId);
   const bookingsQuery = useListingBookings(activeListingId);
   const checkIn = useCheckInBooking();
+  const redeem = useRedeemTicket();
 
-  const matchingTicket = useMemo(() => {
-    if (!lookupValue.trim()) return null;
-    return (
-      (ticketsQuery.data ?? []).find(
-        (ticket) => ticket.code.toLowerCase() === lookupValue.trim().toLowerCase(),
-      ) ?? null
-    );
-  }, [lookupValue, ticketsQuery.data]);
-
-  const handleScanned = (rawCode: string) => {
-    const trimmed = rawCode.trim();
-    if (!trimmed) return;
+  // The server admits each ticket once; the camera reports the same QR many
+  // times a second, so repeats of the last code within 5s are ignored.
+  const handleRedeem = async (rawCode: string) => {
+    const trimmed = rawCode.trim().toUpperCase();
+    if (!trimmed || !activeListingId || redeem.isPending) return;
+    const now = Date.now();
+    if (lastScan.current && lastScan.current.code === trimmed && now - lastScan.current.at < 5000) return;
+    lastScan.current = { code: trimmed, at: now };
     setCode(trimmed);
-    setLookupValue(trimmed);
-    toast.success("Code captured.");
+    try {
+      const outcome = await redeem.mutateAsync({ listingId: activeListingId, code: trimmed });
+      setResult(outcome);
+      if (outcome.result === "admitted") toast.success("Admitted.");
+      else toast.error(RESULT_COPY[outcome.result].title);
+    } catch (error) {
+      setResult(null);
+      toast.error(friendlyError(error, "Could not check this ticket."));
+    }
+  };
+
+  const handleScanned = (rawCode: string) => void handleRedeem(rawCode);
+  const handleAdmitTyped = () => {
+    lastScan.current = null;
+    void handleRedeem(code);
   };
 
   const handleCheckIn = async (bookingId: string) => {
@@ -99,9 +112,9 @@ function ScannerPage() {
           setListingId={setListingId}
           code={code}
           setCode={setCode}
-          lookupValue={lookupValue}
-          setLookupValue={setLookupValue}
-          matchingTicket={matchingTicket}
+          result={result}
+          redeemPending={redeem.isPending}
+          onAdmitTyped={handleAdmitTyped}
           bookings={bookingsQuery.data ?? []}
           tickets={ticketsQuery.data ?? []}
           checkIn={checkIn}
@@ -176,15 +189,15 @@ function ScannerPage() {
                   className="h-11 font-mono uppercase tracking-[0.12em]"
                 />
                 <Button
-                  onClick={() => setLookupValue(code)}
-                  disabled={!code.trim()}
+                  onClick={handleAdmitTyped}
+                  disabled={!code.trim() || redeem.isPending}
                   className="h-11 px-5"
                 >
-                  Inspect
+                  {redeem.isPending ? "Checking…" : "Admit"}
                 </Button>
               </div>
               <p className="mt-2 font-mono text-2xs uppercase tracking-[0.22em] text-muted-foreground">
-                Camera, image upload, or manual code · all read the same ticket table
+                Each ticket gets in once · a second scan is refused
               </p>
             </div>
           )}
@@ -209,38 +222,9 @@ function ScannerPage() {
         </section>
 
         <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
-          <h2 className="font-display text-2xl font-semibold">Lookup result</h2>
-          {!lookupValue && workspace.hostType !== "accommodation" && (
-            <p className="mt-3 text-sm text-muted-foreground">
-              Enter a ticket code to look it up.
-            </p>
-          )}
-          {workspace.hostType !== "accommodation" && lookupValue && !matchingTicket && (
-            <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/10 p-4">
-              <p className="font-semibold text-destructive">Code not found</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                No issued code matched `{lookupValue}` on the selected listing.
-              </p>
-            </div>
-          )}
-          {matchingTicket && (
-            <div className="mt-4 space-y-3">
-              <ResultRow label="Code" value={matchingTicket.code} />
-              <ResultRow label="Status" value={matchingTicket.status} />
-              <ResultRow label="Party size" value={matchingTicket.booking_party_size.toString()} />
-              <ResultRow
-                label="Issued"
-                value={new Date(matchingTicket.booking_created_at).toLocaleString("en-ZA")}
-              />
-              <ResultRow
-                label="Scanned at"
-                value={
-                  matchingTicket.scanned_at
-                    ? new Date(matchingTicket.scanned_at).toLocaleString("en-ZA")
-                    : "Not used yet"
-                }
-              />
-            </div>
+          <h2 className="font-display text-2xl font-semibold">Door result</h2>
+          {workspace.hostType !== "accommodation" && (
+            <RedeemResultCard result={result} pending={redeem.isPending} />
           )}
 
           {workspace.hostType === "accommodation" && (
@@ -299,9 +283,9 @@ interface SmartphoneScannerViewProps {
   setListingId: (id: string) => void;
   code: string;
   setCode: (code: string) => void;
-  lookupValue: string;
-  setLookupValue: (v: string) => void;
-  matchingTicket: HostTicket | null;
+  result: RedeemTicketResult | null;
+  redeemPending: boolean;
+  onAdmitTyped: () => void;
   bookings: Booking[];
   tickets: HostTicket[];
   checkIn: ReturnType<typeof useCheckInBooking>;
@@ -317,9 +301,9 @@ function SmartphoneScannerView({
   setListingId,
   code,
   setCode,
-  lookupValue,
-  setLookupValue,
-  matchingTicket,
+  result,
+  redeemPending,
+  onAdmitTyped,
   bookings,
   tickets,
   checkIn,
@@ -387,8 +371,8 @@ function SmartphoneScannerView({
                 onChange={(e) => setCode(e.target.value)}
                 className="h-11 font-mono uppercase tracking-[0.12em] text-sm"
               />
-              <Button size="sm" onClick={() => setLookupValue(code)} disabled={!code.trim()} className="h-11 px-4">
-                Inspect
+              <Button size="sm" onClick={onAdmitTyped} disabled={!code.trim() || redeemPending} className="h-11 px-4">
+                {redeemPending ? "…" : "Admit"}
               </Button>
             </div>
           </div>
@@ -398,33 +382,8 @@ function SmartphoneScannerView({
       {/* Result card */}
       {!isAccommodation && (
         <div className="rounded-card border border-border/60 bg-card p-4 shadow-card">
-          <p className="font-display text-lg font-semibold">Result</p>
-          {!lookupValue && (
-            <p className="mt-2 text-sm text-muted-foreground">Scan or type a code above.</p>
-          )}
-          {lookupValue && !matchingTicket && (
-            <div className="mt-3 rounded-2xl border border-destructive/30 bg-destructive/10 p-3">
-              <p className="text-sm font-semibold text-destructive">Code not found</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                No match for <span className="font-mono">{lookupValue}</span>.
-              </p>
-            </div>
-          )}
-          {matchingTicket && (
-            <div className="mt-3 space-y-2">
-              <ResultRow label="Code" value={matchingTicket.code} />
-              <ResultRow label="Status" value={matchingTicket.status} />
-              <ResultRow label="Party" value={matchingTicket.booking_party_size.toString()} />
-              <ResultRow
-                label="Scanned"
-                value={
-                  matchingTicket.scanned_at
-                    ? new Date(matchingTicket.scanned_at).toLocaleString("en-ZA")
-                    : "Not used yet"
-                }
-              />
-            </div>
-          )}
+          <p className="font-display text-lg font-semibold">Door result</p>
+          <RedeemResultCard result={result} pending={redeemPending} compact />
         </div>
       )}
 
@@ -515,6 +474,67 @@ function Telemetry({
   );
 }
 
+const RESULT_COPY: Record<RedeemTicketResult["result"], { title: string; tone: "ok" | "bad" }> = {
+  admitted: { title: "Admitted", tone: "ok" },
+  already_used: { title: "Already used", tone: "bad" },
+  not_valid: { title: "Not valid", tone: "bad" },
+  not_found: { title: "Code not found", tone: "bad" },
+};
+
+function RedeemResultCard({
+  result,
+  pending,
+  compact,
+}: {
+  result: RedeemTicketResult | null;
+  pending: boolean;
+  compact?: boolean;
+}) {
+  if (pending) {
+    return (
+      <p className="mt-3 text-sm text-muted-foreground" role="status">
+        Checking ticket…
+      </p>
+    );
+  }
+  if (!result) {
+    return (
+      <p className="mt-3 text-sm text-muted-foreground">
+        Scan a QR or type a code and press Admit.
+      </p>
+    );
+  }
+  const copy = RESULT_COPY[result.result];
+  const reason =
+    result.result === "already_used" && result.scanned_at
+      ? `First scanned ${new Date(result.scanned_at).toLocaleString("en-ZA")}. Don't let this code in again.`
+      : result.result === "not_valid"
+        ? `Ticket ${result.ticket_status?.replace(/_/g, " ") ?? ""}, booking ${result.booking_status?.replace(/_/g, " ") ?? ""}. Send the guest to support.`
+        : result.result === "not_found"
+          ? `No ticket ${result.code ?? ""} on this listing. Check the listing picker.`
+          : null;
+  return (
+    <div
+      role="alert"
+      className={cn(
+        "mt-3 space-y-2 rounded-2xl border",
+        compact ? "p-3" : "p-4",
+        copy.tone === "ok"
+          ? "border-emerald-400/40 bg-emerald-500/10"
+          : "border-destructive/30 bg-destructive/10",
+      )}
+    >
+      <p className={cn("font-display text-xl font-semibold", copy.tone === "ok" ? "text-emerald-300" : "text-red-300")}>
+        {copy.title}
+      </p>
+      {reason && <p className="text-sm text-muted-foreground">{reason}</p>}
+      {result.code && <ResultRow label="Code" value={result.code} />}
+      {result.party_size != null && <ResultRow label="Party" value={String(result.party_size)} />}
+      {result.ticket_type && <ResultRow label="Ticket" value={result.ticket_type} />}
+    </div>
+  );
+}
+
 function ResultRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between rounded-2xl border border-white/8 bg-white/[0.03] p-4">
@@ -558,11 +578,11 @@ function CheckInTable({
         <tbody>
           {bookings.map((booking) => {
             const checkedIn = !!booking.checked_in_at;
+            // Only paid/confirmed bookings can arrive; the server enforces the same.
             const disabled =
               checkedIn ||
               isPendingId === booking.id ||
-              booking.status === "cancelled" ||
-              booking.status === "refunded";
+              (booking.status !== "confirmed" && booking.status !== "partially_refunded");
             return (
               <tr key={booking.id} className="border-t border-border/60">
                 <td className="px-4 py-3 text-left font-medium">#{booking.id.slice(0, 8)}</td>

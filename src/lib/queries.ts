@@ -806,32 +806,74 @@ export function useUploadKycDocument() {
 // and TradeSafe pays them directly on release, so TROVE never creates a
 // transfer recipient. The hook had no callers.
 
+// RPCs added in migration 0034 aren't in the generated types yet.
+async function untypedRpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
+  const { data, error } = await (
+    supabase as unknown as {
+      rpc: (f: string, a: Record<string, unknown>) => Promise<{ data: T; error: { message: string } | null }>;
+    }
+  ).rpc(fn, args);
+  if (error) throw error;
+  return data;
+}
+
 export interface CheckInBookingInput {
   bookingId: string;
   listingId: string;
 }
 
+type CheckInResult =
+  | { result: "checked_in" | "already_checked_in"; checked_in_at: string }
+  | { result: "not_confirmed"; status: string };
+
+/** Arrival stamp for reservations. The server checks permission and status. */
 export function useCheckInBooking() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ bookingId }: CheckInBookingInput) => {
-      const { data, error } = await supabase
-        .from("bookings")
-        .update({ checked_in_at: new Date().toISOString() })
-        .eq("id", bookingId)
-        .select("*")
-        .single();
-      if (error) throw error;
-      return data as Booking;
+      const data = await untypedRpc<CheckInResult>("check_in_booking", { p_booking_id: bookingId });
+      if (data.result === "not_confirmed") {
+        throw new Error(`This booking can't be checked in: it's ${data.status.replace(/_/g, " ")}.`);
+      }
+      return data;
     },
-    onSuccess: async (booking, variables) => {
+    onSuccess: async (_result, variables) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: listingQueryKeys.bookings(variables.listingId) }),
         queryClient.invalidateQueries({ queryKey: listingQueryKeys.detail(variables.listingId) }),
         queryClient.invalidateQueries({ queryKey: listingQueryKeys.all }),
       ]);
-      return booking;
+    },
+  });
+}
+
+export interface RedeemTicketResult {
+  result: "admitted" | "already_used" | "not_valid" | "not_found";
+  code?: string;
+  scanned_at?: string;
+  party_size?: number;
+  ticket_type?: string | null;
+  ticket_status?: string;
+  booking_status?: string;
+}
+
+/**
+ * Door scanning. The server decides: it admits a valid, paid ticket exactly
+ * once (marks it used) and refuses reuse, voided/refunded and unpaid tickets.
+ */
+export function useRedeemTicket() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ listingId, code }: { listingId: string; code: string }) =>
+      untypedRpc<RedeemTicketResult>("redeem_ticket", { p_listing_id: listingId, p_code: code }),
+    onSuccess: async (result, variables) => {
+      if (result.result !== "admitted") return;
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: listingQueryKeys.tickets(variables.listingId) }),
+        queryClient.invalidateQueries({ queryKey: listingQueryKeys.bookings(variables.listingId) }),
+        queryClient.invalidateQueries({ queryKey: ["dashboard-kpis"] }),
+      ]);
     },
   });
 }
