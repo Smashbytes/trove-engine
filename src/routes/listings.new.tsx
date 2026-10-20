@@ -107,7 +107,7 @@ function NewListing() {
   >([]);
 
   // When guests may ask for their money back (enforced by request_refund()).
-  const [refundPolicy, setRefundPolicy] = useState<RefundPolicy>("7d");
+  const [refundPolicy, setRefundPolicy] = useState<RefundPolicy>("standard");
 
   // Inline validation: field errors keyed by field name, row errors by row id.
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -558,11 +558,12 @@ function NewListing() {
           <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
             <h2 className="font-display text-2xl font-semibold">Refund policy</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Guests see this before they pay. Within it, they can ask for a refund in the app; TROVE checks it
-              and TradeSafe returns the money from escrow, so you're never paid for a booking that was refunded.
+              What guests get back if they cancel. They see it before they pay; TradeSafe returns their share
+              from escrow and you're paid the rest after the event. TROVE's R8 booking fee is never refunded
+              when a guest cancels. If you cancel the event, every guest gets a full refund.
             </p>
             <div className="mt-5 max-w-md">
-              <Field label="Guests can request a refund">
+              <Field label="When a guest cancels">
                 <select
                   value={refundPolicy}
                   onChange={(event) => setRefundPolicy(event.target.value as RefundPolicy)}
@@ -575,6 +576,9 @@ function NewListing() {
                   ))}
                 </select>
               </Field>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {REFUND_POLICIES.find((p) => p.value === refundPolicy)?.detail}
+              </p>
             </div>
           </section>
 

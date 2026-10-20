@@ -1,7 +1,9 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Pause, Rocket, Share2, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, CalendarX2, Pause, Rocket, Share2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/trove/AppShell";
+import { CancelEventDialog } from "@/components/trove/CancelEventDialog";
 import { ShareKit } from "@/components/trove/ShareKit";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
@@ -61,6 +63,7 @@ function ListingDetailPage() {
   const ticketsQuery = useListingTickets(listingId);
   const deleteListing = useDeleteListing();
   const setListingStatus = useSetListingStatus();
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   useRealtimeBookings(listingId);
 
@@ -81,6 +84,9 @@ function ListingDetailPage() {
   const ticketTypes = ticketTypesQuery.data ?? [];
   const availability = availabilityQuery.data ?? [];
   const tickets = ticketsQuery.data ?? [];
+  const cancelled = listing as { cancelled_at?: string | null; cancel_reason?: string | null };
+  const isCancelled = !!cancelled.cancelled_at;
+  const canCancel = can("listings.manage") && can("bookings.manage") && !isCancelled && listing.status !== "draft";
 
   const handleStatus = async (status: "live" | "paused") => {
     try {
@@ -152,8 +158,19 @@ function ListingDetailPage() {
         </div>
       </div>
 
+      {isCancelled && (
+        <div role="status" className="mt-6 rounded-card border border-destructive/40 bg-destructive/10 p-4 text-sm">
+          <p className="font-semibold">
+            Cancelled on {new Date(cancelled.cancelled_at!).toLocaleDateString("en-ZA")}
+          </p>
+          <p className="mt-1 text-muted-foreground">
+            Reason given to guests: {cancelled.cancel_reason}. Paid guests are refunded in full from escrow.
+          </p>
+        </div>
+      )}
+
       <div className="mt-6 flex flex-wrap gap-2">
-        {can("listings.manage") && listing.status !== "live" && (
+        {can("listings.manage") && listing.status !== "live" && !isCancelled && (
           <Button
             onClick={() => handleStatus("live")}
             disabled={setListingStatus.isPending}
@@ -178,6 +195,12 @@ function ListingDetailPage() {
           <Share2 className="mr-1.5 h-4 w-4" />
           Share
         </Button>
+        {canCancel && (
+          <Button variant="outline" className="text-destructive hover:text-destructive" onClick={() => setCancelOpen(true)}>
+            <CalendarX2 className="mr-1.5 h-4 w-4" />
+            Cancel event
+          </Button>
+        )}
         <Button
           variant="ghost"
           className="text-destructive hover:text-destructive"
@@ -187,6 +210,16 @@ function ListingDetailPage() {
           Delete listing
         </Button>
       </div>
+
+      {canCancel && (
+        <CancelEventDialog
+          open={cancelOpen}
+          onOpenChange={setCancelOpen}
+          listingId={listing.id}
+          listingTitle={listing.title}
+          slots={availability}
+        />
+      )}
 
       <div className="mt-6 grid gap-3 md:grid-cols-4">
         <MetricTile label="Booked" value={listing.capacity_booked.toString()} />
