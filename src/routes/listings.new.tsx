@@ -15,6 +15,7 @@ import { friendlyError } from "@/lib/errors";
 import { randsToCents } from "@/lib/format";
 import { getHostWorkspace } from "@/lib/host-workspace";
 import { useCreateListing, useHostCategories } from "@/lib/queries";
+import { REFUND_POLICIES, type RefundPolicy } from "@/lib/refund-policy";
 
 export const Route = createFileRoute("/listings/new")({
   head: () => ({
@@ -104,6 +105,9 @@ function NewListing() {
       required: boolean;
     }>
   >([]);
+
+  // When guests may ask for their money back (enforced by request_refund()).
+  const [refundPolicy, setRefundPolicy] = useState<RefundPolicy>("7d");
 
   // Inline validation: field errors keyed by field name, row errors by row id.
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -233,6 +237,7 @@ function NewListing() {
               doors_close: doorsClose || undefined,
             },
             custom_questions: normalizedQuestions,
+            ...({ refund_policy: refundPolicy } as object),
           },
           ticketTypes: normalizedTiers.map((tier, index) => ({
             name: tier.name,
@@ -282,7 +287,7 @@ function NewListing() {
               max_group: Number(maxGroup) || undefined,
               safety_notes: safetyNotes.trim() || undefined,
             },
-            ...({ custom_questions: normalizedQuestions } as object),
+            ...({ custom_questions: normalizedQuestions, refund_policy: refundPolicy } as object),
           },
           availability: normalizedAvailability.map((slot) => ({
             starts_at: new Date(slot.startsAt).toISOString(),
@@ -329,7 +334,7 @@ function NewListing() {
               amenities: trimmedAmenities,
               rooms: normalizedRooms,
             },
-            ...({ custom_questions: normalizedQuestions } as object),
+            ...({ custom_questions: normalizedQuestions, refund_policy: refundPolicy } as object),
           },
         });
 
@@ -361,7 +366,7 @@ function NewListing() {
             age_restriction: Number(venueAgeRestriction) || undefined,
             amenities: trimmedAmenities,
           },
-          ...({ custom_questions: normalizedQuestions } as object),
+          ...({ custom_questions: normalizedQuestions, refund_policy: refundPolicy } as object),
         },
       });
 
@@ -547,6 +552,29 @@ function NewListing() {
                   </label>
                 </div>
               ))}
+            </div>
+          </section>
+
+          <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
+            <h2 className="font-display text-2xl font-semibold">Refund policy</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Guests see this before they pay. Within it, they can ask for a refund in the app; TROVE checks it
+              and TradeSafe returns the money from escrow, so you're never paid for a booking that was refunded.
+            </p>
+            <div className="mt-5 max-w-md">
+              <Field label="Guests can request a refund">
+                <select
+                  value={refundPolicy}
+                  onChange={(event) => setRefundPolicy(event.target.value as RefundPolicy)}
+                  className="flex h-10 w-full rounded-md border border-input bg-input px-3 text-sm"
+                >
+                  {REFUND_POLICIES.map((p) => (
+                    <option key={p.value} value={p.value}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
             </div>
           </section>
 

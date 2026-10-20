@@ -19,6 +19,7 @@ import {
 } from "@/lib/queries";
 import { formatZar } from "@/lib/format";
 import { friendlyError } from "@/lib/errors";
+import { refundPolicyLabel } from "@/lib/refund-policy";
 
 export const Route = createFileRoute("/listings/$listingId")({
   head: () => ({
@@ -232,6 +233,10 @@ function ListingDetailPage() {
               ).toString()}
             />
             <SummaryRow label="Publish state" value={listing.status} />
+            <SummaryRow
+              label="Refunds"
+              value={refundPolicyLabel((listing as { refund_policy?: string }).refund_policy)}
+            />
           </div>
         </section>
       </div>
