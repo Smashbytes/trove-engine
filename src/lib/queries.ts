@@ -920,6 +920,21 @@ export function useDeleteListing() {
         .eq("listing_id", listingId);
       if (countError) throw countError;
       if ((count ?? 0) > 0) {
+        // Archiving keeps guests' tickets but the event wouldn't happen: anyone
+        // still booked for an upcoming date must be cancelled (and refunded).
+        const upcoming = await untypedRpc<CancelEventPreview>("cancel_event_preview", {
+          p_listing_id: listingId,
+          p_slot_id: null,
+        });
+        const { data: listingRow } = await supabase.from("listings").select("metadata, cancelled_at").eq("id", listingId).maybeSingle();
+        const row = listingRow as { metadata?: { date?: string } | null; cancelled_at?: string | null } | null;
+        const eventDate = row?.metadata?.date ? new Date(row.metadata.date).getTime() : NaN;
+        const eventOver = Number.isFinite(eventDate) && eventDate < Date.now();
+        if (!row?.cancelled_at && !eventOver && upcoming.bookings > 0) {
+          throw new Error(
+            `${upcoming.bookings} booking${upcoming.bookings === 1 ? " is" : "s are"} still active. Use "Cancel event" so guests are told and refunded, or pause the listing to stop new bookings.`,
+          );
+        }
         const { error } = await supabase.from("listings").update({ status: "archived" }).eq("id", listingId);
         if (error) throw error;
         return { archived: true };
@@ -933,6 +948,59 @@ export function useDeleteListing() {
         queryClient.invalidateQueries({ queryKey: listingQueryKeys.all }),
         queryClient.invalidateQueries({ queryKey: ["dashboard-kpis"] }),
         queryClient.invalidateQueries({ queryKey: ["sales-by-day"] }),
+      ]);
+    },
+  });
+}
+
+// ── Cancelling an event (migration 0038 + host-cancel-event) ──────────────────
+
+export interface CancelEventPreview {
+  bookings: number;
+  guests: number;
+  paid: number;
+  refund_kobo: number;
+}
+
+/** Who a cancellation would affect: the whole listing, or one date (slotId). */
+export function useCancelEventPreview(listingId: string | undefined, slotId: string | null, enabled: boolean) {
+  return useQuery<CancelEventPreview>({
+    queryKey: ["cancel-event-preview", listingId, slotId],
+    enabled: enabled && !!listingId,
+    queryFn: () => untypedRpc<CancelEventPreview>("cancel_event_preview", { p_listing_id: listingId, p_slot_id: slotId }),
+  });
+}
+
+export interface CancelEventResult {
+  paid_bookings: number;
+  refunds_started: number;
+  refunds_queued: number;
+  refunds_for_hq: number;
+  free_cancelled: number;
+  holds_released: number;
+}
+
+export function useCancelEvent() {
+  const queryClient = useQueryClient();
+  return useMutation<CancelEventResult, Error, { listingId: string; slotId: string | null; reason: string }>({
+    mutationFn: async ({ listingId, slotId, reason }) => {
+      const { data, error } = await supabase.functions.invoke("host-cancel-event", {
+        body: { listing_id: listingId, slot_id: slotId, reason },
+      });
+      if (error) {
+        const body = await edgeErrorBody(error);
+        throw new Error(typeof body?.error === "string" ? body.error : "We couldn't cancel this event. Nothing was changed.");
+      }
+      return data as CancelEventResult;
+    },
+    onSuccess: async (_data, vars) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: listingQueryKeys.all }),
+        queryClient.invalidateQueries({ queryKey: listingQueryKeys.detail(vars.listingId) }),
+        queryClient.invalidateQueries({ queryKey: listingQueryKeys.bookings(vars.listingId) }),
+        queryClient.invalidateQueries({ queryKey: listingQueryKeys.availability(vars.listingId) }),
+        queryClient.invalidateQueries({ queryKey: ["cancel-event-preview", vars.listingId] }),
+        queryClient.invalidateQueries({ queryKey: ["dashboard-kpis"] }),
       ]);
     },
   });
