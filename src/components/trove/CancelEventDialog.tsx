@@ -143,7 +143,10 @@ export function CancelEventDialog({
           <span className="text-sm font-medium">Reason (guests will see this)</span>
           <Textarea
             value={reason}
-            onChange={(e) => setReason(e.target.value)}
+            onChange={(e) => {
+              setReason(e.target.value);
+              if (error) setError(null);
+            }}
             maxLength={500}
             rows={3}
             placeholder="e.g. The venue flooded and we can't run the event safely."
