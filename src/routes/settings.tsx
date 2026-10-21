@@ -1,10 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   Bell as BellIcon,
   KeyRound,
   MessageCircle,
   Settings as SettingsIcon,
   ShieldCheck,
+  UserX,
   Wallet,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
@@ -26,6 +27,8 @@ import {
   useWhatsAppStatus,
 } from "@/lib/whatsapp";
 import { friendlyError } from "@/lib/errors";
+import { closingDate, useAccountClosure, useRequestAccountClosure } from "@/lib/account-closure";
+import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({ meta: [{ title: "Settings · Trove Engine" }] }),
@@ -446,8 +449,104 @@ function SettingsPage() {
           </div>
         </Section>
         <VerifyPayoutDialog open={verifyPayoutOpen} onOpenChange={setVerifyPayoutOpen} />
+
+        {/* Close account */}
+        <Section
+          icon={UserX}
+          title="Close account"
+          sub="Remove your personal details and your Spot's public profile. Bookings, payouts and verification records stay on file."
+        >
+          <CloseAccountCard />
+        </Section>
       </div>
     </AppShell>
+  );
+}
+
+/**
+ * Close the signed-in account (SHR-L03-04). Refused while the Spot still has
+ * upcoming guests, escrow or payouts in flight; then 14 days to change your
+ * mind (sign in → Keep my account); then the details are wiped.
+ */
+function CloseAccountCard() {
+  const { signOut, activeHostId, user } = useAuth();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const closure = useAccountClosure(open);
+  const request = useRequestAccountClosure();
+  const blockers = request.data && !request.data.ok ? request.data.blockers : (closure.data?.blockers ?? []);
+  const staffSeat = !!activeHostId && activeHostId !== user?.id;
+
+  function closeNow() {
+    request.mutate(reason, {
+      onSuccess: async (res) => {
+        if (!res.ok) return;
+        toast.success(`Your account will be closed on ${closingDate(res.wipeAfter)}. Sign in before then to keep it.`);
+        await signOut();
+        navigate({ to: "/" });
+      },
+      onError: (e) => toast.error(friendlyError(e, "Couldn't close your account. Try again.")),
+    });
+  }
+
+  if (!open) {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <p className="max-w-xl text-sm leading-6 text-muted-foreground">
+          {staffSeat
+            ? "This closes your own TROVE account, not the Spot you're working in. To leave a team only, ask the Spot owner to remove you."
+            : "Closing your account also closes your Spot: listings are archived and guests can no longer find it."}
+        </p>
+        <Button variant="outline" className="border-destructive/40 text-destructive hover:bg-destructive/10" onClick={() => setOpen(true)}>
+          Close my account
+        </Button>
+      </div>
+    );
+  }
+  if (closure.isLoading) return <p className="text-sm text-muted-foreground" role="status">Checking your account…</p>;
+  if (closure.isError) {
+    return (
+      <div className="space-y-2">
+        <p className="text-sm text-muted-foreground">We couldn't check your account right now.</p>
+        <Button variant="outline" size="sm" onClick={() => closure.refetch()}>Try again</Button>
+      </div>
+    );
+  }
+  if (blockers.length > 0) {
+    return (
+      <div className="space-y-4" role="alert">
+        <p className="text-sm font-semibold">Finish these first</p>
+        <ul className="space-y-2">
+          {blockers.map((b) => (
+            <li key={b.code} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-sm">{b.message}</li>
+          ))}
+        </ul>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => { setOpen(false); request.reset(); }}>OK</Button>
+          <Button variant="ghost" asChild><Link to="/listings">Go to listings</Link></Button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-4">
+      <p className="text-sm font-semibold">Close your TROVE account?</p>
+      <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+        You'll be signed out on every device, your live listings are paused and your Spot is hidden straight away. You
+        have 14 days to change your mind: sign in again and choose Keep my account. After that your personal details
+        and the Spot's public profile are wiped and this email can't be used to sign in to this account again.
+      </p>
+      <Field label="Why are you leaving? (optional)">
+        <Textarea value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} rows={2} />
+      </Field>
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button variant="outline" onClick={() => setOpen(false)}>Keep my account</Button>
+        <Button variant="destructive" disabled={request.isPending} onClick={closeNow}>
+          {request.isPending ? "Closing…" : "Close account"}
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -530,7 +629,7 @@ function Section({
     <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Icon className="h-4 w-4" />
           </div>
           <div>
