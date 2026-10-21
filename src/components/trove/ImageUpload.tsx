@@ -3,7 +3,7 @@ import { useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useUploadListingImage } from "@/lib/queries";
+import { LISTING_IMAGE_TYPES, useUploadListingImage } from "@/lib/queries";
 import { friendlyError } from "@/lib/errors";
 
 interface ImageUploadProps {
@@ -94,7 +94,13 @@ export function ImageUpload({
         </div>
       </div>
 
-      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+      <input
+        ref={inputRef}
+        type="file"
+        accept={LISTING_IMAGE_TYPES.join(",")}
+        className="hidden"
+        onChange={handleFile}
+      />
     </div>
   );
 }

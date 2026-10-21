@@ -706,6 +706,7 @@ export function useCreateListing() {
 }
 
 const LISTING_MEDIA_BUCKET = "listing-media";
+export const LISTING_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 export interface UploadListingImageInput {
   file: File;
@@ -718,8 +719,9 @@ export function useUploadListingImage() {
   return useMutation({
     mutationFn: async ({ file, listingId }: UploadListingImageInput) => {
       if (!user) throw new Error("Not authenticated");
-      if (!file.type.startsWith("image/")) {
-        throw new Error("Only image files are supported.");
+      // Same limits as the listing-media bucket (the bucket refuses anything else).
+      if (!LISTING_IMAGE_TYPES.includes(file.type)) {
+        throw new Error("Upload a JPG, PNG or WebP image.");
       }
       const maxBytes = 8 * 1024 * 1024;
       if (file.size > maxBytes) {
