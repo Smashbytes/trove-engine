@@ -1,19 +1,22 @@
 import type { LucideIcon } from "lucide-react";
 import {
   AlertTriangle,
+  Banknote,
   Bell,
   CalendarCheck,
   ClipboardEdit,
   RotateCcw,
+  Star,
   UserPlus,
 } from "lucide-react";
 
 import type { Notification } from "@/lib/database.types";
 
 /**
- * How each notification type reads in the Inbox. Types and payloads come from the
- * database (notify_new_guest, notify_new_follower, request_refund, HQ moderation);
- * anything else falls back to the payload's own title/message.
+ * How each notification type reads in the Inbox. The Engine shows the host
+ * audience of public.notification_types (new_guest, new_follower, new_review,
+ * guest_refund_requested, payout_sent, HQ moderation); anything else falls back
+ * to the payload's own title/message.
  */
 export interface NotificationView {
   title: string;
@@ -57,11 +60,25 @@ const SPECS: Record<string, (p: Payload) => NotificationView> = {
     tone: "primary",
     link: { to: "/audience", label: "View audience" },
   }),
-  refund_requested: (p) => ({
+  guest_refund_requested: (p) => ({
     title: str(p, "title") ?? "A guest cancelled",
     message: str(p, "message") ?? "A guest asked to cancel their booking.",
     icon: RotateCcw,
     tone: "warning",
+  }),
+  new_review: (p) => ({
+    title: "New review",
+    message: str(p, "message") ?? "A guest reviewed your Spot.",
+    icon: Star,
+    tone: "success",
+    link: listingLink(p, "View listing"),
+  }),
+  payout_sent: (p) => ({
+    title: str(p, "title") ?? "Payout released",
+    message: str(p, "message") ?? "TradeSafe released a payout to you.",
+    icon: Banknote,
+    tone: "success",
+    link: { to: "/payouts", label: "View payouts" },
   }),
   listing_rejected: (p) => ({
     title: str(p, "title") ?? "Listing not approved",

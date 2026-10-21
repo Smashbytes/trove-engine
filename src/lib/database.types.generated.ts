@@ -1407,6 +1407,7 @@ export type Database = {
       }
       notifications: {
         Row: {
+          audience: string
           created_at: string
           dedupe_key: string | null
           id: string
@@ -1416,6 +1417,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          audience?: string
           created_at?: string
           dedupe_key?: string | null
           id?: string
@@ -1425,6 +1427,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          audience?: string
           created_at?: string
           dedupe_key?: string | null
           id?: string

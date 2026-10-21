@@ -49,7 +49,13 @@ const NOTIFY_CHANNELS = [
 // is shown as "soon" rather than a switch that silently does nothing.
 //   new_booking.whatsapp → _shared/whatsapp.ts notifyHostNewBooking
 //   *.in_app             → useHostNotifications filters the feed
-const WIRED = new Set(["new_booking.whatsapp", "new_booking.in_app", "new_follower.in_app"]);
+const WIRED = new Set([
+  "new_booking.whatsapp",
+  "new_booking.in_app",
+  "new_follower.in_app",
+  "payout_sent.in_app",
+  "new_review.in_app",
+]);
 
 type NotifyPrefs = Record<string, Record<string, boolean>>;
 
