@@ -287,7 +287,7 @@ function AudiencePage() {
                     </p>
                   </div>
                   <Badge variant="secondary" className="shrink-0">
-                    {event.guests.length} guest{event.guests.length === 1 ? "" : "s"}
+                    {event.guestCount} guest{event.guestCount === 1 ? "" : "s"}
                   </Badge>
                 </div>
                 {event.guests.length === 0 ? (
@@ -321,6 +321,12 @@ function AudiencePage() {
                         </li>
                       );
                     })}
+                    {event.bookingCount > event.guests.length && (
+                      <li className="px-5 py-3 text-xs text-muted-foreground">
+                        and {event.bookingCount - event.guests.length} more booking
+                        {event.bookingCount - event.guests.length === 1 ? "" : "s"}
+                      </li>
+                    )}
                   </ul>
                 )}
               </section>

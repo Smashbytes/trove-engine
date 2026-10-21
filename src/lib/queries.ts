@@ -817,7 +817,7 @@ async function edgeErrorBody(error: unknown): Promise<Record<string, unknown> | 
 }
 
 // RPCs added in migrations 0034/0036 aren't in the generated types yet.
-async function untypedRpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
+export async function untypedRpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
   const { data, error } = await (
     supabase as unknown as {
       rpc: (f: string, a: Record<string, unknown>) => Promise<{ data: T; error: { message: string } | null }>;
