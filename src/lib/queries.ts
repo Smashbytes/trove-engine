@@ -317,7 +317,6 @@ export function useHostPayouts(limit = 20) {
 // Maps a notifications.type to the Settings matrix event that governs it.
 const NOTIFICATION_PREF_EVENT: Record<string, string> = {
   new_guest: "new_booking",
-  new_booking: "new_booking",
   new_follower: "new_follower",
   payout_sent: "payout_sent",
   new_review: "new_review",
@@ -329,25 +328,27 @@ export function useHostNotifications(limit = 20) {
     string,
     Record<string, boolean> | undefined
   >;
+  // Types the host switched off under Settings → "In-app" (default ON when unset).
+  // Filtered in the query, so muted rows don't use up the limit.
+  const muted = Object.entries(NOTIFICATION_PREF_EVENT)
+    .filter(([, event]) => prefs[event]?.in_app === false)
+    .map(([type]) => type)
+    .sort();
   return useQuery<Notification[]>({
-    queryKey: ["notifications", user?.id, limit],
+    queryKey: ["notifications", user?.id, limit, muted],
     enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Only the Engine's own notifications; guest ones show in the guest app.
+      let query = supabase
         .from("notifications")
         .select("*")
         .eq("user_id", user!.id)
-        .order("created_at", { ascending: false })
-        .limit(limit);
+        .eq("audience", "host");
+      if (muted.length) query = query.not("type", "in", `(${muted.join(",")})`);
+      const { data, error } = await query.order("created_at", { ascending: false }).limit(limit);
       if (error) throw error;
       return (data ?? []) as Notification[];
     },
-    // Honour the Settings "In-app" switches (default ON when unset).
-    select: (rows) =>
-      rows.filter((row) => {
-        const event = NOTIFICATION_PREF_EVENT[row.type];
-        return !event || prefs[event]?.in_app !== false;
-      }),
   });
 }
 
@@ -362,6 +363,7 @@ export function useMarkNotificationsRead() {
         .from("notifications")
         .update({ read_at: new Date().toISOString() })
         .eq("user_id", user.id)
+        .eq("audience", "host")
         .is("read_at", null);
       if (ids) query = query.in("id", ids);
       const { error } = await query;
