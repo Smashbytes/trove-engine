@@ -16,7 +16,9 @@ import type { Notification } from "@/lib/database.types";
  * How each notification type reads in the Inbox. The Engine shows the host
  * audience of public.notification_types (new_guest, new_follower, new_review,
  * guest_refund_requested, payout_sent, HQ moderation); anything else falls back
- * to the payload's own title/message.
+ * to the payload's own title/message. Team staff get new bookings, guest
+ * cancellations (bookings.view) and payouts (payouts.view) too; payload.host_id
+ * says which Spot.
  */
 export interface NotificationView {
   title: string;
@@ -33,12 +35,12 @@ const str = (p: Payload, key: string) =>
 const num = (p: Payload, key: string) =>
   typeof p[key] === "number" ? (p[key] as number) : undefined;
 
-function listingLink(p: Payload, label: string, bookings = false): NotificationView["link"] {
+// The listing page holds its bookings table and issued codes; /listings/$id/bookings
+// is still a placeholder (ENG-L03-08), so bookings link here too.
+function listingLink(p: Payload, label: string): NotificationView["link"] {
   const listingId = str(p, "listing_id");
   if (!listingId) return undefined;
-  return bookings
-    ? { to: "/listings/$listingId/bookings", params: { listingId }, label }
-    : { to: "/listings/$listingId", params: { listingId }, label };
+  return { to: "/listings/$listingId", params: { listingId }, label };
 }
 
 const SPECS: Record<string, (p: Payload) => NotificationView> = {
@@ -50,7 +52,7 @@ const SPECS: Record<string, (p: Payload) => NotificationView> = {
       message: `${size} ${size === 1 ? "guest" : "guests"} booked${title ? ` “${title}”` : " your listing"}.`,
       icon: CalendarCheck,
       tone: "success",
-      link: listingLink(p, "View bookings", true),
+      link: listingLink(p, "View bookings"),
     };
   },
   new_follower: () => ({
@@ -65,6 +67,7 @@ const SPECS: Record<string, (p: Payload) => NotificationView> = {
     message: str(p, "message") ?? "A guest asked to cancel their booking.",
     icon: RotateCcw,
     tone: "warning",
+    link: listingLink(p, "View bookings"),
   }),
   new_review: (p) => ({
     title: "New review",

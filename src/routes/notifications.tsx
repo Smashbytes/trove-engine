@@ -6,6 +6,7 @@ import { AppShell } from "@/components/trove/AppShell";
 import { PageHeader } from "@/components/trove/PageHeader";
 import { Button } from "@/components/ui/button";
 import { notificationView, type NotificationView } from "@/lib/notification-spec";
+import { useAuth, type Workspace } from "@/lib/auth";
 import { useHostNotifications, useMarkNotificationsRead } from "@/lib/queries";
 import type { Notification } from "@/lib/database.types";
 
@@ -24,6 +25,7 @@ const TONE: Record<NotificationView["tone"], string> = {
 function NotificationsPage() {
   const notificationsQuery = useHostNotifications(50);
   const markRead = useMarkNotificationsRead();
+  const { workspaces, activeHostId, setActiveWorkspace } = useAuth();
   const notifications = notificationsQuery.data ?? [];
   const unread = notifications.filter((n) => !n.read_at).length;
 
@@ -91,25 +93,49 @@ function NotificationsPage() {
           </div>
         )}
 
-        {notifications.map((notification) => (
-          <NotificationCard
-            key={notification.id}
-            notification={notification}
-            onOpen={() => {
-              if (!notification.read_at) markRead.mutate([notification.id]);
-            }}
-          />
-        ))}
+        {notifications.map((notification) => {
+          // Team staff get their Spots' notifications too (payload.host_id, D-041).
+          // With more than one workspace, say which Spot it's about and open it there.
+          const workspace = notificationWorkspace(notification, workspaces);
+          return (
+            <NotificationCard
+              key={notification.id}
+              notification={notification}
+              spotLabel={workspaces.length > 1 ? workspace?.label : undefined}
+              onMarkRead={() => {
+                if (!notification.read_at) markRead.mutate([notification.id]);
+              }}
+              onOpen={() => {
+                if (workspace && workspace.hostId !== activeHostId)
+                  setActiveWorkspace(workspace.hostId);
+                if (!notification.read_at) markRead.mutate([notification.id]);
+              }}
+            />
+          );
+        })}
       </div>
     </AppShell>
   );
 }
 
+function notificationWorkspace(n: Notification, workspaces: Workspace[]) {
+  const payload =
+    n.payload && typeof n.payload === "object" && !Array.isArray(n.payload) ? n.payload : {};
+  // Owner-only types (followers, reviews, HQ moderation) carry no host_id: they're
+  // about the recipient's own Spot, whose host id is their user id.
+  const hostId = typeof payload.host_id === "string" ? payload.host_id : n.user_id;
+  return workspaces.find((w) => w.hostId === hostId);
+}
+
 function NotificationCard({
   notification,
+  spotLabel,
+  onMarkRead,
   onOpen,
 }: {
   notification: Notification;
+  spotLabel?: string;
+  onMarkRead: () => void;
   onOpen: () => void;
 }) {
   const view = notificationView(notification);
@@ -148,6 +174,12 @@ function NotificationCard({
           </time>
         </div>
 
+        {spotLabel && (
+          <p className="mt-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {spotLabel}
+          </p>
+        )}
+
         {view.message && (
           <p className="mt-1 text-sm leading-6 text-muted-foreground">{view.message}</p>
         )}
@@ -167,7 +199,7 @@ function NotificationCard({
           {unread && (
             <button
               type="button"
-              onClick={onOpen}
+              onClick={onMarkRead}
               className="text-sm text-muted-foreground hover:text-foreground"
             >
               Mark as read
