@@ -336,6 +336,7 @@ export function useHostNotifications(limit = 20) {
       const { data, error } = await supabase
         .from("notifications")
         .select("*")
+        .eq("user_id", user!.id)
         .order("created_at", { ascending: false })
         .limit(limit);
       if (error) throw error;
@@ -347,6 +348,26 @@ export function useHostNotifications(limit = 20) {
         const event = NOTIFICATION_PREF_EVENT[row.type];
         return !event || prefs[event]?.in_app !== false;
       }),
+  });
+}
+
+/** Mark the given notifications (or all unread ones) as read. */
+export function useMarkNotificationsRead() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids?: string[]) => {
+      if (!user) return;
+      let query = supabase
+        .from("notifications")
+        .update({ read_at: new Date().toISOString() })
+        .eq("user_id", user.id)
+        .is("read_at", null);
+      if (ids) query = query.in("id", ids);
+      const { error } = await query;
+      if (error) throw error;
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
   });
 }
 
