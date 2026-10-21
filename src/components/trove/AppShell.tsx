@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/auth";
+import { AccountClosingScreen } from "@/components/trove/AccountClosingScreen";
 import { getHostWorkspace, getVerificationCopy } from "@/lib/host-workspace";
 import { ROLE_META } from "@/lib/permissions";
 import { TroveLogo } from "./Logo";
@@ -80,6 +81,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     .slice(0, 2)
     .join("")
     .toUpperCase();
+
+  // Closing (14-day grace): nothing else until they keep it or sign out.
+  if (profile?.deletion_requested_at && !profile.anonymised_at) {
+    return <AccountClosingScreen requestedAt={profile.deletion_requested_at} />;
+  }
 
   return (
     <div className="flex min-h-screen w-full bg-background">

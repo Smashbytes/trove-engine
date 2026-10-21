@@ -1683,9 +1683,14 @@ export type Database = {
       }
       profiles: {
         Row: {
+          anonymised_at: string | null
           avatar_url: string | null
           city: string | null
+          close_reason: string | null
+          closed_by: string | null
           created_at: string
+          deactivated_at: string | null
+          deletion_requested_at: string | null
           discoverable: boolean
           friends_going_optin: boolean
           full_name: string | null
@@ -1699,9 +1704,14 @@ export type Database = {
           username: string | null
         }
         Insert: {
+          anonymised_at?: string | null
           avatar_url?: string | null
           city?: string | null
+          close_reason?: string | null
+          closed_by?: string | null
           created_at?: string
+          deactivated_at?: string | null
+          deletion_requested_at?: string | null
           discoverable?: boolean
           friends_going_optin?: boolean
           full_name?: string | null
@@ -1715,9 +1725,14 @@ export type Database = {
           username?: string | null
         }
         Update: {
+          anonymised_at?: string | null
           avatar_url?: string | null
           city?: string | null
+          close_reason?: string | null
+          closed_by?: string | null
           created_at?: string
+          deactivated_at?: string | null
+          deletion_requested_at?: string | null
           discoverable?: boolean
           friends_going_optin?: boolean
           full_name?: string | null
