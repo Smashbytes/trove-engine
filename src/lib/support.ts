@@ -87,8 +87,23 @@ export function useTicketNotes(ticketId: string | undefined) {
   });
 }
 
+// Same limits as the support-attachments bucket (it refuses anything else).
+const ATTACHMENT_TYPES = [
+  "image/jpeg", "image/png", "image/webp", "image/gif", "image/heic", "application/pdf", "text/plain",
+];
+const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
+
 async function uploadAttachments(userId: string, ticketScope: string, files: File[]): Promise<string[]> {
   if (files.length === 0) return [];
+  // Check every file first so a bad one doesn't leave the others uploaded.
+  for (const file of files) {
+    if (!ATTACHMENT_TYPES.includes(file.type)) {
+      throw new Error(`${file.name}: attach a JPG, PNG, WebP, GIF, HEIC, PDF or text file.`);
+    }
+    if (file.size > ATTACHMENT_MAX_BYTES) {
+      throw new Error(`${file.name} is over 10 MB.`);
+    }
+  }
   const urls: string[] = [];
   for (const file of files) {
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
