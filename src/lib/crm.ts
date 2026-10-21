@@ -12,6 +12,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "./auth";
+import { untypedRpc } from "./queries";
 import { supabase } from "./supabase";
 import type {
   AudienceProfile,
@@ -155,7 +156,12 @@ export interface UpcomingEventGuests {
   listingId: string;
   listingTitle: string;
   coverUrl: string | null;
+  /** The booked slot, or null for an event (its date is on the listing). */
+  slotId: string | null;
   startsAt: string;
+  /** Totals over every confirmed booking for this date; `guests` is capped. */
+  bookingCount: number;
+  guestCount: number;
   guests: Array<{
     guestId: string;
     bookingId: string;
@@ -165,16 +171,26 @@ export interface UpcomingEventGuests {
   }>;
 }
 
-type AvailabilityRow = {
+type UpcomingRow = {
   listing_id: string;
+  listing_title: string | null;
+  cover_url: string | null;
+  slot_id: string | null;
   starts_at: string;
-  listings?: { title: string | null; cover_url: string | null; host_id: string } | null;
+  booking_count: number;
+  guest_count: number;
+  guests: Array<{
+    guest_id: string;
+    booking_id: string;
+    party_size: number;
+    status: Booking["status"];
+    checked_in_at: string | null;
+  }>;
 };
 
-type UpcomingBookingRow = Pick<
-  Booking,
-  "id" | "guest_id" | "party_size" | "status" | "checked_in_at" | "listing_id"
->;
+/** Listings shown on the Upcoming tab, and confirmed guests listed per date. */
+const UPCOMING_LISTINGS_CAP = 20;
+const UPCOMING_GUESTS_CAP = 100;
 
 export function useUpcomingEventGuests() {
   const { activeHostId } = useAuth();
@@ -182,51 +198,29 @@ export function useUpcomingEventGuests() {
     queryKey: crmKeys.upcoming(activeHostId ?? undefined),
     enabled: !!activeHostId,
     queryFn: async () => {
-      const nowIso = new Date().toISOString();
-
-      // Earliest upcoming scheduled date per listing (availability is the
-      // canonical schedule table for every booking mode).
-      const { data: avail, error: availError } = await supabase
-        .from("availability")
-        .select("listing_id, starts_at, listings!inner(title, cover_url, host_id)")
-        .eq("listings.host_id", activeHostId!)
-        .gte("starts_at", nowIso)
-        .order("starts_at", { ascending: true });
-      if (availError) throw availError;
-
-      const nextByListing = new Map<string, UpcomingEventGuests>();
-      for (const row of (avail ?? []) as AvailabilityRow[]) {
-        if (nextByListing.has(row.listing_id)) continue; // first = earliest (asc order)
-        nextByListing.set(row.listing_id, {
-          listingId: row.listing_id,
-          listingTitle: row.listings?.title ?? "Untitled",
-          coverUrl: row.listings?.cover_url ?? null,
-          startsAt: row.starts_at,
-          guests: [],
-        });
-      }
-
-      const listingIds = [...nextByListing.keys()];
-      if (listingIds.length === 0) return [];
-
-      const { data: bookings, error: bookingError } = await supabase
-        .from("bookings")
-        .select("id, guest_id, party_size, status, checked_in_at, listing_id")
-        .in("listing_id", listingIds)
-        .in("status", GUEST_BOOKING_STATUSES);
-      if (bookingError) throw bookingError;
-
-      for (const b of (bookings ?? []) as UpcomingBookingRow[]) {
-        nextByListing.get(b.listing_id)?.guests.push({
-          guestId: b.guest_id,
-          bookingId: b.id,
-          partySize: b.party_size,
-          status: b.status,
-          checkedInAt: b.checked_in_at,
-        });
-      }
-
-      return [...nextByListing.values()].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+      // The next date per listing (its next slot, else the event's own date
+      // from listings.starts_at), soonest first, with that date's guests.
+      const rows = await untypedRpc<UpcomingRow[]>("host_upcoming_guests", {
+        p_host_id: activeHostId!,
+        p_limit: UPCOMING_LISTINGS_CAP,
+        p_guest_limit: UPCOMING_GUESTS_CAP,
+      });
+      return (rows ?? []).map((row) => ({
+        listingId: row.listing_id,
+        listingTitle: row.listing_title ?? "Untitled",
+        coverUrl: row.cover_url,
+        slotId: row.slot_id,
+        startsAt: row.starts_at,
+        bookingCount: row.booking_count,
+        guestCount: row.guest_count,
+        guests: row.guests.map((g) => ({
+          guestId: g.guest_id,
+          bookingId: g.booking_id,
+          partySize: g.party_size,
+          status: g.status,
+          checkedInAt: g.checked_in_at,
+        })),
+      }));
     },
   });
 }
