@@ -17,7 +17,7 @@ import { Field } from "@/components/trove/Field";
 import { friendlyError } from "@/lib/errors";
 import { formatZar, randsToCents } from "@/lib/format";
 
-export const Route = createFileRoute("/listings/$listingId/slots")({
+export const Route = createFileRoute("/listings/$listingId_/slots")({
   head: () => ({ meta: [{ title: "Slots · Listing · Trove Engine" }] }),
   component: ListingSlotsPage,
 });

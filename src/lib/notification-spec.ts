@@ -16,7 +16,9 @@ import type { Notification } from "@/lib/database.types";
  * How each notification type reads in the Inbox. The Engine shows the host
  * audience of public.notification_types (new_guest, new_follower, new_review,
  * guest_refund_requested, payout_sent, HQ moderation); anything else falls back
- * to the payload's own title/message.
+ * to the payload's own title/message. Team staff get new bookings, guest
+ * cancellations (bookings.view) and payouts (payouts.view) too; payload.host_id
+ * says which Spot.
  */
 export interface NotificationView {
   title: string;
@@ -65,6 +67,7 @@ const SPECS: Record<string, (p: Payload) => NotificationView> = {
     message: str(p, "message") ?? "A guest asked to cancel their booking.",
     icon: RotateCcw,
     tone: "warning",
+    link: listingLink(p, "View bookings", true),
   }),
   new_review: (p) => ({
     title: "New review",
