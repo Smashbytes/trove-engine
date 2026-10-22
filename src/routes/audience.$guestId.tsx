@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, LifeBuoy, Phone, StickyNote, Trash2 } from "lucide-react";
-import { useMemo, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/trove/AppShell";
 import { Field as SharedField } from "@/components/trove/Field";
@@ -16,11 +16,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  useAudienceProfiles,
   useCreateGuestNote,
   useDeleteGuestNote,
   useGuestBookings,
   useGuestNotes,
+  useGuestSummary,
 } from "@/lib/crm";
 import {
   TICKET_CATEGORIES,
@@ -72,26 +72,23 @@ function ManageGuestPage() {
   const { guestId } = Route.useParams();
   const navigate = useNavigate();
 
-  const profilesQuery = useAudienceProfiles();
+  const summaryQuery = useGuestSummary(guestId);
   const bookingsQuery = useGuestBookings(guestId);
   const notesQuery = useGuestNotes(guestId);
   const createNote = useCreateGuestNote(guestId);
   const deleteNote = useDeleteGuestNote(guestId);
   const createTicket = useCreateTicket();
 
-  const profile = profilesQuery.data?.get(guestId);
+  // Name, phone and totals over all their bookings, counted in SQL (same
+  // numbers as the Guests list); the history below is their newest bookings.
+  const summary = summaryQuery.data;
   const bookings = bookingsQuery.data ?? [];
   const notes = notesQuery.data ?? [];
-
-  const stats = useMemo(() => {
-    const rows = bookingsQuery.data ?? [];
-    const billable = rows.filter((b) => b.status === "confirmed" || b.status === "completed");
-    return {
-      total: rows.length,
-      spend: billable.reduce((sum, b) => sum + b.totalCents, 0),
-      last: rows[0]?.createdAt ?? null,
-    };
-  }, [bookingsQuery.data]);
+  const stats = {
+    total: summary?.bookingsCount ?? 0,
+    spend: summary?.totalSpendCents ?? 0,
+    last: summary?.lastBookingAt ?? bookings[0]?.createdAt ?? null,
+  };
 
   // ---- internal note compose ----
   const [noteBody, setNoteBody] = useState("");
@@ -127,7 +124,7 @@ function ManageGuestPage() {
         description,
         category,
         priority,
-        userId: guestId,
+        subjectUserId: guestId,
         relatedBookingId: relatedBookingId === "none" ? null : relatedBookingId,
       });
       toast.success(`Ticket ${result.ticket_number} opened for this guest`);
@@ -137,7 +134,7 @@ function ManageGuestPage() {
     }
   }
 
-  const guestName = profile?.full_name ?? "Trove guest";
+  const guestName = summary?.fullName ?? "Trove guest";
 
   return (
     <AppShell>
@@ -158,19 +155,19 @@ function ManageGuestPage() {
       <div className="mb-6 flex flex-col gap-5 rounded-card border border-border/60 bg-card p-6 shadow-card sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <Avatar className="h-14 w-14">
-            {profile?.avatar_url && <AvatarImage src={profile.avatar_url} alt={guestName} />}
+            {summary?.avatarUrl && <AvatarImage src={summary.avatarUrl} alt={guestName} />}
             <AvatarFallback className="bg-primary/15 text-base font-semibold text-primary">
-              {initials(profile?.full_name)}
+              {initials(summary?.fullName)}
             </AvatarFallback>
           </Avatar>
           <div>
             <p className="font-display text-xl font-semibold">{guestName}</p>
-            {profile?.phone ? (
+            {summary?.phone ? (
               <a
-                href={`tel:${profile.phone}`}
+                href={`tel:${summary.phone}`}
                 className="mt-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
               >
-                <Phone className="h-3.5 w-3.5" /> {profile.phone}
+                <Phone className="h-3.5 w-3.5" /> {summary.phone}
               </a>
             ) : (
               <p className="mt-1 text-sm text-muted-foreground">No contact number on file</p>
@@ -242,8 +239,8 @@ function ManageGuestPage() {
               </p>
             ) : !ticketOpen ? (
               <p className="mt-2 text-sm text-muted-foreground">
-                Raise a ticket with TROVE HQ on this guest's behalf — refunds, complaints, or
-                anything that needs help.
+                Raise a ticket with TROVE HQ about this guest — refunds, complaints, or
+                anything that needs help. Only you and TROVE support see it, not the guest.
               </p>
             ) : (
               <form onSubmit={submitTicket} className="mt-4 space-y-4">

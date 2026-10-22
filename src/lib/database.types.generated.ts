@@ -2288,6 +2288,7 @@ export type Database = {
           related_booking_id: string | null
           resolved_at: string | null
           status: string
+          subject_user_id: string | null
           ticket_number: string
           title: string
           updated_at: string
@@ -2305,6 +2306,7 @@ export type Database = {
           related_booking_id?: string | null
           resolved_at?: string | null
           status?: string
+          subject_user_id?: string | null
           ticket_number?: string
           title: string
           updated_at?: string
@@ -2322,6 +2324,7 @@ export type Database = {
           related_booking_id?: string | null
           resolved_at?: string | null
           status?: string
+          subject_user_id?: string | null
           ticket_number?: string
           title?: string
           updated_at?: string
@@ -2350,6 +2353,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "support_tickets_subject_user_id_fkey"
+            columns: ["subject_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "support_tickets_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -2361,7 +2371,6 @@ export type Database = {
       ticket_types: {
         Row: {
           age_min: number | null
-          capacity_sold: number
           capacity_total: number | null
           created_at: string
           description: string | null
@@ -2378,7 +2387,6 @@ export type Database = {
         }
         Insert: {
           age_min?: number | null
-          capacity_sold?: number
           capacity_total?: number | null
           created_at?: string
           description?: string | null
@@ -2395,7 +2403,6 @@ export type Database = {
         }
         Update: {
           age_min?: number | null
-          capacity_sold?: number
           capacity_total?: number | null
           created_at?: string
           description?: string | null
@@ -3152,7 +3159,7 @@ export type Database = {
       }
       guest_display_name: { Args: { p_user: string }; Returns: string }
       host_audience_profiles: {
-        Args: { p_host_id: string }
+        Args: { p_host_id: string; p_ids: string[] }
         Returns: {
           avatar_url: string
           full_name: string

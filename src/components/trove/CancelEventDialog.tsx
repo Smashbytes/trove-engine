@@ -24,6 +24,8 @@ interface Slot {
  * A Spot calls off its event, or one date of it. Every guest is told why,
  * tickets stop working, and paid guests get a full refund (booking fee
  * included) from TradeSafe escrow. It can't be undone.
+ *
+ * With `fixedSlotId` (the slots page), only that date is offered.
  */
 export function CancelEventDialog({
   open,
@@ -31,23 +33,27 @@ export function CancelEventDialog({
   listingId,
   listingTitle,
   slots,
+  fixedSlotId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   listingId: string;
   listingTitle: string;
   slots: Slot[];
+  fixedSlotId?: string | null;
 }) {
   const upcoming = useMemo(
     () => slots.filter((s) => s.status !== "cancelled" && new Date(s.starts_at).getTime() > Date.now()),
     [slots],
   );
-  const [scope, setScope] = useState<"all" | "date">("all");
+  const [chosenScope, setScope] = useState<"all" | "date">("all");
   const [slotId, setSlotId] = useState<string>("");
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const targetSlot = scope === "date" ? slotId || upcoming[0]?.id || null : null;
+  const scope = fixedSlotId ? "date" : chosenScope;
+  const targetSlot = fixedSlotId ?? (scope === "date" ? slotId || upcoming[0]?.id || null : null);
+  const fixedSlot = fixedSlotId ? slots.find((s) => s.id === fixedSlotId) : undefined;
   const preview = useCancelEventPreview(listingId, targetSlot, open);
   const cancel = useCancelEvent();
   const trimmed = reason.trim();
@@ -94,12 +100,13 @@ export function CancelEventDialog({
             Cancel {scope === "date" ? "a date" : "this event"}
           </DialogTitle>
           <DialogDescription>
-            {listingTitle}. Guests are told straight away, their tickets stop working and everyone who paid
-            gets a full refund, booking fee included. This can't be undone.
+            {listingTitle}
+            {fixedSlot ? `, ${dateFmt(fixedSlot.starts_at)}` : ""}. Guests are told straight away, their tickets stop
+            working and everyone who paid gets a full refund, booking fee included. This can't be undone.
           </DialogDescription>
         </DialogHeader>
 
-        {upcoming.length > 1 && (
+        {!fixedSlotId && upcoming.length > 1 && (
           <fieldset className="space-y-2">
             <legend className="text-sm font-medium">What are you cancelling?</legend>
             <label className="flex items-center gap-2 text-sm">
@@ -160,7 +167,13 @@ export function CancelEventDialog({
             Keep the event
           </Button>
           <Button variant="destructive" onClick={submit} disabled={cancel.isPending || preview.isLoading}>
-            {cancel.isPending ? "Cancelling…" : p && p.paid > 0 ? "Cancel and refund guests" : "Cancel event"}
+            {cancel.isPending
+              ? "Cancelling…"
+              : p && p.paid > 0
+                ? "Cancel and refund guests"
+                : scope === "date"
+                  ? "Cancel date"
+                  : "Cancel event"}
           </Button>
         </DialogFooter>
       </DialogContent>

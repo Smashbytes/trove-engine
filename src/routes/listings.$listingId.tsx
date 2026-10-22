@@ -12,6 +12,7 @@ import { getHostWorkspace } from "@/lib/host-workspace";
 import {
   useDeleteListing,
   useListing,
+  useListingActivityStats,
   useListingAvailability,
   useListingBookings,
   useListingTicketTypes,
@@ -56,10 +57,12 @@ function ListingDetailPage() {
   const { listingId } = Route.useParams();
 
   const listingQuery = useListing(listingId);
-  const bookingsQuery = useListingBookings(listingId);
+  // The tables show the newest few; counts come from listing_activity_stats.
+  const bookingsQuery = useListingBookings(listingId, PREVIEW_ROWS);
   const ticketTypesQuery = useListingTicketTypes(listingId);
   const availabilityQuery = useListingAvailability(listingId);
-  const ticketsQuery = useListingTickets(listingId);
+  const ticketsQuery = useListingTickets(listingId, PREVIEW_ROWS);
+  const statsQuery = useListingActivityStats(listingId);
   const deleteListing = useDeleteListing();
   const setListingStatus = useSetListingStatus();
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -83,7 +86,8 @@ function ListingDetailPage() {
   const ticketTypes = ticketTypesQuery.data ?? [];
   const availability = availabilityQuery.data ?? [];
   const tickets = ticketsQuery.data ?? [];
-  const cancelled = listing as { cancelled_at?: string | null; cancel_reason?: string | null };
+  const stats = statsQuery.data;
+  const cancelled =listing as { cancelled_at?: string | null; cancel_reason?: string | null };
   const isCancelled = !!cancelled.cancelled_at;
   const canCancel =
     can("listings.manage") && can("bookings.manage") && !isCancelled && listing.status !== "draft";
@@ -271,8 +275,8 @@ function ListingDetailPage() {
         <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
           <h2 className="font-display text-2xl font-semibold">Operations snapshot</h2>
           <div className="mt-5 space-y-3">
-            <SummaryRow label="Bookings" value={bookings.length.toString()} />
-            <SummaryRow label="Issued codes" value={tickets.length.toString()} />
+            <SummaryRow label="Bookings" value={stats ? stats.bookings.toLocaleString("en-ZA") : "…"} />
+            <SummaryRow label="Issued codes" value={stats ? stats.issued.toLocaleString("en-ZA") : "…"} />
             <SummaryRow
               label={workspace.inventoryLabel}
               value={(workspace.hostType === "experience"
@@ -303,8 +307,8 @@ function ListingDetailPage() {
               rows={ticketTypes.map((tier) => [
                 tier.name,
                 formatZar(tier.price_cents),
-                tier.capacity_sold.toString(),
-                tier.capacity_total?.toString() ?? "Open",
+                soldLabel(stats?.tiers[tier.id]),
+                tier.capacity_total ? tier.capacity_total.toString() : "Open",
               ])}
               empty="No ticket tiers yet."
             />
@@ -375,7 +379,9 @@ function ListingDetailPage() {
               </Link>
             )}
           </div>
-          <p className="mt-2 text-sm text-muted-foreground">The newest bookings on this listing.</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {newestLabel(bookings.length, stats?.bookings, "bookings")}
+          </p>
           <InventoryTable
             head={["Booking", "Status", "Party", "Total"]}
             rows={bookings.map((booking) => [
@@ -393,7 +399,8 @@ function ListingDetailPage() {
         <section className="mt-6 rounded-card border border-border/60 bg-card p-6 shadow-card">
           <h2 className="font-display text-2xl font-semibold">Issued codes</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            The ticket codes guests show at the door. Scan them from the Scanner page.
+            The ticket codes guests show at the door. Scan them from the Scanner page.{" "}
+            {newestLabel(tickets.length, stats?.issued, "codes")}
           </p>
           <InventoryTable
             head={["Code", "Status", "Party", "Issued"]}
@@ -409,6 +416,19 @@ function ListingDetailPage() {
       )}
     </AppShell>
   );
+}
+
+/** Rows shown in the listing page's Bookings and Issued codes tables. */
+const PREVIEW_ROWS = 10;
+
+function newestLabel(shown: number, total: number | undefined, noun: string) {
+  if (total === undefined || total <= shown) return `The newest ${noun} on this listing.`;
+  return `The newest ${shown} of ${total.toLocaleString("en-ZA")} ${noun}.`;
+}
+
+function soldLabel(tier: { sold: number; held: number } | undefined) {
+  if (!tier) return "…";
+  return tier.held > 0 ? `${tier.sold} (+${tier.held} in checkout)` : tier.sold.toString();
 }
 
 function MetricTile({ label, value }: { label: string; value: string }) {
