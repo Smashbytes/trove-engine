@@ -32,8 +32,8 @@ import { Route as ListingsListingIdRouteImport } from './routes/listings.$listin
 import { Route as JoinTokenRouteImport } from './routes/join.$token'
 import { Route as AuthConfirmRouteImport } from './routes/auth.confirm'
 import { Route as AudienceGuestIdRouteImport } from './routes/audience.$guestId'
-import { Route as ListingsListingIdSlotsRouteImport } from './routes/listings.$listingId.slots'
-import { Route as ListingsListingIdBookingsRouteImport } from './routes/listings.$listingId.bookings'
+import { Route as ListingsListingIdSlotsRouteImport } from './routes/listings.$listingId_.slots'
+import { Route as ListingsListingIdBookingsRouteImport } from './routes/listings.$listingId_.bookings'
 
 const TeamRoute = TeamRouteImport.update({
   id: '/team',
@@ -151,15 +151,15 @@ const AudienceGuestIdRoute = AudienceGuestIdRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const ListingsListingIdSlotsRoute = ListingsListingIdSlotsRouteImport.update({
-  id: '/slots',
-  path: '/slots',
-  getParentRoute: () => ListingsListingIdRoute,
+  id: '/listings/$listingId_/slots',
+  path: '/listings/$listingId/slots',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ListingsListingIdBookingsRoute =
   ListingsListingIdBookingsRouteImport.update({
-    id: '/bookings',
-    path: '/bookings',
-    getParentRoute: () => ListingsListingIdRoute,
+    id: '/listings/$listingId_/bookings',
+    path: '/listings/$listingId/bookings',
+    getParentRoute: () => rootRouteImport,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -179,7 +179,7 @@ export interface FileRoutesByFullPath {
   '/audience/$guestId': typeof AudienceGuestIdRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/join/$token': typeof JoinTokenRoute
-  '/listings/$listingId': typeof ListingsListingIdRouteWithChildren
+  '/listings/$listingId': typeof ListingsListingIdRoute
   '/listings/new': typeof ListingsNewRoute
   '/support/$ticketId': typeof SupportTicketIdRoute
   '/support/new': typeof SupportNewRoute
@@ -206,7 +206,7 @@ export interface FileRoutesByTo {
   '/audience/$guestId': typeof AudienceGuestIdRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/join/$token': typeof JoinTokenRoute
-  '/listings/$listingId': typeof ListingsListingIdRouteWithChildren
+  '/listings/$listingId': typeof ListingsListingIdRoute
   '/listings/new': typeof ListingsNewRoute
   '/support/$ticketId': typeof SupportTicketIdRoute
   '/support/new': typeof SupportNewRoute
@@ -234,15 +234,15 @@ export interface FileRoutesById {
   '/audience/$guestId': typeof AudienceGuestIdRoute
   '/auth/confirm': typeof AuthConfirmRoute
   '/join/$token': typeof JoinTokenRoute
-  '/listings/$listingId': typeof ListingsListingIdRouteWithChildren
+  '/listings/$listingId': typeof ListingsListingIdRoute
   '/listings/new': typeof ListingsNewRoute
   '/support/$ticketId': typeof SupportTicketIdRoute
   '/support/new': typeof SupportNewRoute
   '/audience/': typeof AudienceIndexRoute
   '/listings/': typeof ListingsIndexRoute
   '/support/': typeof SupportIndexRoute
-  '/listings/$listingId/bookings': typeof ListingsListingIdBookingsRoute
-  '/listings/$listingId/slots': typeof ListingsListingIdSlotsRoute
+  '/listings/$listingId_/bookings': typeof ListingsListingIdBookingsRoute
+  '/listings/$listingId_/slots': typeof ListingsListingIdSlotsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -324,8 +324,8 @@ export interface FileRouteTypes {
     | '/audience/'
     | '/listings/'
     | '/support/'
-    | '/listings/$listingId/bookings'
-    | '/listings/$listingId/slots'
+    | '/listings/$listingId_/bookings'
+    | '/listings/$listingId_/slots'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -345,13 +345,15 @@ export interface RootRouteChildren {
   AudienceGuestIdRoute: typeof AudienceGuestIdRoute
   AuthConfirmRoute: typeof AuthConfirmRoute
   JoinTokenRoute: typeof JoinTokenRoute
-  ListingsListingIdRoute: typeof ListingsListingIdRouteWithChildren
+  ListingsListingIdRoute: typeof ListingsListingIdRoute
   ListingsNewRoute: typeof ListingsNewRoute
   SupportTicketIdRoute: typeof SupportTicketIdRoute
   SupportNewRoute: typeof SupportNewRoute
   AudienceIndexRoute: typeof AudienceIndexRoute
   ListingsIndexRoute: typeof ListingsIndexRoute
   SupportIndexRoute: typeof SupportIndexRoute
+  ListingsListingIdBookingsRoute: typeof ListingsListingIdBookingsRoute
+  ListingsListingIdSlotsRoute: typeof ListingsListingIdSlotsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -517,35 +519,22 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AudienceGuestIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/listings/$listingId/slots': {
-      id: '/listings/$listingId/slots'
-      path: '/slots'
+    '/listings/$listingId_/slots': {
+      id: '/listings/$listingId_/slots'
+      path: '/listings/$listingId/slots'
       fullPath: '/listings/$listingId/slots'
       preLoaderRoute: typeof ListingsListingIdSlotsRouteImport
-      parentRoute: typeof ListingsListingIdRoute
+      parentRoute: typeof rootRouteImport
     }
-    '/listings/$listingId/bookings': {
-      id: '/listings/$listingId/bookings'
-      path: '/bookings'
+    '/listings/$listingId_/bookings': {
+      id: '/listings/$listingId_/bookings'
+      path: '/listings/$listingId/bookings'
       fullPath: '/listings/$listingId/bookings'
       preLoaderRoute: typeof ListingsListingIdBookingsRouteImport
-      parentRoute: typeof ListingsListingIdRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
-
-interface ListingsListingIdRouteChildren {
-  ListingsListingIdBookingsRoute: typeof ListingsListingIdBookingsRoute
-  ListingsListingIdSlotsRoute: typeof ListingsListingIdSlotsRoute
-}
-
-const ListingsListingIdRouteChildren: ListingsListingIdRouteChildren = {
-  ListingsListingIdBookingsRoute: ListingsListingIdBookingsRoute,
-  ListingsListingIdSlotsRoute: ListingsListingIdSlotsRoute,
-}
-
-const ListingsListingIdRouteWithChildren =
-  ListingsListingIdRoute._addFileChildren(ListingsListingIdRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -564,13 +553,15 @@ const rootRouteChildren: RootRouteChildren = {
   AudienceGuestIdRoute: AudienceGuestIdRoute,
   AuthConfirmRoute: AuthConfirmRoute,
   JoinTokenRoute: JoinTokenRoute,
-  ListingsListingIdRoute: ListingsListingIdRouteWithChildren,
+  ListingsListingIdRoute: ListingsListingIdRoute,
   ListingsNewRoute: ListingsNewRoute,
   SupportTicketIdRoute: SupportTicketIdRoute,
   SupportNewRoute: SupportNewRoute,
   AudienceIndexRoute: AudienceIndexRoute,
   ListingsIndexRoute: ListingsIndexRoute,
   SupportIndexRoute: SupportIndexRoute,
+  ListingsListingIdBookingsRoute: ListingsListingIdBookingsRoute,
+  ListingsListingIdSlotsRoute: ListingsListingIdSlotsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

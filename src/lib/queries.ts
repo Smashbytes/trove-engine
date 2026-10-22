@@ -27,7 +27,7 @@ type TicketTypeInsert = Database["public"]["Tables"]["ticket_types"]["Insert"];
 type AvailabilityInsert = Database["public"]["Tables"]["availability"]["Insert"];
 type ListingMediaInsert = Database["public"]["Tables"]["listing_media"]["Insert"];
 
-const listingQueryKeys = {
+export const listingQueryKeys = {
   all: ["host-listings"] as const,
   detail: (listingId: string | undefined) => ["listing", listingId] as const,
   bookings: (listingId: string | undefined) => ["bookings", "listing", listingId] as const,

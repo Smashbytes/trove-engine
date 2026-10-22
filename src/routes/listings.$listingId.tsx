@@ -29,8 +29,7 @@ export const Route = createFileRoute("/listings/$listingId")({
       { title: "Listing Detail - Trove Engine" },
       {
         name: "description",
-        content:
-          "Manage your listing: details, availability, bookings and tickets.",
+        content: "Manage your listing: details, availability, bookings and tickets.",
       },
     ],
   }),
@@ -86,12 +85,15 @@ function ListingDetailPage() {
   const tickets = ticketsQuery.data ?? [];
   const cancelled = listing as { cancelled_at?: string | null; cancel_reason?: string | null };
   const isCancelled = !!cancelled.cancelled_at;
-  const canCancel = can("listings.manage") && can("bookings.manage") && !isCancelled && listing.status !== "draft";
+  const canCancel =
+    can("listings.manage") && can("bookings.manage") && !isCancelled && listing.status !== "draft";
 
   const handleStatus = async (status: "live" | "paused") => {
     try {
       await setListingStatus.mutateAsync({ listingId: listing.id, status });
-      toast.success(status === "live" ? "Listing is live — guests can find and book it." : "Listing paused.");
+      toast.success(
+        status === "live" ? "Listing is live — guests can find and book it." : "Listing paused.",
+      );
     } catch (error) {
       toast.error(friendlyError(error, "Could not update this listing."));
     }
@@ -159,12 +161,16 @@ function ListingDetailPage() {
       </div>
 
       {isCancelled && (
-        <div role="status" className="mt-6 rounded-card border border-destructive/40 bg-destructive/10 p-4 text-sm">
+        <div
+          role="status"
+          className="mt-6 rounded-card border border-destructive/40 bg-destructive/10 p-4 text-sm"
+        >
           <p className="font-semibold">
             Cancelled on {new Date(cancelled.cancelled_at!).toLocaleDateString("en-ZA")}
           </p>
           <p className="mt-1 text-muted-foreground">
-            Reason given to guests: {cancelled.cancel_reason}. Paid guests are refunded in full from escrow.
+            Reason given to guests: {cancelled.cancel_reason}. Paid guests are refunded in full from
+            escrow.
           </p>
         </div>
       )}
@@ -181,7 +187,11 @@ function ListingDetailPage() {
           </Button>
         )}
         {can("listings.manage") && listing.status === "live" && (
-          <Button variant="outline" onClick={() => handleStatus("paused")} disabled={setListingStatus.isPending}>
+          <Button
+            variant="outline"
+            onClick={() => handleStatus("paused")}
+            disabled={setListingStatus.isPending}
+          >
             <Pause className="mr-1.5 h-4 w-4" />
             {setListingStatus.isPending ? "Pausing…" : "Pause"}
           </Button>
@@ -189,14 +199,20 @@ function ListingDetailPage() {
         <Button
           variant="outline"
           onClick={() =>
-            document.getElementById("share-kit")?.scrollIntoView({ behavior: "smooth", block: "start" })
+            document
+              .getElementById("share-kit")
+              ?.scrollIntoView({ behavior: "smooth", block: "start" })
           }
         >
           <Share2 className="mr-1.5 h-4 w-4" />
           Share
         </Button>
         {canCancel && (
-          <Button variant="outline" className="text-destructive hover:text-destructive" onClick={() => setCancelOpen(true)}>
+          <Button
+            variant="outline"
+            className="text-destructive hover:text-destructive"
+            onClick={() => setCancelOpen(true)}
+          >
             <CalendarX2 className="mr-1.5 h-4 w-4" />
             Cancel event
           </Button>
@@ -239,8 +255,7 @@ function ListingDetailPage() {
         <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
           <h2 className="font-display text-2xl font-semibold">Overview</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            {listing.description ||
-              "No description yet. Add one so guests know what to expect."}
+            {listing.description || "No description yet. Add one so guests know what to expect."}
           </p>
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             <InfoCard label="Address" value={listing.address || "Not set"} />
@@ -348,10 +363,19 @@ function ListingDetailPage() {
         </section>
 
         <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
-          <h2 className="font-display text-2xl font-semibold">Bookings</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Everyone who has booked this listing.
-          </p>
+          <div className="flex items-baseline justify-between gap-4">
+            <h2 className="font-display text-2xl font-semibold">Bookings</h2>
+            {can("bookings.view") && (
+              <Link
+                to="/listings/$listingId/bookings"
+                params={{ listingId: listing.id }}
+                className="text-sm font-semibold text-primary hover:underline"
+              >
+                See all · search · export
+              </Link>
+            )}
+          </div>
+          <p className="mt-2 text-sm text-muted-foreground">The newest bookings on this listing.</p>
           <InventoryTable
             head={["Booking", "Status", "Party", "Total"]}
             rows={bookings.map((booking) => [
@@ -464,7 +488,6 @@ function InventoryTable({
     </div>
   );
 }
-
 
 function statusTone(status: string) {
   if (status === "live") return "bg-success/12 text-success";

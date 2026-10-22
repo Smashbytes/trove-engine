@@ -35,12 +35,12 @@ const str = (p: Payload, key: string) =>
 const num = (p: Payload, key: string) =>
   typeof p[key] === "number" ? (p[key] as number) : undefined;
 
-// The listing page holds its bookings table and issued codes; /listings/$id/bookings
-// is still a placeholder (ENG-L03-08), so bookings link here too.
-function listingLink(p: Payload, label: string): NotificationView["link"] {
+function listingLink(p: Payload, label: string, bookings = false): NotificationView["link"] {
   const listingId = str(p, "listing_id");
   if (!listingId) return undefined;
-  return { to: "/listings/$listingId", params: { listingId }, label };
+  return bookings
+    ? { to: "/listings/$listingId/bookings", params: { listingId }, label }
+    : { to: "/listings/$listingId", params: { listingId }, label };
 }
 
 const SPECS: Record<string, (p: Payload) => NotificationView> = {
@@ -52,7 +52,7 @@ const SPECS: Record<string, (p: Payload) => NotificationView> = {
       message: `${size} ${size === 1 ? "guest" : "guests"} booked${title ? ` “${title}”` : " your listing"}.`,
       icon: CalendarCheck,
       tone: "success",
-      link: listingLink(p, "View bookings"),
+      link: listingLink(p, "View bookings", true),
     };
   },
   new_follower: () => ({
@@ -67,7 +67,7 @@ const SPECS: Record<string, (p: Payload) => NotificationView> = {
     message: str(p, "message") ?? "A guest asked to cancel their booking.",
     icon: RotateCcw,
     tone: "warning",
-    link: listingLink(p, "View bookings"),
+    link: listingLink(p, "View bookings", true),
   }),
   new_review: (p) => ({
     title: "New review",
