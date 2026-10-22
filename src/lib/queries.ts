@@ -133,7 +133,11 @@ export function useListingMedia(listingId: string | undefined) {
   });
 }
 
-/** Newest bookings/tickets shown per listing; older rows stay in the database. */
+/**
+ * Newest bookings/tickets loaded per listing; older rows stay in the database.
+ * Totals always come from useListingActivityStats, and the full, paged list is
+ * the listing's Bookings page.
+ */
 export const LISTING_ROWS_CAP = 500;
 
 export type ListingBooking = Pick<
@@ -141,9 +145,9 @@ export type ListingBooking = Pick<
   "id" | "guest_id" | "status" | "party_size" | "total_cents" | "created_at" | "checked_in_at" | "ticket_type_id" | "slot_id"
 >;
 
-export function useListingBookings(listingId: string | undefined) {
+export function useListingBookings(listingId: string | undefined, limit = LISTING_ROWS_CAP) {
   return useQuery<ListingBooking[]>({
-    queryKey: listingQueryKeys.bookings(listingId),
+    queryKey: [...listingQueryKeys.bookings(listingId), limit],
     enabled: !!listingId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -151,7 +155,7 @@ export function useListingBookings(listingId: string | undefined) {
         .select("id, guest_id, status, party_size, total_cents, created_at, checked_in_at, ticket_type_id, slot_id")
         .eq("listing_id", listingId!)
         .order("created_at", { ascending: false })
-        .limit(LISTING_ROWS_CAP);
+        .limit(limit);
       if (error) throw error;
       return (data ?? []) as ListingBooking[];
     },
@@ -164,9 +168,9 @@ export interface HostTicket extends Omit<Ticket, "jwt_jti"> {
   booking_created_at: string;
 }
 
-export function useListingTickets(listingId: string | undefined) {
+export function useListingTickets(listingId: string | undefined, limit = LISTING_ROWS_CAP) {
   return useQuery<HostTicket[]>({
-    queryKey: listingQueryKeys.tickets(listingId),
+    queryKey: [...listingQueryKeys.tickets(listingId), limit],
     enabled: !!listingId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -176,7 +180,7 @@ export function useListingTickets(listingId: string | undefined) {
         )
         .eq("bookings.listing_id", listingId!)
         .order("created_at", { ascending: false })
-        .limit(LISTING_ROWS_CAP);
+        .limit(limit);
       if (error) throw error;
       type TicketRow = Omit<Ticket, "jwt_jti"> & {
         bookings?: Pick<Booking, "party_size" | "status" | "created_at" | "listing_id"> | null;
@@ -196,6 +200,27 @@ export function useListingTickets(listingId: string | undefined) {
         booking_created_at: ticket.bookings?.created_at ?? ticket.created_at,
       }));
     },
+  });
+}
+
+export interface ListingActivityStats {
+  /** Real bookings (abandoned checkouts left out), as on the Bookings page. */
+  bookings: number;
+  issued: number;
+  used: number;
+  /** Per ticket tier: places sold (still going) and held by checkouts in progress. */
+  tiers: Record<string, { sold: number; held: number }>;
+  /** Per slot: any booking row (blocks deleting it) and active bookings. */
+  slots: Record<string, { bookings: number; active: number }>;
+}
+
+/** Counts over every booking and ticket of a listing, from listing_activity_stats(). */
+export function useListingActivityStats(listingId: string | undefined) {
+  return useQuery<ListingActivityStats>({
+    // Under listingQueryKeys.bookings, so booking/ticket changes refresh it.
+    queryKey: [...listingQueryKeys.bookings(listingId), "stats"],
+    enabled: !!listingId,
+    queryFn: () => untypedRpc<ListingActivityStats>("listing_activity_stats", { p_listing: listingId }),
   });
 }
 
@@ -615,7 +640,7 @@ export function useHasKycDocument() {
 
 export interface CreateListingInput {
   listing: ListingInsert;
-  // listing_id is filled in by the mutation after the parent insert.
+  // listing_id is filled in by create_listing() from the new listing.
   ticketTypes?: Array<Omit<TicketTypeInsert, "listing_id">>;
   availability?: Array<Omit<AvailabilityInsert, "listing_id">>;
   media?: Array<Omit<ListingMediaInsert, "listing_id">>;
@@ -625,76 +650,31 @@ export function useCreateListing() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    // All-or-nothing: the listing is saved as a draft, its tiers/slots/media are
-    // added, and only then does it go live. If any step fails the draft is
-    // removed, so guests never see a listing without its tickets and a retry
-    // can't create a duplicate.
+    // All-or-nothing: create_listing() saves the listing as a draft with its
+    // tiers/slots/media in one transaction, then publishes it if asked. A
+    // failure (or a closed tab) leaves nothing behind, so guests never see a
+    // listing without its tickets and a retry can't create a duplicate.
     mutationFn: async (input: CreateListingInput) => {
-      const wanted = input.listing.status ?? "draft";
-      const { data: listing, error: listingError } = await supabase
-        .from("listings")
-        .insert({ ...input.listing, status: "draft" })
-        .select("*")
-        .single();
-      if (listingError) throw listingError;
-
-      const listingId = listing.id;
-      try {
-        if (input.ticketTypes?.length) {
-          const { error } = await supabase.from("ticket_types").insert(
-            input.ticketTypes.map((ticketType, index) => ({
-              ...ticketType,
-              listing_id: listingId,
-              sort_order: ticketType.sort_order ?? index,
-            })),
-          );
-          if (error) throw error;
+      const result = await untypedRpc<{ listing: Listing; publish_error: string | null }>("create_listing", {
+        p_listing: input.listing,
+        p_ticket_types: (input.ticketTypes ?? []).map((ticketType, index) => ({
+          ...ticketType,
+          sort_order: ticketType.sort_order ?? index,
+        })),
+        p_availability: input.availability ?? [],
+        p_media: (input.media ?? []).map((media, index) => ({
+          ...media,
+          sort_order: media.sort_order ?? index,
+        })),
+      });
+      if (result.publish_error) {
+        // Saved but not published (e.g. payout setup missing): the draft stays.
+        if (result.publish_error.includes("ESCROW_NOT_READY")) {
+          throw new Error("Saved as a draft. Set up your payout account to publish paid listings.");
         }
-
-        if (input.availability?.length) {
-          const { error } = await supabase.from("availability").insert(
-            input.availability.map((slot) => ({
-              ...slot,
-              listing_id: listingId,
-            })),
-          );
-          if (error) throw error;
-        }
-
-        if (input.media?.length) {
-          const { error } = await supabase.from("listing_media").insert(
-            input.media.map((media, index) => ({
-              ...media,
-              listing_id: listingId,
-              sort_order: media.sort_order ?? index,
-            })),
-          );
-          if (error) throw error;
-        }
-      } catch (childError) {
-        await supabase.from("listings").delete().eq("id", listingId);
-        throw childError;
+        throw new Error(`Saved as a draft, but it couldn't be published: ${result.publish_error}`);
       }
-
-      if (wanted !== "draft") {
-        const { data: published, error: publishError } = await supabase
-          .from("listings")
-          .update({ status: wanted })
-          .eq("id", listingId)
-          .select("*")
-          .single();
-        if (publishError) {
-          // Saved but not published (e.g. payout setup missing): keep the draft.
-          if (publishError.message.includes("ESCROW_NOT_READY")) {
-            throw new Error(
-              "Saved as a draft. Set up your payout account to publish paid listings.",
-            );
-          }
-          throw publishError;
-        }
-        return published as Listing;
-      }
-      return listing as Listing;
+      return result.listing;
     },
     onSuccess: async (listing) => {
       await Promise.all([
@@ -1099,6 +1079,11 @@ export function useDeleteAvailability() {
   return useMutation({
     mutationFn: async ({ id }: { id: string; listingId: string }) => {
       const { error } = await supabase.from("availability").delete().eq("id", id);
+      // The page offers "Cancel this date" instead of Delete once a slot has
+      // bookings; this covers a booking that arrived after the page loaded.
+      if (error?.code === "23503") {
+        throw new Error("Guests have booked this date, so it can't be deleted. Cancel the date instead.");
+      }
       if (error) throw error;
     },
     onSuccess: async (_data, vars) => {

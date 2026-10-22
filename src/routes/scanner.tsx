@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import {
   useCheckInBooking,
   useHostListings,
+  useListingActivityStats,
   useListingBookings,
   useListingTickets,
   useRedeemTicket,
@@ -54,6 +55,13 @@ function ScannerPage() {
 
   const ticketsQuery = useListingTickets(activeListingId);
   const bookingsQuery = useListingBookings(activeListingId);
+  // Counters cover every booking/ticket; the tables list the newest 500.
+  const stats = useListingActivityStats(activeListingId).data;
+  const counts = {
+    bookings: stats?.bookings ?? bookingsQuery.data?.length ?? 0,
+    issued: stats?.issued ?? ticketsQuery.data?.length ?? 0,
+    used: stats?.used ?? (ticketsQuery.data ?? []).filter((t) => t.status === "used").length,
+  };
   const checkIn = useCheckInBooking();
   const redeem = useRedeemTicket();
 
@@ -117,6 +125,7 @@ function ScannerPage() {
           onAdmitTyped={handleAdmitTyped}
           bookings={bookingsQuery.data ?? []}
           tickets={ticketsQuery.data ?? []}
+          counts={counts}
           checkIn={checkIn}
           handleScanned={handleScanned}
           handleCheckIn={handleCheckIn}
@@ -207,17 +216,9 @@ function ScannerPage() {
             className="grid grid-cols-3 border-t"
             style={{ borderColor: "var(--hairline, rgba(255,255,255,0.06))" }}
           >
-            <Telemetry label="Bookings" value={bookingsQuery.data?.length ?? 0} />
-            <Telemetry
-              label="Issued"
-              value={ticketsQuery.data?.length ?? 0}
-              divider
-            />
-            <Telemetry
-              label="Used"
-              value={(ticketsQuery.data ?? []).filter((t) => t.status === "used").length}
-              divider
-            />
+            <Telemetry label="Bookings" value={counts.bookings} />
+            <Telemetry label="Issued" value={counts.issued} divider />
+            <Telemetry label="Used" value={counts.used} divider />
           </div>
         </section>
 
@@ -242,7 +243,11 @@ function ScannerPage() {
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
           {selectedListing
-            ? `Reading activity for ${selectedListing.title}.`
+            ? `Reading activity for ${selectedListing.title}.${newestNote(
+                workspace.hostType === "accommodation" ? (bookingsQuery.data?.length ?? 0) : (ticketsQuery.data?.length ?? 0),
+                workspace.hostType === "accommodation" ? counts.bookings : counts.issued,
+                workspace.hostType === "accommodation",
+              )}`
             : "Choose a listing to inspect activity."}
         </p>
 
@@ -288,6 +293,7 @@ interface SmartphoneScannerViewProps {
   onAdmitTyped: () => void;
   bookings: ListingBooking[];
   tickets: HostTicket[];
+  counts: { bookings: number; issued: number; used: number };
   checkIn: ReturnType<typeof useCheckInBooking>;
   handleScanned: (raw: string) => void;
   handleCheckIn: (bookingId: string) => void;
@@ -306,6 +312,7 @@ function SmartphoneScannerView({
   onAdmitTyped,
   bookings,
   tickets,
+  counts,
   checkIn,
   handleScanned,
   handleCheckIn,
@@ -392,14 +399,9 @@ function SmartphoneScannerView({
         className="grid grid-cols-3 overflow-hidden rounded-tile border bg-card shadow-card"
         style={{ borderColor: "var(--hairline-strong, rgba(255,255,255,0.10))" }}
       >
-        <Telemetry label="Bookings" value={bookings.length} compact />
-        <Telemetry label="Issued" value={tickets.length} divider compact />
-        <Telemetry
-          label="Used"
-          value={tickets.filter((t) => t.status === "used").length}
-          divider
-          compact
-        />
+        <Telemetry label="Bookings" value={counts.bookings} compact />
+        <Telemetry label="Issued" value={counts.issued} divider compact />
+        <Telemetry label="Used" value={counts.used} divider compact />
       </div>
 
       {/* Records */}
@@ -408,7 +410,13 @@ function SmartphoneScannerView({
           {isAccommodation ? "Reservations" : "Ticket records"}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          {selectedListing ? selectedListing.title : "Select a listing above."}
+          {selectedListing
+            ? `${selectedListing.title}.${newestNote(
+                isAccommodation ? bookings.length : tickets.length,
+                isAccommodation ? counts.bookings : counts.issued,
+                isAccommodation,
+              )}`
+            : "Select a listing above."}
         </p>
         {isAccommodation ? (
           <CheckInTable
@@ -436,6 +444,13 @@ function SmartphoneScannerView({
 // ---------------------------------------------------------------------------
 // Shared sub-components
 // ---------------------------------------------------------------------------
+
+// The tables hold the newest LISTING_ROWS_CAP rows; say so when there are more.
+function newestNote(shown: number, total: number, reservations: boolean) {
+  if (total <= shown) return "";
+  const rest = reservations ? "search the rest on the listing's Bookings page." : "every code still scans.";
+  return ` Showing the newest ${shown} of ${total.toLocaleString("en-ZA")}; ${rest}`;
+}
 
 function Telemetry({
   label,

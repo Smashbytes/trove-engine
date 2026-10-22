@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/trove/PageHeader";
 import { PermissionGate } from "@/components/trove/PermissionGate";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   useAudienceProfiles,
@@ -14,7 +15,6 @@ import {
   useNewFollowerFeed,
   useNewGuestFeed,
   useUpcomingEventGuests,
-  type AudienceProfile,
 } from "@/lib/crm";
 import { formatZar } from "@/lib/format";
 
@@ -65,21 +65,51 @@ function initials(name: string | null | undefined) {
 }
 
 function PersonAvatar({
-  profile,
+  name,
+  avatarUrl,
   size = "h-10 w-10",
 }: {
-  profile?: AudienceProfile;
+  name: string | null | undefined;
+  avatarUrl: string | null | undefined;
   size?: string;
 }) {
   return (
     <Avatar className={size}>
-      {profile?.avatar_url && (
-        <AvatarImage src={profile.avatar_url} alt={profile.full_name ?? "Guest"} />
-      )}
+      {avatarUrl && <AvatarImage src={avatarUrl} alt={name ?? "Guest"} />}
       <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary">
-        {initials(profile?.full_name)}
+        {initials(name)}
       </AvatarFallback>
     </Avatar>
+  );
+}
+
+function LoadMore({
+  shown,
+  total,
+  noun,
+  hasMore,
+  loading,
+  onClick,
+}: {
+  shown: number;
+  total: number;
+  noun: string;
+  hasMore: boolean;
+  loading: boolean;
+  onClick: () => void;
+}) {
+  if (total <= shown && !hasMore) return null;
+  return (
+    <div className="mt-4 flex flex-col items-center gap-2 text-xs text-muted-foreground">
+      <p>
+        Showing {shown.toLocaleString("en-ZA")} of {total.toLocaleString("en-ZA")} {noun}
+      </p>
+      {hasMore && (
+        <Button variant="outline" size="sm" onClick={onClick} disabled={loading}>
+          {loading ? "Loading…" : "Load more"}
+        </Button>
+      )}
+    </div>
   );
 }
 
@@ -102,22 +132,33 @@ function EmptyState({
 }
 
 function AudiencePage() {
-  const profilesQuery = useAudienceProfiles();
   const followersQuery = useFollowers();
   const guestsQuery = useGuests();
   const upcomingQuery = useUpcomingEventGuests();
   const newFollowers = useNewFollowerFeed();
   const newGuests = useNewGuestFeed();
 
-  const profiles = profilesQuery.data;
-  const followers = followersQuery.data ?? [];
-  const guests = guestsQuery.data ?? [];
-  const upcoming = upcomingQuery.data ?? [];
-
-  const guestIds = useMemo(
-    () => new Set((guestsQuery.data ?? []).map((g) => g.guestId)),
+  const followers = useMemo(
+    () => (followersQuery.data?.pages ?? []).flatMap((page) => page.rows),
+    [followersQuery.data],
+  );
+  const guests = useMemo(
+    () => (guestsQuery.data?.pages ?? []).flatMap((page) => page.rows),
     [guestsQuery.data],
   );
+  const followerTotal = followersQuery.data?.pages[0]?.total ?? 0;
+  const guestTotal = guestsQuery.data?.pages[0]?.total ?? 0;
+  const upcoming = upcomingQuery.data ?? [];
+
+  // Only the feeds need a name lookup; every list row brings its own.
+  const feedIds = useMemo(
+    () => [
+      ...(newFollowers.data ?? []).map((n) => (n.payload as { follower_id?: string })?.follower_id ?? ""),
+      ...(newGuests.data ?? []).map((n) => (n.payload as { guest_id?: string })?.guest_id ?? ""),
+    ],
+    [newFollowers.data, newGuests.data],
+  );
+  const profiles = useAudienceProfiles(feedIds).data;
   const nameOf = (id: string) => profiles?.get(id)?.full_name ?? "Trove guest";
 
   return (
@@ -157,17 +198,18 @@ function AudiencePage() {
       </div>
 
       <Tabs defaultValue="followers">
-        <TabsList>
+        <TabsList className="max-w-full justify-start overflow-x-auto">
+
           <TabsTrigger value="followers">
             Followers
             <Badge variant="secondary" className="ml-2">
-              {followers.length}
+              {followerTotal.toLocaleString("en-ZA")}
             </Badge>
           </TabsTrigger>
           <TabsTrigger value="guests">
             Guests
             <Badge variant="secondary" className="ml-2">
-              {guests.length}
+              {guestTotal.toLocaleString("en-ZA")}
             </Badge>
           </TabsTrigger>
           <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
@@ -182,16 +224,16 @@ function AudiencePage() {
               body="When people follow your spot in the Trove app they'll show up here. Share your profile to grow your audience."
             />
           ) : (
+            <>
             <ul className="divide-y divide-border/60 overflow-hidden rounded-card border border-border/60 bg-card shadow-card">
               {followers.map((follower) => {
-                const profile = profiles?.get(follower.userId);
-                const isGuest = guestIds.has(follower.userId);
+                const isGuest = follower.isGuest;
                 const row = (
                   <div className="flex items-center gap-3 px-5 py-4">
-                    <PersonAvatar profile={profile} />
+                    <PersonAvatar name={follower.fullName} avatarUrl={follower.avatarUrl} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold">
-                        {profile?.full_name ?? "Trove guest"}
+                        {follower.fullName ?? "Trove guest"}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         Followed {formatDate(follower.followedAt)}
@@ -217,6 +259,15 @@ function AudiencePage() {
                 );
               })}
             </ul>
+            <LoadMore
+              shown={followers.length}
+              total={followerTotal}
+              noun="followers"
+              hasMore={!!followersQuery.hasNextPage}
+              loading={followersQuery.isFetchingNextPage}
+              onClick={() => void followersQuery.fetchNextPage()}
+            />
+            </>
           )}
         </TabsContent>
 
@@ -229,9 +280,9 @@ function AudiencePage() {
               body="Guests who buy tickets or book with you appear here, with their spend and history. Open one to manage them."
             />
           ) : (
+            <>
             <ul className="divide-y divide-border/60 overflow-hidden rounded-card border border-border/60 bg-card shadow-card">
               {guests.map((guest) => {
-                const profile = profiles?.get(guest.guestId);
                 return (
                   <li key={guest.guestId}>
                     <Link
@@ -239,10 +290,10 @@ function AudiencePage() {
                       params={{ guestId: guest.guestId }}
                       className="flex items-center gap-3 px-5 py-4 transition-colors hover:bg-muted/40"
                     >
-                      <PersonAvatar profile={profile} />
+                      <PersonAvatar name={guest.fullName} avatarUrl={guest.avatarUrl} />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold">
-                          {profile?.full_name ?? "Trove guest"}
+                          {guest.fullName ?? "Trove guest"}
                         </p>
                         <p className="truncate text-xs text-muted-foreground">
                           {guest.bookingsCount} booking{guest.bookingsCount === 1 ? "" : "s"} ·{" "}
@@ -260,6 +311,15 @@ function AudiencePage() {
                 );
               })}
             </ul>
+            <LoadMore
+              shown={guests.length}
+              total={guestTotal}
+              noun="guests"
+              hasMore={!!guestsQuery.hasNextPage}
+              loading={guestsQuery.isFetchingNextPage}
+              onClick={() => void guestsQuery.fetchNextPage()}
+            />
+            </>
           )}
         </TabsContent>
 
@@ -297,7 +357,6 @@ function AudiencePage() {
                 ) : (
                   <ul className="divide-y divide-border/60">
                     {event.guests.map((guest) => {
-                      const profile = profiles?.get(guest.guestId);
                       return (
                         <li key={guest.bookingId}>
                           <Link
@@ -305,9 +364,9 @@ function AudiencePage() {
                             params={{ guestId: guest.guestId }}
                             className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/40"
                           >
-                            <PersonAvatar profile={profile} size="h-9 w-9" />
+                            <PersonAvatar name={guest.fullName} avatarUrl={guest.avatarUrl} size="h-9 w-9" />
                             <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                              {profile?.full_name ?? "Trove guest"}
+                              {guest.fullName ?? "Trove guest"}
                             </span>
                             <span className="shrink-0 text-xs text-muted-foreground">
                               Party of {guest.partySize}

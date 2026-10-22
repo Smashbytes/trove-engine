@@ -5,33 +5,28 @@
 // new-guest feeds. Mirrors the react-query conventions in queries.ts and
 // support.ts (query-key factory, useAuth for the host id, enabled: !!user).
 //
-// Names/avatars come from host_audience_profiles() — a SECURITY DEFINER RPC
-// (migration 0007) that only ever returns people connected to the caller and
-// withholds phone from followers who never transacted. profiles RLS itself
+// Every list is paged in SQL (SECURITY DEFINER RPCs that need audience.manage
+// and only return people connected to the Spot), so PostgREST's 1,000-row cap
+// never cuts them and totals are counted over everyone. Names and avatars come
+// back with each row; phone only for people who booked. profiles RLS itself
 // stays own-only.
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "./auth";
 import { untypedRpc } from "./queries";
 import { supabase } from "./supabase";
-import type {
-  AudienceProfile,
-  Booking,
-  BookingStatus,
-  GuestNote,
-  Notification,
-} from "./database.types";
+import type { AudienceProfile, Booking, GuestNote, Notification } from "./database.types";
 
-const GUEST_BOOKING_STATUSES: BookingStatus[] = ["confirmed", "completed"];
-
-/** Bounded audience queries; the newest rows are shown first. */
-const CRM_ROWS_CAP = 2000;
+/** Rows per "Load more" on the Followers and Guests tabs. */
+export const AUDIENCE_PAGE_SIZE = 50;
 
 export const crmKeys = {
-  profiles: (hostId: string | undefined) => ["audience-profiles", hostId] as const,
+  profiles: (hostId: string | undefined, ids: string[]) => ["audience-profiles", hostId, ids] as const,
   followers: (hostId: string | undefined) => ["audience-followers", hostId] as const,
   guests: (hostId: string | undefined) => ["audience-guests", hostId] as const,
   upcoming: (hostId: string | undefined) => ["audience-upcoming", hostId] as const,
+  guestSummary: (hostId: string | undefined, guestId: string | undefined) =>
+    ["audience-guest-summary", hostId, guestId] as const,
   guestDetail: (hostId: string | undefined, guestId: string | undefined) =>
     ["audience-guest", hostId, guestId] as const,
   guestNotes: (hostId: string | undefined, guestId: string | undefined) =>
@@ -39,23 +34,34 @@ export const crmKeys = {
   feed: (hostId: string | undefined, type: string) => ["audience-feed", hostId, type] as const,
 };
 
+interface Page<T> {
+  total: number;
+  offset: number;
+  limit: number;
+  rows: T[];
+}
+
+function nextOffset<T>(last: Page<T>) {
+  const next = last.offset + last.rows.length;
+  return last.rows.length > 0 && next < last.total ? next : undefined;
+}
+
 // ---------------------------------------------------------------------------
-// Scoped profile lookup (names, avatars, transaction-gated phone)
+// Profile lookup for a few people (the feeds): names, avatars, phone if booked
 // ---------------------------------------------------------------------------
 
-export function useAudienceProfiles() {
+export function useAudienceProfiles(ids: string[]) {
   const { activeHostId } = useAuth();
+  const wanted = [...new Set(ids.filter(Boolean))].sort();
   return useQuery<Map<string, AudienceProfile>>({
-    queryKey: crmKeys.profiles(activeHostId ?? undefined),
-    enabled: !!activeHostId,
+    queryKey: crmKeys.profiles(activeHostId ?? undefined, wanted),
+    enabled: !!activeHostId && wanted.length > 0,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("host_audience_profiles", {
+      const rows = await untypedRpc<AudienceProfile[]>("host_audience_profiles", {
         p_host_id: activeHostId!,
+        p_ids: wanted,
       });
-      if (error) throw error;
-      const map = new Map<string, AudienceProfile>();
-      for (const row of (data ?? []) as AudienceProfile[]) map.set(row.id, row);
-      return map;
+      return new Map((rows ?? []).map((row) => [row.id, row]));
     },
   });
 }
@@ -67,31 +73,49 @@ export function useAudienceProfiles() {
 export interface FollowerRow {
   userId: string;
   followedAt: string | null;
+  fullName: string | null;
+  avatarUrl: string | null;
+  /** Has a confirmed or completed booking with this Spot. */
+  isGuest: boolean;
 }
+
+type FollowerRpcRow = {
+  user_id: string;
+  followed_at: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+  is_guest: boolean;
+};
 
 export function useFollowers() {
   const { activeHostId } = useAuth();
-  return useQuery<FollowerRow[]>({
+  return useInfiniteQuery({
     queryKey: crmKeys.followers(activeHostId ?? undefined),
     enabled: !!activeHostId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("follows")
-        .select("user_id, created_at")
-        .eq("host_id", activeHostId!)
-        .order("created_at", { ascending: false })
-        .limit(CRM_ROWS_CAP);
-      if (error) throw error;
-      return ((data ?? []) as Array<{ user_id: string; created_at: string | null }>).map((row) => ({
-        userId: row.user_id,
-        followedAt: row.created_at,
-      }));
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }): Promise<Page<FollowerRow>> => {
+      const page = await untypedRpc<Page<FollowerRpcRow>>("host_followers_page", {
+        p_host_id: activeHostId!,
+        p_offset: pageParam,
+        p_limit: AUDIENCE_PAGE_SIZE,
+      });
+      return {
+        ...page,
+        rows: page.rows.map((row) => ({
+          userId: row.user_id,
+          followedAt: row.followed_at,
+          fullName: row.full_name,
+          avatarUrl: row.avatar_url,
+          isGuest: row.is_guest,
+        })),
+      };
     },
+    getNextPageParam: nextOffset,
   });
 }
 
 // ---------------------------------------------------------------------------
-// Guests (people who actually bought tickets), deduped + aggregated
+// Guests (people who actually bought tickets), totals counted in SQL
 // ---------------------------------------------------------------------------
 
 export interface GuestSummary {
@@ -99,51 +123,67 @@ export interface GuestSummary {
   bookingsCount: number;
   totalSpendCents: number;
   lastBookingAt: string;
+  /** Their most recent listings with this Spot (up to 3). */
   listingTitles: string[];
+  fullName: string | null;
+  avatarUrl: string | null;
+  phone: string | null;
 }
 
-type GuestBookingRow = Pick<
-  Booking,
-  "guest_id" | "total_cents" | "created_at" | "status" | "listing_id"
-> & { listings?: { title: string | null; host_id: string } | null };
+type GuestRpcRow = {
+  guest_id: string;
+  bookings_count: number;
+  total_spend_cents: number;
+  last_booking_at: string;
+  listing_titles: string[];
+  full_name: string | null;
+  avatar_url: string | null;
+  phone: string | null;
+};
+
+const toGuestSummary = (row: GuestRpcRow): GuestSummary => ({
+  guestId: row.guest_id,
+  bookingsCount: row.bookings_count,
+  totalSpendCents: row.total_spend_cents,
+  lastBookingAt: row.last_booking_at,
+  listingTitles: row.listing_titles ?? [],
+  fullName: row.full_name,
+  avatarUrl: row.avatar_url,
+  phone: row.phone,
+});
 
 export function useGuests() {
   const { activeHostId } = useAuth();
-  return useQuery<GuestSummary[]>({
+  return useInfiniteQuery({
     queryKey: crmKeys.guests(activeHostId ?? undefined),
     enabled: !!activeHostId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("bookings")
-        .select(
-          "guest_id, total_cents, created_at, status, listing_id, listings!inner(title, host_id)",
-        )
-        .eq("listings.host_id", activeHostId!)
-        .in("status", GUEST_BOOKING_STATUSES)
-        .order("created_at", { ascending: false })
-        .limit(CRM_ROWS_CAP);
-      if (error) throw error;
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }): Promise<Page<GuestSummary>> => {
+      const page = await untypedRpc<Page<GuestRpcRow>>("host_guest_summaries", {
+        p_host_id: activeHostId!,
+        p_offset: pageParam,
+        p_limit: AUDIENCE_PAGE_SIZE,
+      });
+      return { ...page, rows: page.rows.map(toGuestSummary) };
+    },
+    getNextPageParam: nextOffset,
+  });
+}
 
-      const byGuest = new Map<string, GuestSummary>();
-      for (const row of (data ?? []) as GuestBookingRow[]) {
-        const existing = byGuest.get(row.guest_id);
-        const title = row.listings?.title ?? "";
-        if (!existing) {
-          byGuest.set(row.guest_id, {
-            guestId: row.guest_id,
-            bookingsCount: 1,
-            totalSpendCents: row.total_cents,
-            lastBookingAt: row.created_at,
-            listingTitles: title ? [title] : [],
-          });
-        } else {
-          existing.bookingsCount += 1;
-          existing.totalSpendCents += row.total_cents;
-          // rows are ordered desc, so the first seen is already the latest.
-          if (title && !existing.listingTitles.includes(title)) existing.listingTitles.push(title);
-        }
-      }
-      return [...byGuest.values()];
+/** One guest's totals over all their bookings with this Spot, with name and phone. */
+export function useGuestSummary(guestId: string | undefined) {
+  const { activeHostId } = useAuth();
+  return useQuery<GuestSummary | null>({
+    queryKey: crmKeys.guestSummary(activeHostId ?? undefined, guestId),
+    enabled: !!activeHostId && !!guestId,
+    queryFn: async () => {
+      const page = await untypedRpc<Page<GuestRpcRow>>("host_guest_summaries", {
+        p_host_id: activeHostId!,
+        p_offset: 0,
+        p_limit: 1,
+        p_guest_id: guestId,
+      });
+      return page.rows[0] ? toGuestSummary(page.rows[0]) : null;
     },
   });
 }
@@ -168,6 +208,8 @@ export interface UpcomingEventGuests {
     partySize: number;
     status: Booking["status"];
     checkedInAt: string | null;
+    fullName: string | null;
+    avatarUrl: string | null;
   }>;
 }
 
@@ -185,6 +227,8 @@ type UpcomingRow = {
     party_size: number;
     status: Booking["status"];
     checked_in_at: string | null;
+    full_name: string | null;
+    avatar_url: string | null;
   }>;
 };
 
@@ -219,6 +263,8 @@ export function useUpcomingEventGuests() {
           partySize: g.party_size,
           status: g.status,
           checkedInAt: g.checked_in_at,
+          fullName: g.full_name,
+          avatarUrl: g.avatar_url,
         })),
       }));
     },

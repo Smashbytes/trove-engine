@@ -1,16 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, CalendarPlus, Clock, Trash2, Users } from "lucide-react";
+import { ArrowLeft, CalendarPlus, CalendarX2, Clock, Trash2, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/trove/AppShell";
+import { CancelEventDialog } from "@/components/trove/CancelEventDialog";
 import { PageHeader } from "@/components/trove/PageHeader";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/lib/auth";
 import {
   useAddAvailability,
   useDeleteAvailability,
   useListing,
+  useListingActivityStats,
   useListingAvailability,
 } from "@/lib/queries";
 import { Field } from "@/components/trove/Field";
@@ -49,10 +53,15 @@ function ListingSlotsPage() {
   const { listingId } = Route.useParams();
   const listingQuery = useListing(listingId);
   const availabilityQuery = useListingAvailability(listingId);
+  const statsQuery = useListingActivityStats(listingId);
   const addSlot = useAddAvailability();
   const deleteSlot = useDeleteAvailability();
+  const { can } = useAuth();
+  const canCancel = can("listings.manage") && can("bookings.manage");
+  const [cancelSlotId, setCancelSlotId] = useState<string | null>(null);
 
   const slots = useMemo(() => availabilityQuery.data ?? [], [availabilityQuery.data]);
+  const slotStats = statsQuery.data?.slots;
 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [startTime, setStartTime] = useState("18:00");
@@ -223,7 +232,7 @@ function ListingSlotsPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             {daySlots.length === 0
               ? "No slots on this day yet — add one on the left."
-              : `${daySlots.length} slot${daySlots.length === 1 ? "" : "s"} open this day.`}
+              : `${daySlots.length} slot${daySlots.length === 1 ? "" : "s"} this day.`}
           </p>
 
           <ul className="mt-5 space-y-3">
@@ -245,22 +254,84 @@ function ListingSlotsPage() {
                   {slot.price_override_cents != null && (
                     <span>{formatZar(slot.price_override_cents)}</span>
                   )}
+                  {(slotStats?.[slot.id]?.active ?? 0) > 0 && (
+                    <span>
+                      {slotStats![slot.id].active} booking{slotStats![slot.id].active === 1 ? "" : "s"}
+                    </span>
+                  )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(slot.id)}
-                  disabled={deleteSlot.isPending}
-                  className="text-muted-foreground transition-colors hover:text-destructive"
-                  aria-label="Remove slot"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <SlotAction
+                  slot={slot}
+                  stats={slotStats?.[slot.id]}
+                  loaded={!!slotStats}
+                  canCancel={canCancel}
+                  deleting={deleteSlot.isPending}
+                  onDelete={() => handleDelete(slot.id)}
+                  onCancel={() => setCancelSlotId(slot.id)}
+                />
               </li>
             ))}
           </ul>
         </section>
       </div>
+
+      {listingQuery.data && (
+        <CancelEventDialog
+          open={!!cancelSlotId}
+          onOpenChange={(open) => !open && setCancelSlotId(null)}
+          listingId={listingId}
+          listingTitle={listingQuery.data.title}
+          slots={slots}
+          fixedSlotId={cancelSlotId}
+        />
+      )}
     </AppShell>
+  );
+}
+
+// A slot nobody booked can be deleted. Once guests have booked (even a failed
+// checkout keeps its row), it can only be cancelled: guests are told and paid
+// guests are refunded in full.
+function SlotAction({
+  slot,
+  stats,
+  loaded,
+  canCancel,
+  deleting,
+  onDelete,
+  onCancel,
+}: {
+  slot: { status: string; starts_at: string };
+  stats: { bookings: number; active: number } | undefined;
+  loaded: boolean;
+  canCancel: boolean;
+  deleting: boolean;
+  onDelete: () => void;
+  onCancel: () => void;
+}) {
+  if (slot.status === "cancelled") return <Badge variant="secondary">Cancelled</Badge>;
+  if (!loaded) return null;
+  if ((stats?.bookings ?? 0) === 0) {
+    return (
+      <button
+        type="button"
+        onClick={onDelete}
+        disabled={deleting}
+        className="text-muted-foreground transition-colors hover:text-destructive"
+        aria-label="Remove slot"
+      >
+        <Trash2 className="h-4 w-4" />
+      </button>
+    );
+  }
+  if (!canCancel || new Date(slot.starts_at).getTime() <= Date.now()) {
+    return <span className="text-xs text-muted-foreground">Has bookings</span>;
+  }
+  return (
+    <Button variant="outline" size="sm" onClick={onCancel} className="text-destructive">
+      <CalendarX2 className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+      Cancel date
+    </Button>
   );
 }
 
