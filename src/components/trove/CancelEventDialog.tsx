@@ -133,7 +133,7 @@ export function CancelEventDialog({
             <ul className="space-y-1">
               <li><strong>{p.bookings}</strong> booking{p.bookings === 1 ? "" : "s"} ({p.guests} guest{p.guests === 1 ? "" : "s"}) will be cancelled.</li>
               {p.paid > 0 && (
-                <li><strong>{formatZar(p.refund_kobo)}</strong> goes back to {p.paid} paid guest{p.paid === 1 ? "" : "s"} from escrow. You won't be paid for these bookings.</li>
+                <li><strong>{formatZar(p.refund_cents)}</strong> goes back to {p.paid} paid guest{p.paid === 1 ? "" : "s"} from escrow. You won't be paid for these bookings.</li>
               )}
             </ul>
           )}

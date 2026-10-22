@@ -15,7 +15,7 @@ export interface GuestListRow {
   phone: string | null;
   status: Booking["status"];
   party_size: number;
-  total_kobo: number;
+  total_cents: number;
   created_at: string;
   checked_in_at: string | null;
   ticket_type: string | null;
@@ -119,7 +119,7 @@ export function guestListCsv(rows: GuestListRow[]) {
       r.party_size,
       r.ticket_type,
       r.codes.join(" "),
-      (r.total_kobo / 100).toFixed(2),
+      (r.total_cents / 100).toFixed(2),
       sast(r.created_at),
       sast(r.checked_in_at),
       r.booking_id.slice(0, 8).toUpperCase(),

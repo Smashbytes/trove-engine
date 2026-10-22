@@ -88,7 +88,7 @@ function ManageGuestPage() {
     const billable = rows.filter((b) => b.status === "confirmed" || b.status === "completed");
     return {
       total: rows.length,
-      spend: billable.reduce((sum, b) => sum + b.totalKobo, 0),
+      spend: billable.reduce((sum, b) => sum + b.totalCents, 0),
       last: rows[0]?.createdAt ?? null,
     };
   }, [bookingsQuery.data]);
@@ -213,7 +213,7 @@ function ManageGuestPage() {
                       {booking.status}
                     </span>
                     <span className="w-20 shrink-0 text-right text-sm font-semibold">
-                      {formatZar(booking.totalKobo)}
+                      {formatZar(booking.totalCents)}
                     </span>
                   </li>
                 ))}

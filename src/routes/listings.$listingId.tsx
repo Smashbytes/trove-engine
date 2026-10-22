@@ -243,7 +243,7 @@ function ListingDetailPage() {
         <MetricTile label="Check-ins" value={listing.checked_in_count.toString()} />
         <MetricTile
           label="Base price"
-          value={listing.base_price_kobo > 0 ? formatZar(listing.base_price_kobo) : "TBC"}
+          value={listing.base_price_cents > 0 ? formatZar(listing.base_price_cents) : "TBC"}
         />
       </div>
 
@@ -302,7 +302,7 @@ function ListingDetailPage() {
               head={["Tier", "Price", "Sold", "Capacity"]}
               rows={ticketTypes.map((tier) => [
                 tier.name,
-                formatZar(tier.price_kobo),
+                formatZar(tier.price_cents),
                 tier.capacity_sold.toString(),
                 tier.capacity_total?.toString() ?? "Open",
               ])}
@@ -317,7 +317,7 @@ function ListingDetailPage() {
                 new Date(slot.starts_at).toLocaleString("en-ZA"),
                 new Date(slot.ends_at).toLocaleString("en-ZA"),
                 slot.capacity_override?.toString() ?? "Open",
-                slot.price_override_kobo ? formatZar(slot.price_override_kobo) : "TBC",
+                slot.price_override_cents ? formatZar(slot.price_override_cents) : "TBC",
               ])}
               empty="No availability slots yet."
             />
@@ -333,7 +333,7 @@ function ListingDetailPage() {
                   rows={rooms.map((room) => [
                     room.name ?? "Room",
                     room.capacity?.toString() ?? "—",
-                    room.price_kobo ? formatZar(room.price_kobo) : "TBC",
+                    room.price_cents ? formatZar(room.price_cents) : "TBC",
                     room.description ?? "—",
                   ])}
                   empty="No room metadata yet."
@@ -382,7 +382,7 @@ function ListingDetailPage() {
               `#${booking.id.slice(0, 8)}`,
               booking.status,
               booking.party_size.toString(),
-              formatZar(booking.total_kobo),
+              formatZar(booking.total_cents),
             ])}
             empty="No bookings yet."
           />

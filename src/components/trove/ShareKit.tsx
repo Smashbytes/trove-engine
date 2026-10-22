@@ -110,7 +110,7 @@ export function ShareKit({ listing }: { listing: ListingWithCapacity }) {
   const meta = (listing.metadata ?? {}) as { date?: string; tagline?: string };
   const date = formatDate(meta.date);
   const price =
-    listing.base_price_kobo > 0 ? `from R${Math.round(listing.base_price_kobo / 100)}` : "free entry";
+    listing.base_price_cents > 0 ? `from R${Math.round(listing.base_price_cents / 100)}` : "free entry";
 
   // The acting user's own link per channel (what they copy) …
   const mine = useMemo(() => {
@@ -141,7 +141,7 @@ export function ShareKit({ listing }: { listing: ListingWithCapacity }) {
       `🔥 ${listing.title}`,
       [date, listing.city].filter(Boolean).join(" · "),
       meta.tagline,
-      listing.base_price_kobo > 0
+      listing.base_price_cents > 0
         ? `Tickets ${price} on TROVE 👉 ${url}`
         : `Free entry — RSVP on TROVE 👉 ${url}`,
     ]

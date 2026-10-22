@@ -1,5 +1,5 @@
-// Money helpers. Every `*_kobo` column holds ZAR **cents** — "kobo" is only a
-// legacy column name and must never appear in the UI. Hosts always type Rands.
+// Money helpers. Every `*_cents` column holds ZAR cents; the UI always shows Rands.
+// Hosts always type Rands.
 
 const zar = new Intl.NumberFormat("en-ZA", {
   style: "currency",

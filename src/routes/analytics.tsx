@@ -30,17 +30,17 @@ interface Bucket {
   label: string;
   clicks: number;
   bookings: number;
-  salesKobo: number | null;
+  salesCents: number | null;
 }
 
 function bucketBy(links: ShareLinkRow[], keyOf: (l: ShareLinkRow) => string, labelOf: (l: ShareLinkRow) => string) {
   const m = new Map<string, Bucket>();
   for (const l of links) {
     const key = keyOf(l);
-    const b = m.get(key) ?? { key, label: labelOf(l), clicks: 0, bookings: 0, salesKobo: null };
+    const b = m.get(key) ?? { key, label: labelOf(l), clicks: 0, bookings: 0, salesCents: null };
     b.clicks += l.clicks;
     b.bookings += l.bookings;
-    if (l.sales_kobo != null) b.salesKobo = (b.salesKobo ?? 0) + l.sales_kobo;
+    if (l.sales_cents != null) b.salesCents = (b.salesCents ?? 0) + l.sales_cents;
     m.set(key, b);
   }
   return [...m.values()].sort((a, b) => b.bookings - a.bookings || b.clicks - a.clicks);
@@ -84,7 +84,7 @@ function AnalyticsPage() {
           <Kpi
             icon={Wallet}
             label="Ticket sales from shares"
-            value={totals.salesKobo == null ? "—" : formatZar(totals.salesKobo)}
+            value={totals.salesCents == null ? "—" : formatZar(totals.salesCents)}
           />
         </div>
 
@@ -140,7 +140,7 @@ function Kpi({ icon: Icon, label, value }: { icon: typeof Link2; label: string; 
 }
 
 function BreakdownTable({ title, firstColumn, rows }: { title: string; firstColumn: string; rows: Bucket[] }) {
-  const showSales = rows.some((r) => r.salesKobo != null);
+  const showSales = rows.some((r) => r.salesCents != null);
   return (
     <section className="rounded-card border border-border/60 bg-card p-6 shadow-card">
       <h2 className="font-display text-xl font-semibold">{title}</h2>
@@ -164,7 +164,7 @@ function BreakdownTable({ title, firstColumn, rows }: { title: string; firstColu
                 <td className="px-4 py-3 text-right tabular-nums">{rate(r.bookings, r.clicks)}</td>
                 {showSales && (
                   <td className="px-4 py-3 text-right tabular-nums">
-                    {r.salesKobo == null ? "—" : formatZar(r.salesKobo)}
+                    {r.salesCents == null ? "—" : formatZar(r.salesCents)}
                   </td>
                 )}
               </tr>

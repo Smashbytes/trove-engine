@@ -117,7 +117,7 @@ flips the payout to `paid`.
   — acceptable, but consider moving account numbers behind a restricted view.
 - **CPA**: refund flow exists (HQ `requestRefund`/`approveRefund` → `process-refund`
   → `refund.*` webhook). Publish the cancellation/refund policy in-app.
-- **VAT**: service fee is tracked per booking (`bookings.fee_kobo`). Add SARS VAT
+- **VAT**: service fee is tracked per booking (`bookings.fee_cents`). Add SARS VAT
   handling + tax invoices once the platform crosses the registration threshold.
 
 ## Not built (deliberately deferred)

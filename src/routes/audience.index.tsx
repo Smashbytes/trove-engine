@@ -250,7 +250,7 @@ function AudiencePage() {
                         </p>
                       </div>
                       <div className="shrink-0 text-right">
-                        <p className="text-sm font-semibold">{formatZar(guest.totalSpendKobo)}</p>
+                        <p className="text-sm font-semibold">{formatZar(guest.totalSpendCents)}</p>
                         <p className="text-xs text-muted-foreground">
                           Last {formatDate(guest.lastBookingAt)}
                         </p>

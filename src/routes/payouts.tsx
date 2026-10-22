@@ -27,11 +27,11 @@ function PayoutsPage() {
 
   const totalPaid = payouts
     .filter((payout) => payout.status === "paid")
-    .reduce((sum, payout) => sum + payout.amount_kobo, 0);
+    .reduce((sum, payout) => sum + payout.amount_cents, 0);
 
   const totalPending = payouts
     .filter((payout) => payout.status === "pending" || payout.status === "processing")
-    .reduce((sum, payout) => sum + payout.amount_kobo, 0);
+    .reduce((sum, payout) => sum + payout.amount_cents, 0);
 
   // Same source as Settings → Payout account: the account TradeSafe holds.
   // (payout_bank_json is a legacy Paystack-era field and is no longer shown.)
@@ -140,7 +140,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 function PayoutTable({
   payouts,
 }: {
-  payouts: Array<{ id: string; amount_kobo: number; status: string; created_at: string }>;
+  payouts: Array<{ id: string; amount_cents: number; status: string; created_at: string }>;
 }) {
   if (payouts.length === 0) {
     return (
@@ -171,7 +171,7 @@ function PayoutTable({
             <tr key={payout.id} className="border-t border-border/60">
               <td className="px-4 py-3 font-medium">#{payout.id.slice(0, 8)}</td>
               <td className="px-4 py-3 text-right capitalize">{payout.status}</td>
-              <td className="px-4 py-3 text-right">{formatZar(payout.amount_kobo)}</td>
+              <td className="px-4 py-3 text-right">{formatZar(payout.amount_cents)}</td>
               <td className="px-4 py-3 text-right">
                 {new Date(payout.created_at).toLocaleDateString("en-ZA")}
               </td>
