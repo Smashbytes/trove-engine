@@ -254,7 +254,9 @@ function GuestList({ listingId }: { listingId: string }) {
                     <td className="px-4 py-3">
                       <StatusBadge row={r} />
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums">{formatZar(r.total_kobo)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {formatZar(r.total_cents)}
+                    </td>
                     <td className="px-4 py-3 text-right text-muted-foreground">
                       {bookedAt(r.created_at)}
                     </td>
@@ -281,7 +283,7 @@ function GuestList({ listingId }: { listingId: string }) {
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
                   <span className="text-muted-foreground">
                     {r.party_size} {r.party_size === 1 ? "guest" : "guests"} ·{" "}
-                    {formatZar(r.total_kobo)}
+                    {formatZar(r.total_cents)}
                   </span>
                   <span className="text-xs text-muted-foreground">{bookedAt(r.created_at)}</span>
                 </div>

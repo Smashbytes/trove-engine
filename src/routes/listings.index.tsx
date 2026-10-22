@@ -156,7 +156,7 @@ function ListingsPage() {
                     </p>
                   </div>
                   <span className="font-display text-lg font-bold text-gradient">
-                    {listing.base_price_kobo > 0 ? formatZar(listing.base_price_kobo) : "TBC"}
+                    {listing.base_price_cents > 0 ? formatZar(listing.base_price_cents) : "TBC"}
                   </span>
                 </div>
 

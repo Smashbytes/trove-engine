@@ -97,14 +97,14 @@ export function useFollowers() {
 export interface GuestSummary {
   guestId: string;
   bookingsCount: number;
-  totalSpendKobo: number;
+  totalSpendCents: number;
   lastBookingAt: string;
   listingTitles: string[];
 }
 
 type GuestBookingRow = Pick<
   Booking,
-  "guest_id" | "total_kobo" | "created_at" | "status" | "listing_id"
+  "guest_id" | "total_cents" | "created_at" | "status" | "listing_id"
 > & { listings?: { title: string | null; host_id: string } | null };
 
 export function useGuests() {
@@ -116,7 +116,7 @@ export function useGuests() {
       const { data, error } = await supabase
         .from("bookings")
         .select(
-          "guest_id, total_kobo, created_at, status, listing_id, listings!inner(title, host_id)",
+          "guest_id, total_cents, created_at, status, listing_id, listings!inner(title, host_id)",
         )
         .eq("listings.host_id", activeHostId!)
         .in("status", GUEST_BOOKING_STATUSES)
@@ -132,13 +132,13 @@ export function useGuests() {
           byGuest.set(row.guest_id, {
             guestId: row.guest_id,
             bookingsCount: 1,
-            totalSpendKobo: row.total_kobo,
+            totalSpendCents: row.total_cents,
             lastBookingAt: row.created_at,
             listingTitles: title ? [title] : [],
           });
         } else {
           existing.bookingsCount += 1;
-          existing.totalSpendKobo += row.total_kobo;
+          existing.totalSpendCents += row.total_cents;
           // rows are ordered desc, so the first seen is already the latest.
           if (title && !existing.listingTitles.includes(title)) existing.listingTitles.push(title);
         }
@@ -235,7 +235,7 @@ export interface GuestBooking {
   listingTitle: string;
   status: Booking["status"];
   partySize: number;
-  totalKobo: number;
+  totalCents: number;
   createdAt: string;
   checkedInAt: string | null;
 }
@@ -249,7 +249,7 @@ export function useGuestBookings(guestId: string | undefined) {
       const { data, error } = await supabase
         .from("bookings")
         .select(
-          "id, listing_id, status, party_size, total_kobo, created_at, checked_in_at, listings!inner(title, host_id)",
+          "id, listing_id, status, party_size, total_cents, created_at, checked_in_at, listings!inner(title, host_id)",
         )
         .eq("listings.host_id", activeHostId!)
         .eq("guest_id", guestId!)
@@ -262,7 +262,7 @@ export function useGuestBookings(guestId: string | undefined) {
         | "listing_id"
         | "status"
         | "party_size"
-        | "total_kobo"
+        | "total_cents"
         | "created_at"
         | "checked_in_at"
       > & { listings?: { title: string | null; host_id: string } | null };
@@ -272,7 +272,7 @@ export function useGuestBookings(guestId: string | undefined) {
         listingTitle: row.listings?.title ?? "",
         status: row.status,
         partySize: row.party_size,
-        totalKobo: row.total_kobo,
+        totalCents: row.total_cents,
         createdAt: row.created_at,
         checkedInAt: row.checked_in_at,
       }));

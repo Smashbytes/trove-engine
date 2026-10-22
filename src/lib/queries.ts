@@ -138,7 +138,7 @@ export const LISTING_ROWS_CAP = 500;
 
 export type ListingBooking = Pick<
   Booking,
-  "id" | "guest_id" | "status" | "party_size" | "total_kobo" | "created_at" | "checked_in_at" | "ticket_type_id" | "slot_id"
+  "id" | "guest_id" | "status" | "party_size" | "total_cents" | "created_at" | "checked_in_at" | "ticket_type_id" | "slot_id"
 >;
 
 export function useListingBookings(listingId: string | undefined) {
@@ -148,7 +148,7 @@ export function useListingBookings(listingId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
-        .select("id, guest_id, status, party_size, total_kobo, created_at, checked_in_at, ticket_type_id, slot_id")
+        .select("id, guest_id, status, party_size, total_cents, created_at, checked_in_at, ticket_type_id, slot_id")
         .eq("listing_id", listingId!)
         .order("created_at", { ascending: false })
         .limit(LISTING_ROWS_CAP);
@@ -222,7 +222,7 @@ export function useRecentBookings(limit = 6) {
 }
 
 export interface DashboardKpis {
-  revenueKobo7d: number;
+  revenueCents7d: number;
   bookings7d: number;
   fillRatePct: number;
   liveListings: number;
@@ -237,14 +237,14 @@ export function useDashboardKpis() {
     // Counted in the database (migration 0036), not by downloading rows.
     queryFn: async () => {
       const k = await untypedRpc<{
-        revenue_kobo_7d: number;
+        revenue_cents_7d: number;
         bookings_7d: number;
         fill_rate_pct: number;
         live_listings: number;
         scans_7d: number;
       }>("host_dashboard_kpis", { p_host_id: activeHostId });
       return {
-        revenueKobo7d: Number(k.revenue_kobo_7d),
+        revenueCents7d: Number(k.revenue_cents_7d),
         bookings7d: Number(k.bookings_7d),
         fillRatePct: Number(k.fill_rate_pct),
         liveListings: Number(k.live_listings),
@@ -256,7 +256,7 @@ export function useDashboardKpis() {
 
 export interface DailySalesPoint {
   date: string;
-  revenueKobo: number;
+  revenueCents: number;
 }
 
 export function useSalesByDay(days = 14) {
@@ -266,13 +266,13 @@ export function useSalesByDay(days = 14) {
     enabled: !!activeHostId,
     // One row per South African calendar day, summed in the database (0036).
     queryFn: async () => {
-      const rows = await untypedRpc<Array<{ day: string; revenue_kobo: number }>>("host_sales_by_day", {
+      const rows = await untypedRpc<Array<{ day: string; revenue_cents: number }>>("host_sales_by_day", {
         p_host_id: activeHostId,
         p_days: days,
       });
       return (rows ?? []).map((row) => {
         const [, month, day] = row.day.split("-").map(Number);
-        return { date: `${month}/${day}`, revenueKobo: Number(row.revenue_kobo) };
+        return { date: `${month}/${day}`, revenueCents: Number(row.revenue_cents) };
       });
     },
   });
@@ -984,7 +984,7 @@ export interface CancelEventPreview {
   bookings: number;
   guests: number;
   paid: number;
-  refund_kobo: number;
+  refund_cents: number;
 }
 
 /** Who a cancellation would affect: the whole listing, or one date (slotId). */
@@ -1066,7 +1066,7 @@ export interface AddAvailabilityInput {
   startsAt: string; // ISO
   endsAt: string; // ISO
   capacityOverride?: number | null;
-  priceOverrideKobo?: number | null;
+  priceOverrideCents?: number | null;
 }
 
 export function useAddAvailability() {
@@ -1078,7 +1078,7 @@ export function useAddAvailability() {
         starts_at: input.startsAt,
         ends_at: input.endsAt,
         capacity_override: input.capacityOverride ?? null,
-        price_override_kobo: input.priceOverrideKobo ?? null,
+        price_override_cents: input.priceOverrideCents ?? null,
         status: "open",
       };
       const { data, error } = await supabase.from("availability").insert(row).select("*").single();

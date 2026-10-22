@@ -87,7 +87,7 @@ export interface MenuItem {
   section?: string;
   name: string;
   description?: string;
-  price_kobo: number;
+  price_cents: number;
   photo_url?: string;
   is_available?: boolean;
 }
@@ -95,7 +95,7 @@ export interface MenuItem {
 export interface TreatmentEntry {
   name: string;
   duration_min?: number;
-  price_kobo: number;
+  price_cents: number;
   description?: string;
   is_available?: boolean;
 }
@@ -103,7 +103,7 @@ export interface TreatmentEntry {
 export interface RoomEntry {
   name: string;
   capacity?: number;
-  price_kobo: number;
+  price_cents: number;
   description?: string;
   photos?: string[];
   is_available?: boolean;
@@ -158,7 +158,7 @@ export type ListingWithCapacity = Omit<
   ListingViewRow,
   | "metadata"
   | "amenities"
-  | "base_price_kobo"
+  | "base_price_cents"
   | "blocks"
   | "capacity_booked"
   | "checked_in_count"
@@ -179,7 +179,7 @@ export type ListingWithCapacity = Omit<
   title: string;
   metadata: ListingMetadata;
   amenities: string[];
-  base_price_kobo: number;
+  base_price_cents: number;
   blocks: Json;
   capacity_booked: number;
   checked_in_count: number;

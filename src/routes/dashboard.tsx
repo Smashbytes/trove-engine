@@ -167,7 +167,7 @@ function Dashboard() {
         <MetricCard
           featured
           label="Revenue · 7d"
-          value={kpis ? formatZar(kpis.revenueKobo7d) : "—"}
+          value={kpis ? formatZar(kpis.revenueCents7d) : "—"}
           detail="Confirmed and completed bookings net of fees"
           icon={DollarSign}
         />
@@ -209,7 +209,7 @@ function Dashboard() {
               <AreaChart
                 data={(salesQuery.data ?? []).map((point) => ({
                   date: point.date,
-                  revenue: point.revenueKobo / 100,
+                  revenue: point.revenueCents / 100,
                 }))}
                 margin={{ top: 10, right: 8, left: -12, bottom: 0 }}
               >
@@ -283,7 +283,7 @@ function Dashboard() {
                     </p>
                   </div>
                   <span className="text-sm font-semibold text-primary">
-                    {formatZar(booking.total_kobo)}
+                    {formatZar(booking.total_cents)}
                   </span>
                 </div>
                 <div className="mt-3 flex items-center justify-between text-caption text-muted-foreground">
@@ -376,7 +376,7 @@ function Dashboard() {
                   />
                   <ListingMiniStat
                     label="Base price"
-                    value={listing.base_price_kobo > 0 ? formatZar(listing.base_price_kobo) : "TBC"}
+                    value={listing.base_price_cents > 0 ? formatZar(listing.base_price_cents) : "TBC"}
                   />
                 </div>
               </Link>

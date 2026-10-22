@@ -34,7 +34,7 @@ export interface ShareLinkRow {
   /** Paid bookings (confirmed / completed / no-show) credited to this link. */
   bookings: number;
   /** Ticket sales in ZAR cents — null when the viewer can't see payouts. */
-  sales_kobo: number | null;
+  sales_cents: number | null;
 }
 
 export const shortUrl = (code: string) => SHORT_LINK_BASE + code;
@@ -81,7 +81,7 @@ export interface ShareTotals {
   guestSharers: number;
   bookings: number;
   /** null when the viewer can't see payouts. */
-  salesKobo: number | null;
+  salesCents: number | null;
 }
 
 export function summarizeShareLinks(links: ShareLinkRow[]): ShareTotals {
@@ -92,7 +92,7 @@ export function summarizeShareLinks(links: ShareLinkRow[]): ShareTotals {
     guestBookings: 0,
     guestSharers: 0,
     bookings: 0,
-    salesKobo: null,
+    salesCents: null,
   };
   const sharers = new Set<string>();
   for (const l of links) {
@@ -105,7 +105,7 @@ export function summarizeShareLinks(links: ShareLinkRow[]): ShareTotals {
       sharers.add(l.created_by);
     }
     t.bookings += l.bookings;
-    if (l.sales_kobo != null) t.salesKobo = (t.salesKobo ?? 0) + l.sales_kobo;
+    if (l.sales_cents != null) t.salesCents = (t.salesCents ?? 0) + l.sales_cents;
   }
   t.guestSharers = sharers.size;
   return t;

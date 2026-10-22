@@ -109,7 +109,7 @@ function ListingSlotsPage() {
         startsAt,
         endsAt,
         capacityOverride,
-        priceOverrideKobo: priceCents,
+        priceOverrideCents: priceCents,
       });
       toast.success("Slot added.");
       setCapacity("");
@@ -242,8 +242,8 @@ function ListingSlotsPage() {
                       <Users className="h-3.5 w-3.5" /> {slot.capacity_override}
                     </span>
                   )}
-                  {slot.price_override_kobo != null && (
-                    <span>{formatZar(slot.price_override_kobo)}</span>
+                  {slot.price_override_cents != null && (
+                    <span>{formatZar(slot.price_override_cents)}</span>
                   )}
                 </div>
                 <button

@@ -223,7 +223,7 @@ function NewListing() {
             status,
             listing_type: "event",
             booking_mode: "event",
-            base_price_kobo: Math.min(...normalizedTiers.map((tier) => tier.price)),
+            base_price_cents: Math.min(...normalizedTiers.map((tier) => tier.price)),
             capacity: normalizedTiers.reduce((sum, tier) => sum + tier.capacity, 0),
             address: address.trim() || null,
             city: city.trim() || null,
@@ -241,7 +241,7 @@ function NewListing() {
           },
           ticketTypes: normalizedTiers.map((tier, index) => ({
             name: tier.name,
-            price_kobo: tier.price,
+            price_cents: tier.price,
             capacity_total: tier.capacity,
             sort_order: index,
           })),
@@ -270,7 +270,7 @@ function NewListing() {
             status,
             listing_type: "experience",
             booking_mode: "slot",
-            base_price_kobo: normalizedAvailability.length
+            base_price_cents: normalizedAvailability.length
               ? Math.min(...normalizedAvailability.map((slot) => slot.price))
               : 0,
             capacity: normalizedAvailability.reduce((sum, slot) => sum + slot.capacity, 0),
@@ -293,7 +293,7 @@ function NewListing() {
             starts_at: new Date(slot.startsAt).toISOString(),
             ends_at: new Date(slot.endsAt).toISOString(),
             capacity_override: slot.capacity,
-            price_override_kobo: slot.price,
+            price_override_cents: slot.price,
           })),
         });
 
@@ -306,7 +306,7 @@ function NewListing() {
         const normalizedRooms = rooms.map((room) => ({
           name: room.name.trim(),
           capacity: Number(room.capacity),
-          price_kobo: randsToCents(room.price),
+          price_cents: randsToCents(room.price),
           description: room.description.trim() || undefined,
         }));
 
@@ -320,7 +320,7 @@ function NewListing() {
             status,
             listing_type: "accommodation",
             booking_mode: "reservation",
-            base_price_kobo: Math.min(...normalizedRooms.map((room) => room.price_kobo)),
+            base_price_cents: Math.min(...normalizedRooms.map((room) => room.price_cents)),
             capacity: normalizedRooms.reduce((sum, room) => sum + room.capacity, 0),
             address: address.trim() || null,
             city: city.trim() || null,
@@ -353,7 +353,7 @@ function NewListing() {
           status,
           listing_type: "venue",
           booking_mode: "reservation",
-          base_price_kobo: 0,
+          base_price_cents: 0,
           capacity: Number(venueCapacity) || null,
           address: address.trim() || null,
           city: city.trim() || null,
