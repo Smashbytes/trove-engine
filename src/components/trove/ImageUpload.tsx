@@ -1,9 +1,9 @@
 import { ImagePlus, Loader2, X } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { LISTING_IMAGE_TYPES, useUploadListingImage } from "@/lib/queries";
+import { LISTING_IMAGE_TYPES, useImportImageUrl, useUploadListingImage } from "@/lib/queries";
 import { friendlyError } from "@/lib/errors";
 
 interface ImageUploadProps {
@@ -21,6 +21,22 @@ export function ImageUpload({
 }: ImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const upload = useUploadListingImage();
+  const importUrl = useImportImageUrl();
+  const [link, setLink] = useState("");
+  const busy = upload.isPending || importUrl.isPending;
+
+  // A pasted link is copied into TROVE's storage; the copy is what gets saved.
+  const handleLink = async () => {
+    const url = link.trim();
+    if (!url || importUrl.isPending) return;
+    try {
+      onChange(await importUrl.mutateAsync(url));
+      setLink("");
+      toast.success("Image copied.");
+    } catch (error) {
+      toast.error(friendlyError(error, "We couldn't copy that image."));
+    }
+  };
 
   const handlePick = () => inputRef.current?.click();
 
@@ -66,7 +82,7 @@ export function ImageUpload({
             variant="outline"
             size="sm"
             onClick={handlePick}
-            disabled={upload.isPending}
+            disabled={busy}
           >
             {upload.isPending ? (
               <>
@@ -81,16 +97,35 @@ export function ImageUpload({
             )}
           </Button>
           <p className="text-xs text-muted-foreground">
-            JPG, PNG, or WebP, up to 8 MB. Or paste a public image URL below.
+            JPG, PNG, or WebP, up to 8 MB. Or paste a public image link and we&apos;ll copy it.
           </p>
-          <Input
-            aria-label={`${label} URL`}
-            type="url"
-            inputMode="url"
-            value={value}
-            onChange={(event) => onChange(event.target.value)}
-            placeholder="https://..."
-          />
+          <div className="flex gap-2">
+            <Input
+              aria-label={`${label} link`}
+              type="url"
+              inputMode="url"
+              value={link}
+              onChange={(event) => setLink(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void handleLink();
+                }
+              }}
+              placeholder="https://..."
+              disabled={importUrl.isPending}
+            />
+            <Button type="button" variant="outline" size="sm" onClick={handleLink} disabled={busy || !link.trim()}>
+              {importUrl.isPending ? (
+                <>
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  Copying…
+                </>
+              ) : (
+                "Use link"
+              )}
+            </Button>
+          </div>
         </div>
       </div>
 
