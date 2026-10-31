@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/trove/AppShell";
 import { PageHeader } from "@/components/trove/PageHeader";
 import { VerifyPayoutDialog } from "@/components/trove/VerifyPayoutDialog";
+import { KycDocumentsCard } from "@/components/trove/KycDocumentsCard";
 import { Field } from "@/components/trove/Field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -241,6 +242,15 @@ function SettingsPage() {
           badge={{ label: verification.label, tone: verification.tone }}
         >
           <p className="mb-4 text-sm text-muted-foreground">{verification.message}</p>
+          {hostProfile?.kyc_status === "rejected" && hostProfile.kyc_rejection_reason && (
+            <div role="alert" className="mb-4 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm">
+              <p className="font-medium text-destructive">What TROVE needs from you</p>
+              <p className="mt-1">{hostProfile.kyc_rejection_reason}</p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Upload the right document below (and correct your details if needed), then press Resubmit for review.
+              </p>
+            </div>
+          )}
           <div className="grid gap-4 md:grid-cols-2">
             <Field
               label="Registered business name"
@@ -282,10 +292,12 @@ function SettingsPage() {
               <span className="text-xs text-muted-foreground">
                 {hostProfile?.kyc_status === "verified"
                   ? "Your business is verified."
-                  : "Submitted — Trove is reviewing your details. Need to correct something? Contact support."}
+                  : "Submitted — TROVE is reviewing your details. Missing a document? Upload it below."}
               </span>
             )}
           </div>
+          {/* Uploads go to the owner's own kyc-docs folder, so only the owner sees this. */}
+          {isOwner && <KycDocumentsCard canUpload={hostProfile?.kyc_status !== "verified"} />}
         </Section>
 
         {/* WhatsApp connection */}
