@@ -729,6 +729,26 @@ export function useUploadListingImage() {
   });
 }
 
+/**
+ * A pasted image link → a copy in listing-media (edge function
+ * import-cover-image). Covers must live in storage (listings_cover_in_storage):
+ * other hosts break on the website and signed links (Instagram) expire.
+ */
+export function useImportImageUrl() {
+  return useMutation({
+    mutationFn: async (url: string) => {
+      const { data, error } = await supabase.functions.invoke("import-cover-image", { body: { url } });
+      if (error) {
+        const body = await edgeErrorBody(error);
+        throw new Error(
+          typeof body?.error === "string" ? body.error : "We couldn't copy that image. Download it and upload it instead.",
+        );
+      }
+      return (data as { url: string }).url;
+    },
+  });
+}
+
 // ── KYC documents ─────────────────────────────────────────────────────────────
 // Uploads an identity / registration document to the PRIVATE `kyc-docs` bucket
 // (POPIA: encrypted at rest, owner-scoped RLS) and records a kyc_documents row.
