@@ -195,7 +195,7 @@ export function getVerificationCopy(kycStatus: KycStatus | null | undefined) {
         label: "Badge: action needed",
         tone: "destructive" as const,
         message:
-          "Your Verified Partner badge needs updated business details. You can still publish and sell.",
+          "TROVE couldn't verify your Spot yet. Fix what's below and resubmit. You can still publish and sell.",
       };
     default:
       return {

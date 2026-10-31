@@ -18,7 +18,7 @@ export type Database = {
         Row: {
           action: string
           actor_id: string | null
-          created_at: string | null
+          created_at: string
           diff: Json | null
           entity: string
           entity_id: string | null
@@ -27,7 +27,7 @@ export type Database = {
         Insert: {
           action: string
           actor_id?: string | null
-          created_at?: string | null
+          created_at?: string
           diff?: Json | null
           entity: string
           entity_id?: string | null
@@ -36,7 +36,7 @@ export type Database = {
         Update: {
           action?: string
           actor_id?: string | null
-          created_at?: string | null
+          created_at?: string
           diff?: Json | null
           entity?: string
           entity_id?: string | null
@@ -54,6 +54,8 @@ export type Database = {
       }
       availability: {
         Row: {
+          cancel_reason: string | null
+          cancelled_at: string | null
           capacity_override: number | null
           created_at: string
           ends_at: string
@@ -64,6 +66,8 @@ export type Database = {
           status: string
         }
         Insert: {
+          cancel_reason?: string | null
+          cancelled_at?: string | null
           capacity_override?: number | null
           created_at?: string
           ends_at: string
@@ -74,6 +78,8 @@ export type Database = {
           status?: string
         }
         Update: {
+          cancel_reason?: string | null
+          cancelled_at?: string | null
           capacity_override?: number | null
           created_at?: string
           ends_at?: string
@@ -103,7 +109,7 @@ export type Database = {
       booking_guests: {
         Row: {
           booking_id: string
-          created_at: string | null
+          created_at: string
           id: string
           invited_email: string | null
           invited_phone: string | null
@@ -112,7 +118,7 @@ export type Database = {
         }
         Insert: {
           booking_id: string
-          created_at?: string | null
+          created_at?: string
           id?: string
           invited_email?: string | null
           invited_phone?: string | null
@@ -121,7 +127,7 @@ export type Database = {
         }
         Update: {
           booking_id?: string
-          created_at?: string | null
+          created_at?: string
           id?: string
           invited_email?: string | null
           invited_phone?: string | null
@@ -149,7 +155,10 @@ export type Database = {
         Row: {
           attested_age: boolean
           attested_age_at: string | null
+          booking_fee_cents: number
+          cancel_reason: string | null
           cancelled_at: string | null
+          cancelled_by: string | null
           checked_in_at: string | null
           created_at: string
           custom_answers: Json
@@ -167,6 +176,7 @@ export type Database = {
           payout_cents: number
           pending_expires_at: string | null
           refunded_at: string | null
+          room_name: string | null
           slot_id: string | null
           status: Database["public"]["Enums"]["booking_status"]
           subtotal_cents: number
@@ -178,7 +188,10 @@ export type Database = {
         Insert: {
           attested_age?: boolean
           attested_age_at?: string | null
+          booking_fee_cents?: number
+          cancel_reason?: string | null
           cancelled_at?: string | null
+          cancelled_by?: string | null
           checked_in_at?: string | null
           created_at?: string
           custom_answers?: Json
@@ -196,6 +209,7 @@ export type Database = {
           payout_cents?: number
           pending_expires_at?: string | null
           refunded_at?: string | null
+          room_name?: string | null
           slot_id?: string | null
           status?: Database["public"]["Enums"]["booking_status"]
           subtotal_cents?: number
@@ -207,7 +221,10 @@ export type Database = {
         Update: {
           attested_age?: boolean
           attested_age_at?: string | null
+          booking_fee_cents?: number
+          cancel_reason?: string | null
           cancelled_at?: string | null
+          cancelled_by?: string | null
           checked_in_at?: string | null
           created_at?: string
           custom_answers?: Json
@@ -225,6 +242,7 @@ export type Database = {
           payout_cents?: number
           pending_expires_at?: string | null
           refunded_at?: string | null
+          room_name?: string | null
           slot_id?: string | null
           status?: Database["public"]["Enums"]["booking_status"]
           subtotal_cents?: number
@@ -385,7 +403,7 @@ export type Database = {
       }
       categories: {
         Row: {
-          created_at: string | null
+          created_at: string
           icon: string | null
           id: string
           is_active: boolean | null
@@ -395,7 +413,7 @@ export type Database = {
           template: Json | null
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           icon?: string | null
           id: string
           is_active?: boolean | null
@@ -405,7 +423,7 @@ export type Database = {
           template?: Json | null
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           icon?: string | null
           id?: string
           is_active?: boolean | null
@@ -525,17 +543,17 @@ export type Database = {
       }
       follows: {
         Row: {
-          created_at: string | null
+          created_at: string
           host_id: string
           user_id: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           host_id: string
           user_id: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           host_id?: string
           user_id?: string
         }
@@ -732,6 +750,7 @@ export type Database = {
           display_name: string | null
           hero_url: string | null
           host_type: Database["public"]["Enums"]["host_type"]
+          kyc_rejection_reason: string | null
           kyc_status: Database["public"]["Enums"]["kyc_status"]
           lat: number | null
           lng: number | null
@@ -777,6 +796,7 @@ export type Database = {
           display_name?: string | null
           hero_url?: string | null
           host_type: Database["public"]["Enums"]["host_type"]
+          kyc_rejection_reason?: string | null
           kyc_status?: Database["public"]["Enums"]["kyc_status"]
           lat?: number | null
           lng?: number | null
@@ -822,6 +842,7 @@ export type Database = {
           display_name?: string | null
           hero_url?: string | null
           host_type?: Database["public"]["Enums"]["host_type"]
+          kyc_rejection_reason?: string | null
           kyc_status?: Database["public"]["Enums"]["kyc_status"]
           lat?: number | null
           lng?: number | null
@@ -880,7 +901,8 @@ export type Database = {
           permissions: string[]
           role: Database["public"]["Enums"]["team_role"]
           status: Database["public"]["Enums"]["team_invite_status"]
-          token: string
+          token: string | null
+          token_hash: string
         }
         Insert: {
           accepted_at?: string | null
@@ -895,7 +917,8 @@ export type Database = {
           permissions?: string[]
           role?: Database["public"]["Enums"]["team_role"]
           status?: Database["public"]["Enums"]["team_invite_status"]
-          token: string
+          token?: string | null
+          token_hash: string
         }
         Update: {
           accepted_at?: string | null
@@ -910,7 +933,8 @@ export type Database = {
           permissions?: string[]
           role?: Database["public"]["Enums"]["team_role"]
           status?: Database["public"]["Enums"]["team_invite_status"]
-          token?: string
+          token?: string | null
+          token_hash?: string
         }
         Relationships: [
           {
@@ -990,6 +1014,45 @@ export type Database = {
           },
         ]
       }
+      hq_invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string | null
+          revoked_at: string | null
+          role: string
+          token_hash: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          revoked_at?: string | null
+          role: string
+          token_hash: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          revoked_at?: string | null
+          role?: string
+          token_hash?: string
+        }
+        Relationships: []
+      }
       hq_role_permissions: {
         Row: {
           permissions: string[]
@@ -1022,19 +1085,28 @@ export type Database = {
       hq_users: {
         Row: {
           created_at: string
+          deactivated_at: string | null
+          invited_by: string | null
           role: string
+          status: string
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          deactivated_at?: string | null
+          invited_by?: string | null
           role?: string
+          status?: string
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          deactivated_at?: string | null
+          invited_by?: string | null
           role?: string
+          status?: string
           updated_at?: string
           user_id?: string
         }
@@ -1129,11 +1201,18 @@ export type Database = {
             referencedRelation: "kb_articles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "kb_revisions_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       kyc_documents: {
         Row: {
-          created_at: string | null
+          created_at: string
           doc_type: string
           host_id: string
           id: string
@@ -1144,7 +1223,7 @@ export type Database = {
           storage_path: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           doc_type: string
           host_id: string
           id?: string
@@ -1155,7 +1234,7 @@ export type Database = {
           storage_path: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           doc_type?: string
           host_id?: string
           id?: string
@@ -1180,13 +1259,20 @@ export type Database = {
             referencedRelation: "public_host_profiles"
             referencedColumns: ["user_id"]
           },
+          {
+            foreignKeyName: "kyc_documents_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ledger: {
         Row: {
           amount_cents: number
-          created_at: string | null
-          currency: string | null
+          created_at: string
+          currency: string
           id: string
           kind: Database["public"]["Enums"]["ledger_kind"]
           owner_user_id: string
@@ -1196,8 +1282,8 @@ export type Database = {
         }
         Insert: {
           amount_cents: number
-          created_at?: string | null
-          currency?: string | null
+          created_at?: string
+          currency?: string
           id?: string
           kind: Database["public"]["Enums"]["ledger_kind"]
           owner_user_id: string
@@ -1207,8 +1293,8 @@ export type Database = {
         }
         Update: {
           amount_cents?: number
-          created_at?: string | null
-          currency?: string | null
+          created_at?: string
+          currency?: string
           id?: string
           kind?: Database["public"]["Enums"]["ledger_kind"]
           owner_user_id?: string
@@ -1229,6 +1315,65 @@ export type Database = {
             columns: ["payout_id"]
             isOneToOne: false
             referencedRelation: "payouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listing_flags: {
+        Row: {
+          cleared_at: string | null
+          cleared_by: string | null
+          created_at: string
+          flagged_by: string | null
+          id: string
+          listing_id: string
+          reason: string
+        }
+        Insert: {
+          cleared_at?: string | null
+          cleared_by?: string | null
+          created_at?: string
+          flagged_by?: string | null
+          id?: string
+          listing_id: string
+          reason: string
+        }
+        Update: {
+          cleared_at?: string | null
+          cleared_by?: string | null
+          created_at?: string
+          flagged_by?: string | null
+          id?: string
+          listing_id?: string
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_flags_cleared_by_fkey"
+            columns: ["cleared_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_flags_flagged_by_fkey"
+            columns: ["flagged_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_flags_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_flags_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings_with_capacity"
             referencedColumns: ["id"]
           },
         ]
@@ -1282,6 +1427,8 @@ export type Database = {
           base_price_cents: number
           blocks: Json
           booking_mode: Database["public"]["Enums"]["booking_mode"]
+          cancel_reason: string | null
+          cancelled_at: string | null
           capacity: number | null
           category_id: string | null
           city: string | null
@@ -1292,6 +1439,7 @@ export type Database = {
           custom_questions: Json
           description: string | null
           duration_min: number | null
+          ends_at: string | null
           health_score: number
           host_id: string
           id: string
@@ -1300,8 +1448,11 @@ export type Database = {
           listing_type: Database["public"]["Enums"]["listing_type"]
           lng: number | null
           metadata: Json
+          metro: string | null
+          refund_policy: string
           search_tsv: unknown
           slug: string | null
+          starts_at: string | null
           status: Database["public"]["Enums"]["listing_status"]
           title: string
           updated_at: string
@@ -1313,6 +1464,8 @@ export type Database = {
           base_price_cents?: number
           blocks?: Json
           booking_mode?: Database["public"]["Enums"]["booking_mode"]
+          cancel_reason?: string | null
+          cancelled_at?: string | null
           capacity?: number | null
           category_id?: string | null
           city?: string | null
@@ -1323,6 +1476,7 @@ export type Database = {
           custom_questions?: Json
           description?: string | null
           duration_min?: number | null
+          ends_at?: string | null
           health_score?: number
           host_id: string
           id?: string
@@ -1331,8 +1485,11 @@ export type Database = {
           listing_type: Database["public"]["Enums"]["listing_type"]
           lng?: number | null
           metadata?: Json
+          metro?: string | null
+          refund_policy?: string
           search_tsv?: unknown
           slug?: string | null
+          starts_at?: string | null
           status?: Database["public"]["Enums"]["listing_status"]
           title: string
           updated_at?: string
@@ -1344,6 +1501,8 @@ export type Database = {
           base_price_cents?: number
           blocks?: Json
           booking_mode?: Database["public"]["Enums"]["booking_mode"]
+          cancel_reason?: string | null
+          cancelled_at?: string | null
           capacity?: number | null
           category_id?: string | null
           city?: string | null
@@ -1354,6 +1513,7 @@ export type Database = {
           custom_questions?: Json
           description?: string | null
           duration_min?: number | null
+          ends_at?: string | null
           health_score?: number
           host_id?: string
           id?: string
@@ -1362,8 +1522,11 @@ export type Database = {
           listing_type?: Database["public"]["Enums"]["listing_type"]
           lng?: number | null
           metadata?: Json
+          metro?: string | null
+          refund_policy?: string
           search_tsv?: unknown
           slug?: string | null
+          starts_at?: string | null
           status?: Database["public"]["Enums"]["listing_status"]
           title?: string
           updated_at?: string
@@ -1393,6 +1556,51 @@ export type Database = {
           },
         ]
       }
+      notification_failures: {
+        Row: {
+          created_at: string
+          error: string
+          id: string
+          payload: Json | null
+          type: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error: string
+          id?: string
+          payload?: Json | null
+          type?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error?: string
+          id?: string
+          payload?: Json | null
+          type?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      notification_types: {
+        Row: {
+          audience: string
+          description: string
+          type: string
+        }
+        Insert: {
+          audience: string
+          description: string
+          type: string
+        }
+        Update: {
+          audience?: string
+          description?: string
+          type?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           audience: string
@@ -1405,7 +1613,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          audience?: string
+          audience: string
           created_at?: string
           dedupe_key?: string | null
           id?: string
@@ -1425,6 +1633,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "notifications_type_fkey"
+            columns: ["type"]
+            isOneToOne: false
+            referencedRelation: "notification_types"
+            referencedColumns: ["type"]
+          },
           {
             foreignKeyName: "notifications_user_id_fkey"
             columns: ["user_id"]
@@ -1665,15 +1880,19 @@ export type Database = {
           close_reason: string | null
           closed_by: string | null
           created_at: string
+          date_of_birth: string | null
           deactivated_at: string | null
           deletion_requested_at: string | null
           discoverable: boolean
           friends_going_optin: boolean
           full_name: string | null
+          gender: string | null
           id: string
+          interests: string[]
           is_admin: boolean
           is_host: boolean
           is_private: boolean
+          notification_prefs: Json
           phone: string | null
           updated_at: string
           username: string | null
@@ -1685,15 +1904,19 @@ export type Database = {
           close_reason?: string | null
           closed_by?: string | null
           created_at?: string
+          date_of_birth?: string | null
           deactivated_at?: string | null
           deletion_requested_at?: string | null
           discoverable?: boolean
           friends_going_optin?: boolean
           full_name?: string | null
+          gender?: string | null
           id: string
+          interests?: string[]
           is_admin?: boolean
           is_host?: boolean
           is_private?: boolean
+          notification_prefs?: Json
           phone?: string | null
           updated_at?: string
           username?: string | null
@@ -1705,29 +1928,44 @@ export type Database = {
           close_reason?: string | null
           closed_by?: string | null
           created_at?: string
+          date_of_birth?: string | null
           deactivated_at?: string | null
           deletion_requested_at?: string | null
           discoverable?: boolean
           friends_going_optin?: boolean
           full_name?: string | null
+          gender?: string | null
           id?: string
+          interests?: string[]
           is_admin?: boolean
           is_host?: boolean
           is_private?: boolean
+          notification_prefs?: Json
           phone?: string | null
           updated_at?: string
           username?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       refunds: {
         Row: {
           amendment_id: string | null
           amount_cents: number
           approved_by: string | null
+          attempts: number
           booking_id: string
           created_at: string
+          decision_note: string | null
           id: string
+          kind: string
           payment_id: string
           provider_payload: Json | null
           provider_reference: string | null
@@ -1741,9 +1979,12 @@ export type Database = {
           amendment_id?: string | null
           amount_cents: number
           approved_by?: string | null
+          attempts?: number
           booking_id: string
           created_at?: string
+          decision_note?: string | null
           id?: string
+          kind?: string
           payment_id: string
           provider_payload?: Json | null
           provider_reference?: string | null
@@ -1757,9 +1998,12 @@ export type Database = {
           amendment_id?: string | null
           amount_cents?: number
           approved_by?: string | null
+          attempts?: number
           booking_id?: string
           created_at?: string
+          decision_note?: string | null
           id?: string
+          kind?: string
           payment_id?: string
           provider_payload?: Json | null
           provider_reference?: string | null
@@ -1860,6 +2104,7 @@ export type Database = {
           of_listing: string | null
           photos: string[]
           rating: number
+          site_hidden_at: string | null
         }
         Insert: {
           body?: string | null
@@ -1871,6 +2116,7 @@ export type Database = {
           of_listing?: string | null
           photos?: string[]
           rating: number
+          site_hidden_at?: string | null
         }
         Update: {
           body?: string | null
@@ -1882,6 +2128,7 @@ export type Database = {
           of_listing?: string | null
           photos?: string[]
           rating?: number
+          site_hidden_at?: string | null
         }
         Relationships: [
           {
@@ -1930,17 +2177,17 @@ export type Database = {
       }
       saves: {
         Row: {
-          created_at: string | null
+          created_at: string
           listing_id: string
           user_id: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
           listing_id: string
           user_id: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
           listing_id?: string
           user_id?: string
         }
@@ -2074,6 +2321,20 @@ export type Database = {
           listing_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "share_links_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "host_profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "share_links_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "public_host_profiles"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "share_links_listing_id_fkey"
             columns: ["listing_id"]
@@ -2643,7 +2904,8 @@ export type Database = {
       }
       whatsapp_verifications: {
         Row: {
-          code: string
+          code: string | null
+          code_hash: string
           created_at: string
           expires_at: string
           id: string
@@ -2651,7 +2913,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          code: string
+          code?: string | null
+          code_hash: string
           created_at?: string
           expires_at: string
           id?: string
@@ -2659,7 +2922,8 @@ export type Database = {
           user_id: string
         }
         Update: {
-          code?: string
+          code?: string | null
+          code_hash?: string
           created_at?: string
           expires_at?: string
           id?: string
@@ -2859,6 +3123,8 @@ export type Database = {
           base_price_cents: number | null
           blocks: Json | null
           booking_mode: Database["public"]["Enums"]["booking_mode"] | null
+          cancel_reason: string | null
+          cancelled_at: string | null
           capacity: number | null
           capacity_booked: number | null
           category_id: string | null
@@ -2868,8 +3134,10 @@ export type Database = {
           cover_url: string | null
           created_at: string | null
           currency: string | null
+          custom_questions: Json | null
           description: string | null
           duration_min: number | null
+          ends_at: string | null
           health_score: number | null
           host_id: string | null
           id: string | null
@@ -2877,8 +3145,13 @@ export type Database = {
           listing_type: Database["public"]["Enums"]["listing_type"] | null
           lng: number | null
           metadata: Json | null
+          metro: string | null
+          rating_avg: number | null
+          refund_policy: string | null
+          review_count: number | null
           search_tsv: unknown
           slug: string | null
+          starts_at: string | null
           status: Database["public"]["Enums"]["listing_status"] | null
           title: string | null
           updated_at: string | null
@@ -3067,9 +3340,39 @@ export type Database = {
     }
     Functions: {
       accept_team_invite: { Args: { p_token: string }; Returns: string }
+      account_close_blockers: { Args: { p_user: string }; Returns: Json }
+      archive_ended_events: { Args: never; Returns: number }
       attribute_booking_share: {
         Args: { p_booking_id: string; p_code: string }
         Returns: boolean
+      }
+      booking_delivery_due_at: {
+        Args: { p_booking_id: string; p_fallback_days?: number }
+        Returns: string
+      }
+      booking_refund_deadline: {
+        Args: { p_booking_id: string }
+        Returns: string
+      }
+      cancel_account_closure: { Args: never; Returns: boolean }
+      cancel_event: {
+        Args: { p_listing_id: string; p_reason?: string; p_slot_id?: string }
+        Returns: Json
+      }
+      cancel_event_preview: {
+        Args: { p_listing_id: string; p_slot_id?: string }
+        Returns: Json
+      }
+      check_in_booking: { Args: { p_booking_id: string }; Returns: Json }
+      checkout_fees: { Args: never; Returns: Json }
+      create_listing: {
+        Args: {
+          p_availability?: Json
+          p_listing: Json
+          p_media?: Json
+          p_ticket_types?: Json
+        }
+        Returns: Json
       }
       discover_groups: {
         Args: { p_query?: string }
@@ -3105,6 +3408,7 @@ export type Database = {
         }[]
       }
       fmt_rand: { Args: { p_cents: number }; Returns: string }
+      friend_request_count: { Args: never; Returns: number }
       friends_close_by: {
         Args: { p_everywhere?: boolean }
         Returns: {
@@ -3117,11 +3421,12 @@ export type Database = {
         }[]
       }
       friends_going: {
-        Args: { p_listing_id: string }
+        Args: { p_limit?: number; p_listing_id: string }
         Returns: {
           avatar_url: string
           full_name: string
           id: string
+          total: number
         }[]
       }
       get_share_link: {
@@ -3167,6 +3472,27 @@ export type Database = {
           phone: string
         }[]
       }
+      host_dashboard_kpis: { Args: { p_host_id: string }; Returns: Json }
+      host_followers_page: {
+        Args: { p_host_id: string; p_limit?: number; p_offset?: number }
+        Returns: Json
+      }
+      host_guest_summaries: {
+        Args: {
+          p_guest_id?: string
+          p_host_id: string
+          p_limit?: number
+          p_offset?: number
+        }
+        Returns: Json
+      }
+      host_sales_by_day: {
+        Args: { p_days?: number; p_host_id: string }
+        Returns: {
+          day: string
+          revenue_cents: number
+        }[]
+      }
       host_team_roster: {
         Args: { p_host_id: string }
         Returns: {
@@ -3181,6 +3507,55 @@ export type Database = {
           status: Database["public"]["Enums"]["team_member_status"]
         }[]
       }
+      host_upcoming_guests: {
+        Args: { p_guest_limit?: number; p_host_id: string; p_limit?: number }
+        Returns: Json
+      }
+      hq_activity_stats: {
+        Args: { p_active_since: string; p_chart_from: string }
+        Returns: Json
+      }
+      hq_analytics_stats: { Args: never; Returns: Json }
+      hq_cancel_account_closure: { Args: { p_user: string }; Returns: boolean }
+      hq_close_unpaid_booking: {
+        Args: {
+          p_actor_id: string
+          p_booking_id: string
+          p_from: string[]
+          p_reason: string
+          p_status: string
+        }
+        Returns: string
+      }
+      hq_freeze_host_payouts: {
+        Args: { p_actor_id: string; p_host_id: string }
+        Returns: number
+      }
+      hq_held_cents: {
+        Args: { p_booking_id: string; p_total_cents: number }
+        Returns: number
+      }
+      hq_host_stats: {
+        Args: { p_host_ids: string[] }
+        Returns: {
+          held_cents: number
+          held_count: number
+          host_id: string
+          listings: number
+          live_listings: number
+          rating_count: number
+          rating_sum: number
+          revenue_cents: number
+        }[]
+      }
+      hq_money_stats: {
+        Args: { p_chart_from: string; p_today: string }
+        Returns: Json
+      }
+      hq_request_account_closure: {
+        Args: { p_actor: string; p_reason: string; p_user: string }
+        Returns: Json
+      }
       invite_to_group: {
         Args: { p_group: string; p_user: string }
         Returns: undefined
@@ -3190,14 +3565,39 @@ export type Database = {
       is_group_owner: { Args: { p_group: string }; Returns: boolean }
       is_hq_admin: { Args: never; Returns: boolean }
       is_split_participant: { Args: { p_split: string }; Returns: boolean }
+      listing_activity_stats: { Args: { p_listing: string }; Returns: Json }
+      listing_event_window: {
+        Args: { p_listing_id: string }
+        Returns: {
+          ends_at: string
+          starts_at: string
+        }[]
+      }
+      listing_guest_list: {
+        Args: {
+          p_filter?: string
+          p_limit?: number
+          p_listing: string
+          p_offset?: number
+          p_search?: string
+        }
+        Returns: Json
+      }
+      my_account_closure: { Args: never; Returns: Json }
       my_friends: {
-        Args: never
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_status?: Database["public"]["Enums"]["friend_status"]
+        }
         Returns: {
           avatar_url: string
+          created_at: string
           friend_id: string
           full_name: string
           requested_by: string
           status: Database["public"]["Enums"]["friend_status"]
+          total: number
           username: string
         }[]
       }
@@ -3216,7 +3616,7 @@ export type Database = {
         }[]
       }
       my_split_inbox: {
-        Args: never
+        Args: { p_limit?: number; p_needs_action?: boolean; p_offset?: number }
         Returns: {
           booking_id: string
           created_at: string
@@ -3226,12 +3626,14 @@ export type Database = {
           listing_id: string
           listing_title: string
           my_status: Database["public"]["Enums"]["split_share_status"]
+          needs_action: boolean
           qty: number
-          share_id: string
           share_cents: number
+          share_id: string
           split_id: string
           split_status: Database["public"]["Enums"]["split_status"]
           ticket_total_cents: number
+          total: number
         }[]
       }
       notify_user: {
@@ -3244,6 +3646,29 @@ export type Database = {
           p_user: string
         }
         Returns: string
+      }
+      notify_workspace: {
+        Args: {
+          p_dedupe?: string
+          p_host: string
+          p_message: string
+          p_payload?: Json
+          p_permission: string
+          p_title: string
+          p_type: string
+        }
+        Returns: number
+      }
+      process_account_closures: { Args: never; Returns: Json }
+      public_reviews: {
+        Args: { p_limit?: number }
+        Returns: {
+          created_at: string
+          location: string
+          name: string
+          quote: string
+          rating: number
+        }[]
       }
       record_share_click: {
         Args: {
@@ -3258,16 +3683,36 @@ export type Database = {
           listing_id: string
         }[]
       }
+      redeem_ticket: {
+        Args: { p_code: string; p_device_id?: string; p_listing_id: string }
+        Returns: Json
+      }
+      refund_quote: { Args: { p_booking_id: string }; Returns: Json }
+      request_account_closure: { Args: { p_reason?: string }; Returns: Json }
+      request_refund: {
+        Args: { p_booking_id: string; p_reason?: string }
+        Returns: Json
+      }
       reserve_booking: {
         Args: {
           p_attested_age?: boolean
+          p_custom_answers?: Json
+          p_delivery_method?: string
+          p_expect_paid?: boolean
+          p_extra_fee_cents?: number
           p_guest_id: string
+          p_guest_phone?: string
           p_listing_id: string
           p_party_size: number
-          p_slot_id: string
-          p_ticket_type_id: string
-          p_total_cents: number
+          p_room?: string
+          p_slot_id?: string
+          p_terms_accepted?: boolean
+          p_ticket_type_id?: string
         }
+        Returns: Json
+      }
+      respond_friend_request: {
+        Args: { p_accept: boolean; p_other: string }
         Returns: string
       }
       search_guests: {
@@ -3283,6 +3728,10 @@ export type Database = {
         }[]
       }
       send_booking_reminders: { Args: never; Returns: number }
+      send_friend_request_by_email: {
+        Args: { p_email: string }
+        Returns: string
+      }
       send_split_reminders: { Args: never; Returns: number }
       share_link_stats: {
         Args: { p_host_id: string; p_listing_id?: string }
@@ -3310,8 +3759,8 @@ export type Database = {
           fee_cents: number
           full_name: string
           is_initiator: boolean
-          share_id: string
           share_cents: number
+          share_id: string
           status: Database["public"]["Enums"]["split_share_status"]
           user_id: string
           username: string
@@ -3325,12 +3774,36 @@ export type Database = {
         }
         Returns: undefined
       }
+      submit_review: {
+        Args: { p_body?: string; p_booking_id: string; p_rating: number }
+        Returns: string
+      }
       team_can: { Args: { host: string; perm: string }; Returns: boolean }
       team_host_ids: { Args: never; Returns: string[] }
+      team_host_ids_can: { Args: { perm: string }; Returns: string[] }
+      team_permission_catalogue: { Args: never; Returns: string[] }
+      trove_anonymise_account: { Args: { p_user: string }; Returns: undefined }
+      trove_cancel_account_closure: {
+        Args: { p_user: string }
+        Returns: boolean
+      }
       trove_generate_slug: { Args: { input: string }; Returns: string }
       trove_invoke_job: { Args: { p_function_name: string }; Returns: number }
+      trove_listing_metro: {
+        Args: { p_city: string; p_lat: number; p_lng: number }
+        Returns: string
+      }
+      trove_refund_terms: { Args: { p_booking_id: string }; Returns: Json }
+      trove_request_account_closure: {
+        Args: { p_by: string; p_reason: string; p_user: string }
+        Returns: Json
+      }
       unaccent: { Args: { "": string }; Returns: string }
       username_available: { Args: { p_username: string }; Returns: boolean }
+      withdraw_refund_request: {
+        Args: { p_booking_id: string }
+        Returns: string
+      }
     }
     Enums: {
       booking_mode: "event" | "reservation" | "slot" | "pass" | "rsvp"

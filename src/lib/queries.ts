@@ -745,6 +745,7 @@ const KYC_BUCKET = "kyc-docs";
 
 export function useUploadKycDocument() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ file, docType }: UploadKycDocumentInput) => {
@@ -778,6 +779,35 @@ export function useUploadKycDocument() {
       if (rowError) throw rowError;
 
       return { path: objectName };
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["kyc-documents"] }),
+  });
+}
+
+export interface KycDocument {
+  id: string;
+  doc_type: KycDocType;
+  /** submitted (waiting for TROVE), approved, or rejected with a note saying why. */
+  status: "submitted" | "approved" | "rejected";
+  note: string | null;
+  created_at: string;
+}
+
+/** The owner's uploaded verification documents and TROVE's decision on each (RLS: owner only). */
+export function useKycDocuments() {
+  const { user } = useAuth();
+  return useQuery({
+    // ["kyc-documents", id] alone is useHasKycDocument's boolean; uploads invalidate both.
+    queryKey: ["kyc-documents", user?.id, "list"],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("kyc_documents")
+        .select("id, doc_type, status, note, created_at")
+        .eq("host_id", user!.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as KycDocument[];
     },
   });
 }

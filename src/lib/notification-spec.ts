@@ -6,6 +6,7 @@ import {
   CalendarCheck,
   ClipboardEdit,
   RotateCcw,
+  ShieldCheck,
   Star,
   UserPlus,
 } from "lucide-react";
@@ -15,7 +16,7 @@ import type { Notification } from "@/lib/database.types";
 /**
  * How each notification type reads in the Inbox. The Engine shows the host
  * audience of public.notification_types (new_guest, new_follower, new_review,
- * guest_refund_requested, payout_sent, HQ moderation); anything else falls back
+ * guest_refund_requested, payout_sent, HQ moderation and verification); anything else falls back
  * to the payload's own title/message. Team staff get new bookings, guest
  * cancellations (bookings.view) and payouts (payouts.view) too; payload.host_id
  * says which Spot.
@@ -89,6 +90,20 @@ const SPECS: Record<string, (p: Payload) => NotificationView> = {
     icon: AlertTriangle,
     tone: "danger",
     link: listingLink(p, "Edit listing"),
+  }),
+  verification_approved: (p) => ({
+    title: str(p, "title") ?? "You're a Verified Partner",
+    message: str(p, "message") ?? "TROVE verified your Spot.",
+    icon: ShieldCheck,
+    tone: "success",
+    link: { to: "/settings", label: "View verification" },
+  }),
+  verification_rejected: (p) => ({
+    title: str(p, "title") ?? "We couldn't verify your Spot yet",
+    message: str(p, "message") ?? "TROVE needs something updated before verifying your Spot.",
+    icon: AlertTriangle,
+    tone: "danger",
+    link: { to: "/settings", label: "Fix and resubmit" },
   }),
   listing_changes_requested: (p) => ({
     title: str(p, "title") ?? "Changes needed on your listing",
