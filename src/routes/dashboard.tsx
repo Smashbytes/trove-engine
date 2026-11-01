@@ -427,18 +427,21 @@ function MetricCard({
 }) {
   return (
     <div
-      className={`relative overflow-hidden rounded-tile p-5 ${featured ? "bg-gradient-brand text-primary-foreground shadow-glow-sm" : "card-flat"}`}
+      className={`relative overflow-hidden rounded-tile p-5 ${featured ? "bg-gradient-brand-deep text-white shadow-glow-sm" : "card-flat"}`}
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className={`eyebrow ${featured ? "text-primary-foreground/80" : ""}`}>{label}</p>
-          <p className="mt-3 font-display text-3xl font-bold">{value}</p>
-          <p className={`mt-2 text-xs ${featured ? "text-white/80" : "text-muted-foreground"}`}>
+          {/* .eyebrow sets its own muted colour, so the featured override needs `!`. */}
+          <p className={`eyebrow ${featured ? "text-white/85!" : ""}`}>{label}</p>
+          <p className={`mt-3 font-display text-3xl font-bold ${featured ? "text-white" : ""}`}>
+            {value}
+          </p>
+          <p className={`mt-2 text-xs ${featured ? "text-white/90" : "text-muted-foreground"}`}>
             {detail}
           </p>
         </div>
         <div
-          className={`flex h-10 w-10 items-center justify-center rounded-xl ${featured ? "bg-white/15 text-white" : "bg-primary/10 text-primary"}`}
+          className={`flex h-10 w-10 items-center justify-center rounded-xl ${featured ? "bg-white/20 text-white" : "bg-primary/10 text-primary"}`}
         >
           <Icon className="h-4 w-4" />
         </div>
