@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/lib/supabase";
+import { PASSWORD_HINT, passwordErrorCopy, passwordProblem } from "@/lib/password";
 
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
@@ -38,6 +39,10 @@ function ResetPasswordPage() {
   //      supabase-js on construction; we just watch for PASSWORD_RECOVERY).
   useEffect(() => {
     let cancelled = false;
+    // A failure never replaces a recovery that already worked: the link is
+    // single use, so a second check (React dev double-run, a late listener)
+    // always fails after the first one has signed the user in.
+    const notReady = (p: Phase): Phase => (p === "ready" ? p : "invalid");
 
     const run = async () => {
       try {
@@ -54,7 +59,7 @@ function ResetPasswordPage() {
           if (error) {
             console.error("[reset-password] verifyOtp failed:", error);
             setErrorMsg(error.message);
-            setPhase("invalid");
+            setPhase(notReady);
             return;
           }
           url.searchParams.delete("token_hash");
@@ -70,7 +75,7 @@ function ResetPasswordPage() {
           if (error) {
             console.error("[reset-password] exchangeCodeForSession failed:", error);
             setErrorMsg(error.message);
-            setPhase("invalid");
+            setPhase(notReady);
             return;
           }
           url.searchParams.delete("code");
@@ -79,25 +84,18 @@ function ResetPasswordPage() {
           return;
         }
 
-        // Already-exchanged or implicit-flow session: just check.
-        const { data, error } = await supabase.auth.getSession();
-        if (cancelled) return;
-        if (error) {
-          setErrorMsg(error.message);
-          setPhase("invalid");
-          return;
-        }
-        if (data.session) {
-          setPhase("ready");
-          return;
-        }
-
-        setPhase("invalid");
+        // Implicit flow: supabase-js reads #access_token…&type=recovery itself
+        // and fires PASSWORD_RECOVERY (listener below). Any other signed-in
+        // session is NOT a recovery: without the link this page would let
+        // whoever holds an unlocked device set a new password (ENG-L04-05).
+        // Changing a known password lives in Settings, behind the current one.
+        if (/type=recovery/.test(window.location.hash)) return;
+        setPhase(notReady);
       } catch (e) {
         if (cancelled) return;
         console.error("[reset-password] unexpected error:", e);
         setErrorMsg(e instanceof Error ? e.message : "Unable to verify reset link.");
-        setPhase("invalid");
+        setPhase(notReady);
       }
     };
 
@@ -109,9 +107,7 @@ function ResetPasswordPage() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (cancelled) return;
-      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
-        setPhase("ready");
-      }
+      if (event === "PASSWORD_RECOVERY" && session) setPhase("ready");
     });
 
     return () => {
@@ -122,8 +118,9 @@ function ResetPasswordPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (password.length < 8) {
-      toast.error("Password must be at least 8 characters.");
+    const problem = passwordProblem(password);
+    if (problem) {
+      toast.error(problem);
       return;
     }
     if (password !== confirm) {
@@ -131,12 +128,20 @@ function ResetPasswordPage() {
       return;
     }
 
+    // try/finally: a network drop must not leave the button on "Updating…".
     setBusy(true);
-    const { error } = await supabase.auth.updateUser({ password });
-    setBusy(false);
+    let error: { message: string } | null = null;
+    try {
+      ({ error } = await supabase.auth.updateUser({ password }));
+    } catch (err) {
+      console.error("[reset-password] updateUser threw:", err);
+      error = { message: "We couldn't reach TROVE. Check your connection and try again." };
+    } finally {
+      setBusy(false);
+    }
 
     if (error) {
-      toast.error(error.message);
+      toast.error(passwordErrorCopy(error.message));
       return;
     }
 
@@ -209,7 +214,8 @@ function ResetPasswordPage() {
             <p className="eyebrow text-primary mb-1">Account recovery</p>
             <h1 className="mb-1 font-display text-3xl font-bold">Set a new password</h1>
             <p className="mb-7 text-sm text-muted-foreground">
-              Pick something at least 8 characters long. You will be signed in straight away.
+              {PASSWORD_HINT}. You'll be signed in straight away, and signed out on your other
+              devices.
             </p>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
@@ -222,7 +228,7 @@ function ResetPasswordPage() {
                     type={showPw ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Min. 8 characters"
+                    placeholder="Min. 8, a letter and a number"
                     minLength={8}
                     required
                     className="h-11 rounded-xl border-border/60 bg-surface-1 pr-10 focus:border-primary/60 focus:ring-1 focus:ring-primary/30"

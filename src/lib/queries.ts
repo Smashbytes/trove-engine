@@ -142,7 +142,15 @@ export const LISTING_ROWS_CAP = 500;
 
 export type ListingBooking = Pick<
   Booking,
-  "id" | "guest_id" | "status" | "party_size" | "total_cents" | "created_at" | "checked_in_at" | "ticket_type_id" | "slot_id"
+  | "id"
+  | "guest_id"
+  | "status"
+  | "party_size"
+  | "total_cents"
+  | "created_at"
+  | "checked_in_at"
+  | "ticket_type_id"
+  | "slot_id"
 >;
 
 export function useListingBookings(listingId: string | undefined, limit = LISTING_ROWS_CAP) {
@@ -152,7 +160,9 @@ export function useListingBookings(listingId: string | undefined, limit = LISTIN
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
-        .select("id, guest_id, status, party_size, total_cents, created_at, checked_in_at, ticket_type_id, slot_id")
+        .select(
+          "id, guest_id, status, party_size, total_cents, created_at, checked_in_at, ticket_type_id, slot_id",
+        )
         .eq("listing_id", listingId!)
         .order("created_at", { ascending: false })
         .limit(limit);
@@ -220,7 +230,8 @@ export function useListingActivityStats(listingId: string | undefined) {
     // Under listingQueryKeys.bookings, so booking/ticket changes refresh it.
     queryKey: [...listingQueryKeys.bookings(listingId), "stats"],
     enabled: !!listingId,
-    queryFn: () => untypedRpc<ListingActivityStats>("listing_activity_stats", { p_listing: listingId }),
+    queryFn: () =>
+      untypedRpc<ListingActivityStats>("listing_activity_stats", { p_listing: listingId }),
   });
 }
 
@@ -247,7 +258,8 @@ export function useRecentBookings(limit = 6) {
 }
 
 export interface DashboardKpis {
-  revenueCents7d: number;
+  /** Null without payouts.view (the database leaves it out). */
+  revenueCents7d: number | null;
   bookings7d: number;
   fillRatePct: number;
   liveListings: number;
@@ -262,14 +274,14 @@ export function useDashboardKpis() {
     // Counted in the database (migration 0036), not by downloading rows.
     queryFn: async () => {
       const k = await untypedRpc<{
-        revenue_cents_7d: number;
+        revenue_cents_7d: number | null;
         bookings_7d: number;
         fill_rate_pct: number;
         live_listings: number;
         scans_7d: number;
       }>("host_dashboard_kpis", { p_host_id: activeHostId });
       return {
-        revenueCents7d: Number(k.revenue_cents_7d),
+        revenueCents7d: k.revenue_cents_7d == null ? null : Number(k.revenue_cents_7d),
         bookings7d: Number(k.bookings_7d),
         fillRatePct: Number(k.fill_rate_pct),
         liveListings: Number(k.live_listings),
@@ -285,16 +297,20 @@ export interface DailySalesPoint {
 }
 
 export function useSalesByDay(days = 14) {
-  const { activeHostId } = useAuth();
+  const { activeHostId, can } = useAuth();
   return useQuery<DailySalesPoint[]>({
     queryKey: ["sales-by-day", activeHostId, days],
-    enabled: !!activeHostId,
+    // Revenue is payouts.view only; the database refuses everyone else.
+    enabled: !!activeHostId && can("payouts.view"),
     // One row per South African calendar day, summed in the database (0036).
     queryFn: async () => {
-      const rows = await untypedRpc<Array<{ day: string; revenue_cents: number }>>("host_sales_by_day", {
-        p_host_id: activeHostId,
-        p_days: days,
-      });
+      const rows = await untypedRpc<Array<{ day: string; revenue_cents: number }>>(
+        "host_sales_by_day",
+        {
+          p_host_id: activeHostId,
+          p_days: days,
+        },
+      );
       return (rows ?? []).map((row) => {
         const [, month, day] = row.day.split("-").map(Number);
         return { date: `${month}/${day}`, revenueCents: Number(row.revenue_cents) };
@@ -595,7 +611,8 @@ export function useVerifyPayoutAccount() {
       });
       if (error) {
         const body = await edgeErrorBody(error);
-        if (typeof body?.escrow_status === "string") return body as unknown as PayoutVerificationResult;
+        if (typeof body?.escrow_status === "string")
+          return body as unknown as PayoutVerificationResult;
         throw new Error(typeof body?.error === "string" ? body.error : error.message);
       }
       return data as PayoutVerificationResult;
@@ -621,10 +638,7 @@ export function useHasKycDocument() {
               c: string,
               o: { count: "exact"; head: true },
             ) => {
-              eq: (
-                col: string,
-                v: string,
-              ) => Promise<{ count: number | null; error: unknown }>;
+              eq: (col: string, v: string) => Promise<{ count: number | null; error: unknown }>;
             };
           };
         }
@@ -655,18 +669,21 @@ export function useCreateListing() {
     // failure (or a closed tab) leaves nothing behind, so guests never see a
     // listing without its tickets and a retry can't create a duplicate.
     mutationFn: async (input: CreateListingInput) => {
-      const result = await untypedRpc<{ listing: Listing; publish_error: string | null }>("create_listing", {
-        p_listing: input.listing,
-        p_ticket_types: (input.ticketTypes ?? []).map((ticketType, index) => ({
-          ...ticketType,
-          sort_order: ticketType.sort_order ?? index,
-        })),
-        p_availability: input.availability ?? [],
-        p_media: (input.media ?? []).map((media, index) => ({
-          ...media,
-          sort_order: media.sort_order ?? index,
-        })),
-      });
+      const result = await untypedRpc<{ listing: Listing; publish_error: string | null }>(
+        "create_listing",
+        {
+          p_listing: input.listing,
+          p_ticket_types: (input.ticketTypes ?? []).map((ticketType, index) => ({
+            ...ticketType,
+            sort_order: ticketType.sort_order ?? index,
+          })),
+          p_availability: input.availability ?? [],
+          p_media: (input.media ?? []).map((media, index) => ({
+            ...media,
+            sort_order: media.sort_order ?? index,
+          })),
+        },
+      );
       if (result.publish_error) {
         // Saved but not published (e.g. payout setup missing): the draft stays.
         if (result.publish_error.includes("ESCROW_NOT_READY")) {
@@ -696,11 +713,11 @@ export interface UploadListingImageInput {
 }
 
 export function useUploadListingImage() {
-  const { user } = useAuth();
+  const { activeHostId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ file, listingId }: UploadListingImageInput) => {
-      if (!user) throw new Error("Not authenticated");
+      if (!activeHostId) throw new Error("Not authenticated");
       // Same limits as the listing-media bucket (the bucket refuses anything else).
       if (!LISTING_IMAGE_TYPES.includes(file.type)) {
         throw new Error("Upload a JPG, PNG or WebP image.");
@@ -711,7 +728,10 @@ export function useUploadListingImage() {
       }
 
       const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
-      const folder = listingId ? `${user.id}/${listingId}` : `${user.id}/_unsorted`;
+      // Images belong to the Spot, not the uploader (SHR-L04-10): staff with
+      // listings.manage write under the Spot's folder, and removing them from
+      // the team doesn't take the images with them.
+      const folder = listingId ? `${activeHostId}/${listingId}` : `${activeHostId}/_unsorted`;
       const objectName = `${folder}/${crypto.randomUUID()}.${extension}`;
 
       const { error: uploadError } = await supabase.storage
@@ -735,13 +755,18 @@ export function useUploadListingImage() {
  * other hosts break on the website and signed links (Instagram) expire.
  */
 export function useImportImageUrl() {
+  const { activeHostId } = useAuth();
   return useMutation({
     mutationFn: async (url: string) => {
-      const { data, error } = await supabase.functions.invoke("import-cover-image", { body: { url } });
+      const { data, error } = await supabase.functions.invoke("import-cover-image", {
+        body: { url, hostId: activeHostId },
+      });
       if (error) {
         const body = await edgeErrorBody(error);
         throw new Error(
-          typeof body?.error === "string" ? body.error : "We couldn't copy that image. Download it and upload it instead.",
+          typeof body?.error === "string"
+            ? body.error
+            : "We couldn't copy that image. Download it and upload it instead.",
         );
       }
       return (data as { url: string }).url;
@@ -854,7 +879,10 @@ async function edgeErrorBody(error: unknown): Promise<Record<string, unknown> | 
 export async function untypedRpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
   const { data, error } = await (
     supabase as unknown as {
-      rpc: (f: string, a: Record<string, unknown>) => Promise<{ data: T; error: { message: string } | null }>;
+      rpc: (
+        f: string,
+        a: Record<string, unknown>,
+      ) => Promise<{ data: T; error: { message: string } | null }>;
     }
   ).rpc(fn, args);
   if (error) throw error;
@@ -878,7 +906,9 @@ export function useCheckInBooking() {
     mutationFn: async ({ bookingId }: CheckInBookingInput) => {
       const data = await untypedRpc<CheckInResult>("check_in_booking", { p_booking_id: bookingId });
       if (data.result === "not_confirmed") {
-        throw new Error(`This booking can't be checked in: it's ${data.status.replace(/_/g, " ")}.`);
+        throw new Error(
+          `This booking can't be checked in: it's ${data.status.replace(/_/g, " ")}.`,
+        );
       }
       return data;
     },
@@ -931,7 +961,13 @@ export function useSetListingStatus() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ listingId, status }: { listingId: string; status: "live" | "paused" | "draft" }) => {
+    mutationFn: async ({
+      listingId,
+      status,
+    }: {
+      listingId: string;
+      status: "live" | "paused" | "draft";
+    }) => {
       const { data, error } = await supabase
         .from("listings")
         .update({ status })
@@ -981,8 +1017,15 @@ export function useDeleteListing() {
           p_listing_id: listingId,
           p_slot_id: null,
         });
-        const { data: listingRow } = await supabase.from("listings").select("metadata, cancelled_at").eq("id", listingId).maybeSingle();
-        const row = listingRow as { metadata?: { date?: string } | null; cancelled_at?: string | null } | null;
+        const { data: listingRow } = await supabase
+          .from("listings")
+          .select("metadata, cancelled_at")
+          .eq("id", listingId)
+          .maybeSingle();
+        const row = listingRow as {
+          metadata?: { date?: string } | null;
+          cancelled_at?: string | null;
+        } | null;
         const eventDate = row?.metadata?.date ? new Date(row.metadata.date).getTime() : NaN;
         const eventOver = Number.isFinite(eventDate) && eventDate < Date.now();
         if (!row?.cancelled_at && !eventOver && upcoming.bookings > 0) {
@@ -990,7 +1033,10 @@ export function useDeleteListing() {
             `${upcoming.bookings} booking${upcoming.bookings === 1 ? " is" : "s are"} still active. Use "Cancel event" so guests are told and refunded, or pause the listing to stop new bookings.`,
           );
         }
-        const { error } = await supabase.from("listings").update({ status: "archived" }).eq("id", listingId);
+        const { error } = await supabase
+          .from("listings")
+          .update({ status: "archived" })
+          .eq("id", listingId);
         if (error) throw error;
         return { archived: true };
       }
@@ -1018,11 +1064,19 @@ export interface CancelEventPreview {
 }
 
 /** Who a cancellation would affect: the whole listing, or one date (slotId). */
-export function useCancelEventPreview(listingId: string | undefined, slotId: string | null, enabled: boolean) {
+export function useCancelEventPreview(
+  listingId: string | undefined,
+  slotId: string | null,
+  enabled: boolean,
+) {
   return useQuery<CancelEventPreview>({
     queryKey: ["cancel-event-preview", listingId, slotId],
     enabled: enabled && !!listingId,
-    queryFn: () => untypedRpc<CancelEventPreview>("cancel_event_preview", { p_listing_id: listingId, p_slot_id: slotId }),
+    queryFn: () =>
+      untypedRpc<CancelEventPreview>("cancel_event_preview", {
+        p_listing_id: listingId,
+        p_slot_id: slotId,
+      }),
   });
 }
 
@@ -1037,14 +1091,22 @@ export interface CancelEventResult {
 
 export function useCancelEvent() {
   const queryClient = useQueryClient();
-  return useMutation<CancelEventResult, Error, { listingId: string; slotId: string | null; reason: string }>({
+  return useMutation<
+    CancelEventResult,
+    Error,
+    { listingId: string; slotId: string | null; reason: string }
+  >({
     mutationFn: async ({ listingId, slotId, reason }) => {
       const { data, error } = await supabase.functions.invoke("host-cancel-event", {
         body: { listing_id: listingId, slot_id: slotId, reason },
       });
       if (error) {
         const body = await edgeErrorBody(error);
-        throw new Error(typeof body?.error === "string" ? body.error : "We couldn't cancel this event. Nothing was changed.");
+        throw new Error(
+          typeof body?.error === "string"
+            ? body.error
+            : "We couldn't cancel this event. Nothing was changed.",
+        );
       }
       return data as CancelEventResult;
     },
@@ -1132,7 +1194,9 @@ export function useDeleteAvailability() {
       // The page offers "Cancel this date" instead of Delete once a slot has
       // bookings; this covers a booking that arrived after the page loaded.
       if (error?.code === "23503") {
-        throw new Error("Guests have booked this date, so it can't be deleted. Cancel the date instead.");
+        throw new Error(
+          "Guests have booked this date, so it can't be deleted. Cancel the date instead.",
+        );
       }
       if (error) throw error;
     },
@@ -1300,7 +1364,11 @@ export function useInviteTeamMember() {
       });
       if (error) {
         const body = await edgeErrorBody(error);
-        throw new Error(typeof body?.error === "string" ? body.error : "Could not send the invite. Please try again.");
+        throw new Error(
+          typeof body?.error === "string"
+            ? body.error
+            : "Could not send the invite. Please try again.",
+        );
       }
       return data as { invite: TeamInvite };
     },

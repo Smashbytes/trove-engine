@@ -9,8 +9,9 @@ import {
 } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
-import { AuthProvider, useAuth } from "@/lib/auth";
+import { AuthProvider, SIGNED_OUT_NOTICE_KEY, useAuth } from "@/lib/auth";
 
 // Auth-gate loader with an escape hatch: if the supabase session check is
 // still running after ~6s (cold network, broken cookie, etc.), surface a
@@ -168,6 +169,20 @@ function EngineAuthGate() {
       navigate({ to: "/onboarding" });
     }
   }, [isAuthenticated, hasWorkspace, isLoading, navigate, pathname, profile, isPublicRoute]);
+
+  // Why the app signed someone out by itself (14 idle days, or a sign-out that
+  // couldn't reach TROVE). Read once the Toaster below is mounted.
+  useEffect(() => {
+    if (isLoading) return;
+    try {
+      const notice = sessionStorage.getItem(SIGNED_OUT_NOTICE_KEY);
+      if (!notice) return;
+      sessionStorage.removeItem(SIGNED_OUT_NOTICE_KEY);
+      toast(notice, { duration: 10_000 });
+    } catch {
+      // Storage blocked: nothing to show.
+    }
+  }, [isLoading]);
 
   // Warm the auth dialog chunk once the page is idle (signed-out visitors only).
   useEffect(() => {

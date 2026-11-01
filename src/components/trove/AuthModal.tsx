@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DESKTOP_QUERY, useMediaQuery } from "@/hooks/use-media-query";
 import { useAuth } from "@/lib/auth";
+import { PASSWORD_HINT, passwordProblem } from "@/lib/password";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, ArrowRight, Sparkles, X, MailCheck } from "lucide-react";
 
@@ -124,6 +125,8 @@ function AuthFormPanel({ dismissible }: { dismissible: boolean }) {
   // is what screen-reader users actually hear (role="alert").
   const [formError, setFormError] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  // A message for the view we're switching to (the switch clears errors).
+  const carryError = useRef<string | null>(null);
 
   useEffect(() => {
     if (resendIn <= 0) return;
@@ -134,8 +137,12 @@ function AuthFormPanel({ dismissible }: { dismissible: boolean }) {
   // When the view changes, clear the old error and move focus to its first
   // field so keyboard users land in the right place.
   useEffect(() => {
-    setFormError(null);
-    const id = setTimeout(() => panelRef.current?.querySelector<HTMLElement>("input")?.focus(), 260);
+    setFormError(carryError.current);
+    carryError.current = null;
+    const id = setTimeout(
+      () => panelRef.current?.querySelector<HTMLElement>("input")?.focus(),
+      260,
+    );
     return () => clearTimeout(id);
   }, [view, tab]);
 
@@ -209,6 +216,11 @@ function AuthFormPanel({ dismissible }: { dismissible: boolean }) {
 
   function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
+    const problem = passwordProblem(password);
+    if (problem) {
+      fail(problem);
+      return;
+    }
     void run(async () => {
       const { error, needsCode, alreadyRegistered } = await signUpWithEmail(
         email,
@@ -220,8 +232,11 @@ function AuthFormPanel({ dismissible }: { dismissible: boolean }) {
         return;
       }
       if (alreadyRegistered) {
+        // Shown on the sign-in tab, after the switch has cleared old errors.
+        carryError.current =
+          "If you already have a TROVE account with this email, sign in or reset your password.";
+        toast(carryError.current);
         switchTab("signin");
-        fail("That email already has a TROVE account — sign in instead.");
         return;
       }
       if (needsCode) {
@@ -554,7 +569,7 @@ function AuthFormPanel({ dismissible }: { dismissible: boolean }) {
                         onChange={(e) => setPassword(e.target.value)}
                         show={showPw}
                         onToggle={() => setShowPw((s) => !s)}
-                        placeholder="Min. 8 characters"
+                        placeholder={PASSWORD_HINT}
                         minLength={8}
                       />
                     </div>

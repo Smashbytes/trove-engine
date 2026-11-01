@@ -49,7 +49,8 @@ function NewTicketPage() {
   function handleFilesPicked(picked: FileList | null) {
     if (!picked) return;
     const next = Array.from(picked).filter((f) => f.type.startsWith("image/"));
-    setFiles((prev) => [...prev, ...next].slice(0, 6));
+    // The database takes at most 5 attachments per message.
+    setFiles((prev) => [...prev, ...next].slice(0, 5));
   }
 
   function removeFile(idx: number) {
@@ -101,7 +102,10 @@ function NewTicketPage() {
         className="space-y-5 rounded-card border border-border/60 bg-card p-6 shadow-card"
       >
         <div>
-          <p id="ticket-category-label" className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          <p
+            id="ticket-category-label"
+            className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+          >
             Category
           </p>
           <div
@@ -137,7 +141,10 @@ function NewTicketPage() {
 
         <div className="grid gap-5 md:grid-cols-[1fr_auto]">
           <div>
-            <label htmlFor="ticket-title" className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            <label
+              htmlFor="ticket-title"
+              className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+            >
               Title
             </label>
             <input
@@ -151,11 +158,17 @@ function NewTicketPage() {
             />
           </div>
           <div>
-            <label htmlFor="ticket-priority" className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            <label
+              htmlFor="ticket-priority"
+              className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+            >
               Priority
             </label>
             <Select value={priority} onValueChange={(v) => setPriority(v as TicketPriority)}>
-              <SelectTrigger id="ticket-priority" className="mt-2 h-10 w-full rounded-lg border-border/60 bg-white/[0.03] px-3 text-sm text-foreground hover:border-primary/40 focus:border-primary/60 focus:ring-0 md:w-40">
+              <SelectTrigger
+                id="ticket-priority"
+                className="mt-2 h-10 w-full rounded-lg border-border/60 bg-white/[0.03] px-3 text-sm text-foreground hover:border-primary/40 focus:border-primary/60 focus:ring-0 md:w-40"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="border-border/60 bg-card text-foreground">
@@ -174,7 +187,10 @@ function NewTicketPage() {
         </div>
 
         <div>
-          <label htmlFor="ticket-details" className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          <label
+            htmlFor="ticket-details"
+            className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+          >
             Details
           </label>
           <textarea
@@ -196,7 +212,7 @@ function NewTicketPage() {
 
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Photos (optional, up to 6)
+            Photos (optional, up to 5)
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-3">
             {files.map((file, idx) => (

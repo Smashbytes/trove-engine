@@ -41,10 +41,12 @@ export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
 });
 
-
 function Dashboard() {
-  const { hostProfile } = useAuth();
+  const { hostProfile, can } = useAuth();
   const workspace = getHostWorkspace(hostProfile?.host_type);
+  // Revenue is for the owner and finance (payouts.view), not the door team.
+  const seesRevenue = can("payouts.view");
+  const canCreate = can("listings.manage");
   const verification = getVerificationCopy(hostProfile?.kyc_status);
 
   const listingsQuery = useHostListings();
@@ -59,13 +61,14 @@ function Dashboard() {
   const kpis = kpisQuery.data;
   const isEmpty = !listingsQuery.isLoading && listings.length === 0;
 
-  const heroActions = (
-    <Button className="bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95" asChild>
-      <Link to="/listings/new">
-        Create {workspace.singularLabel.toLowerCase()}
-      </Link>
+  const heroActions = canCreate ? (
+    <Button
+      className="bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95"
+      asChild
+    >
+      <Link to="/listings/new">Create {workspace.singularLabel.toLowerCase()}</Link>
     </Button>
-  );
+  ) : undefined;
 
   return (
     <AppShell>
@@ -133,19 +136,21 @@ function Dashboard() {
           <div className="rounded-card border border-white/8 bg-black/20 p-5">
             <p className="eyebrow text-white/55">Next moves</p>
             <div className="mt-4 space-y-3">
-              {hostProfile?.tradesafe_status === "escrow_ready" ? (
-                <ActionRow
-                  title={`Publish another ${workspace.singularLabel.toLowerCase()}`}
-                  body={`Add more inventory. It goes live as soon as you create it.`}
-                  to="/listings/new"
-                />
-              ) : (
-                <ActionRow
-                  title="Set up your payout account"
-                  body="Guests pay into TradeSafe escrow, so paid listings need your payout account before they can go live."
-                  to="/settings"
-                />
-              )}
+              {hostProfile?.tradesafe_status === "escrow_ready"
+                ? canCreate && (
+                    <ActionRow
+                      title={`Publish another ${workspace.singularLabel.toLowerCase()}`}
+                      body={`Add more inventory. It goes live as soon as you create it.`}
+                      to="/listings/new"
+                    />
+                  )
+                : can("payouts.manage") && (
+                    <ActionRow
+                      title="Set up your payout account"
+                      body="Guests pay into TradeSafe escrow, so paid listings need your payout account before they can go live."
+                      to="/settings"
+                    />
+                  )}
               <ActionRow
                 title={`Refine your ${workspace.profileLabel.toLowerCase()}`}
                 body="Tighten the public business story and keep the host identity consistent."
@@ -161,17 +166,22 @@ function Dashboard() {
         </div>
       </section>
 
-      {isEmpty && <EmptyWorkspace />}
+      {isEmpty && canCreate && <EmptyWorkspace />}
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div
+        className={`mt-6 grid gap-3 sm:grid-cols-2 ${seesRevenue ? "xl:grid-cols-4" : "xl:grid-cols-3"}`}
+      >
+        {seesRevenue && (
+          <MetricCard
+            featured
+            label="Revenue · 7d"
+            value={kpis?.revenueCents7d != null ? formatZar(kpis.revenueCents7d) : "—"}
+            detail="Confirmed and completed bookings net of fees"
+            icon={DollarSign}
+          />
+        )}
         <MetricCard
-          featured
-          label="Revenue · 7d"
-          value={kpis ? formatZar(kpis.revenueCents7d) : "—"}
-          detail="Confirmed and completed bookings net of fees"
-          icon={DollarSign}
-        />
-        <MetricCard
+          featured={!seesRevenue}
           label={`${workspace.bookingModeLabel} · 7d`}
           value={kpis?.bookings7d?.toString() ?? "—"}
           detail="Bookings in the last 7 days"
@@ -191,74 +201,74 @@ function Dashboard() {
         />
       </div>
 
-      <div className="mt-6 grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
-        <div className="rounded-card border border-border/60 bg-card p-5 shadow-card">
-          <div className="mb-4 flex items-end justify-between gap-4">
-            <div>
-              <h3 className="font-display text-xl font-semibold">Revenue pulse</h3>
-              <p className="text-xs text-muted-foreground">
-                Your booking revenue over the last 14 days.
-              </p>
+      <div className={`mt-6 grid gap-4 ${seesRevenue ? "xl:grid-cols-[1.25fr_0.75fr]" : ""}`}>
+        {seesRevenue && (
+          <div className="rounded-card border border-border/60 bg-card p-5 shadow-card">
+            <div className="mb-4 flex items-end justify-between gap-4">
+              <div>
+                <h3 className="font-display text-xl font-semibold">Revenue pulse</h3>
+                <p className="text-xs text-muted-foreground">
+                  Your booking revenue over the last 14 days.
+                </p>
+              </div>
+              <span className="text-xs text-muted-foreground">
+                {salesQuery.data?.length ?? 0} data points
+              </span>
             </div>
-            <span className="text-xs text-muted-foreground">
-              {salesQuery.data?.length ?? 0} data points
-            </span>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={(salesQuery.data ?? []).map((point) => ({
+                    date: point.date,
+                    revenue: point.revenueCents / 100,
+                  }))}
+                  margin={{ top: 10, right: 8, left: -12, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="host-revenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="oklch(0.75 0.3 340)" stopOpacity={0.75} />
+                      <stop offset="100%" stopColor="oklch(0.75 0.3 340)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.27 0.04 320 / 0.45)" />
+                  <XAxis
+                    dataKey="date"
+                    stroke="oklch(0.68 0.04 320)"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    stroke="oklch(0.68 0.04 320)"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "oklch(0.17 0.025 320)",
+                      border: "1px solid oklch(0.30 0.04 320 / 0.6)",
+                      borderRadius: 16,
+                      fontSize: 12,
+                    }}
+                    formatter={(value) => [`R ${Number(value).toLocaleString("en-ZA")}`, "Revenue"]}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="oklch(0.75 0.3 340)"
+                    strokeWidth={2.25}
+                    fill="url(#host-revenue)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={(salesQuery.data ?? []).map((point) => ({
-                  date: point.date,
-                  revenue: point.revenueCents / 100,
-                }))}
-                margin={{ top: 10, right: 8, left: -12, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient id="host-revenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="oklch(0.75 0.3 340)" stopOpacity={0.75} />
-                    <stop offset="100%" stopColor="oklch(0.75 0.3 340)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.27 0.04 320 / 0.45)" />
-                <XAxis
-                  dataKey="date"
-                  stroke="oklch(0.68 0.04 320)"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="oklch(0.68 0.04 320)"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: "oklch(0.17 0.025 320)",
-                    border: "1px solid oklch(0.30 0.04 320 / 0.6)",
-                    borderRadius: 16,
-                    fontSize: 12,
-                  }}
-                  formatter={(value) => [`R ${Number(value).toLocaleString("en-ZA")}`, "Revenue"]}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="oklch(0.75 0.3 340)"
-                  strokeWidth={2.25}
-                  fill="url(#host-revenue)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        )}
 
         <div className="rounded-card border border-border/60 bg-card p-5 shadow-card">
           <h3 className="font-display text-xl font-semibold">Recent activity</h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Your latest bookings, newest first.
-          </p>
+          <p className="mt-1 text-xs text-muted-foreground">Your latest bookings, newest first.</p>
           <div className="mt-5 space-y-3">
             {(recentBookingsQuery.data?.length ?? 0) === 0 && (
               <p className="rounded-2xl border border-dashed border-border/60 p-4 text-sm text-muted-foreground">
@@ -376,7 +386,9 @@ function Dashboard() {
                   />
                   <ListingMiniStat
                     label="Base price"
-                    value={listing.base_price_cents > 0 ? formatZar(listing.base_price_cents) : "TBC"}
+                    value={
+                      listing.base_price_cents > 0 ? formatZar(listing.base_price_cents) : "TBC"
+                    }
                   />
                 </div>
               </Link>
@@ -528,10 +540,11 @@ function EmptyWorkspace() {
             Once your first listing is up, your bookings, revenue and guests will show here.
           </p>
         </div>
-        <Button className="bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95" asChild>
-          <Link to="/listings/new">
-            Create listing
-          </Link>
+        <Button
+          className="bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95"
+          asChild
+        >
+          <Link to="/listings/new">Create listing</Link>
         </Button>
       </div>
     </div>
