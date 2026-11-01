@@ -22,12 +22,9 @@ import { isAnalyticsEnabled, setAnalyticsEnabled } from "@/lib/analytics";
 import { useAuth } from "@/lib/auth";
 import { getVerificationCopy } from "@/lib/host-workspace";
 import { useSubmitVerification, useUpdateNotificationPrefs } from "@/lib/queries";
-import {
-  useDisconnectWhatsApp,
-  useStartWhatsAppConnect,
-  useWhatsAppStatus,
-} from "@/lib/whatsapp";
+import { useDisconnectWhatsApp, useStartWhatsAppConnect, useWhatsAppStatus } from "@/lib/whatsapp";
 import { friendlyError } from "@/lib/errors";
+import { PASSWORD_HINT, passwordProblem } from "@/lib/password";
 import { closingDate, useAccountClosure, useRequestAccountClosure } from "@/lib/account-closure";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -87,6 +84,7 @@ function SettingsPage() {
 
   // ---- account & security ----
   const [email, setEmail] = useState(user?.email ?? "");
+  const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [savingEmail, setSavingEmail] = useState(false);
@@ -109,8 +107,13 @@ function SettingsPage() {
   };
 
   const savePassword = async () => {
-    if (password.length < 8) {
-      toast.error("Password must be at least 8 characters.");
+    if (!currentPassword) {
+      toast.error("Enter your current password.");
+      return;
+    }
+    const problem = passwordProblem(password);
+    if (problem) {
+      toast.error(problem);
       return;
     }
     if (password !== confirmPassword) {
@@ -118,14 +121,20 @@ function SettingsPage() {
       return;
     }
     setSavingPassword(true);
-    const { error } = await updatePassword(password);
-    setSavingPassword(false);
-    if (error) {
-      toast.error(error);
-    } else {
-      toast.success("Password updated.");
-      setPassword("");
-      setConfirmPassword("");
+    try {
+      const { error } = await updatePassword(currentPassword, password);
+      if (error) {
+        toast.error(error);
+      } else {
+        toast.success("Password updated. Your other devices have been signed out.");
+        setCurrentPassword("");
+        setPassword("");
+        setConfirmPassword("");
+      }
+    } catch (error) {
+      toast.error(friendlyError(error, "Couldn't update your password."));
+    } finally {
+      setSavingPassword(false);
     }
   };
 
@@ -212,12 +221,24 @@ function SettingsPage() {
               </Button>
             </div>
             <div className="space-y-3">
+              <Field
+                label="Current password"
+                hint="Forgot it? Sign out and use “Forgot password” on the sign-in screen."
+              >
+                <Input
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  type="password"
+                  autoComplete="current-password"
+                />
+              </Field>
               <Field label="New password">
                 <Input
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   type="password"
-                  placeholder="At least 8 characters"
+                  autoComplete="new-password"
+                  placeholder={PASSWORD_HINT}
                 />
               </Field>
               <Field label="Confirm new password">
@@ -225,6 +246,7 @@ function SettingsPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   type="password"
+                  autoComplete="new-password"
                 />
               </Field>
               <Button variant="outline" onClick={savePassword} disabled={savingPassword}>
@@ -243,61 +265,74 @@ function SettingsPage() {
         >
           <p className="mb-4 text-sm text-muted-foreground">{verification.message}</p>
           {hostProfile?.kyc_status === "rejected" && hostProfile.kyc_rejection_reason && (
-            <div role="alert" className="mb-4 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm">
+            <div
+              role="alert"
+              className="mb-4 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm"
+            >
               <p className="font-medium text-destructive">What TROVE needs from you</p>
               <p className="mt-1">{hostProfile.kyc_rejection_reason}</p>
               <p className="mt-2 text-xs text-muted-foreground">
-                Upload the right document below (and correct your details if needed), then press Resubmit for review.
+                Upload the right document below (and correct your details if needed), then press
+                Resubmit for review.
               </p>
             </div>
           )}
-          <div className="grid gap-4 md:grid-cols-2">
-            <Field
-              label="Registered business name"
-              hint="As registered with CIPC, e.g. Neon Underground (Pty) Ltd. Used by TradeSafe; guests see your Spot name instead."
-            >
-              <Input
-                value={legalName}
-                onChange={(e) => setLegalName(e.target.value)}
-                placeholder="As it appears on CIPC"
-                disabled={alreadySubmitted}
-              />
-            </Field>
-            <Field label="Registration number">
-              <Input
-                value={registration}
-                onChange={(e) => setRegistration(e.target.value)}
-                placeholder="e.g. 2021/123456/07"
-                disabled={alreadySubmitted}
-              />
-            </Field>
-          </div>
-          <div className="mt-4 flex items-center gap-3">
-            {/* submit_host_verification is a no-op once submitted/verified, so
+          {/* D-060: the registered name and number are the owner's alone. */}
+          {!isOwner ? (
+            <p className="text-xs text-muted-foreground">
+              Only the Spot owner can see and change the registered business details.
+            </p>
+          ) : (
+            <>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field
+                  label="Registered business name"
+                  hint="As registered with CIPC, e.g. Neon Underground (Pty) Ltd. Used by TradeSafe; guests see your Spot name instead."
+                >
+                  <Input
+                    value={legalName}
+                    onChange={(e) => setLegalName(e.target.value)}
+                    placeholder="As it appears on CIPC"
+                    disabled={alreadySubmitted}
+                  />
+                </Field>
+                <Field label="Registration number">
+                  <Input
+                    value={registration}
+                    onChange={(e) => setRegistration(e.target.value)}
+                    placeholder="e.g. 2021/123456/07"
+                    disabled={alreadySubmitted}
+                  />
+                </Field>
+              </div>
+              <div className="mt-4 flex items-center gap-3">
+                {/* submit_host_verification is a no-op once submitted/verified, so
                 offering "resubmit" there would silently drop the edits. */}
-            {!alreadySubmitted && (
-              <Button
-                onClick={saveVerification}
-                disabled={submitVerification.isPending}
-                className="bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95"
-              >
-                {submitVerification.isPending
-                  ? "Submitting…"
-                  : hostProfile?.kyc_status === "rejected"
-                    ? "Resubmit for review"
-                    : "Submit for verification"}
-              </Button>
-            )}
-            {alreadySubmitted && (
-              <span className="text-xs text-muted-foreground">
-                {hostProfile?.kyc_status === "verified"
-                  ? "Your business is verified."
-                  : "Submitted — TROVE is reviewing your details. Missing a document? Upload it below."}
-              </span>
-            )}
-          </div>
-          {/* Uploads go to the owner's own kyc-docs folder, so only the owner sees this. */}
-          {isOwner && <KycDocumentsCard canUpload={hostProfile?.kyc_status !== "verified"} />}
+                {!alreadySubmitted && (
+                  <Button
+                    onClick={saveVerification}
+                    disabled={submitVerification.isPending}
+                    className="bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95"
+                  >
+                    {submitVerification.isPending
+                      ? "Submitting…"
+                      : hostProfile?.kyc_status === "rejected"
+                        ? "Resubmit for review"
+                        : "Submit for verification"}
+                  </Button>
+                )}
+                {alreadySubmitted && (
+                  <span className="text-xs text-muted-foreground">
+                    {hostProfile?.kyc_status === "verified"
+                      ? "Your business is verified."
+                      : "Submitted — TROVE is reviewing your details. Missing a document? Upload it below."}
+                  </span>
+                )}
+              </div>
+              {/* Uploads go to the owner's own kyc-docs folder, so only the owner sees this. */}
+              <KycDocumentsCard canUpload={hostProfile?.kyc_status !== "verified"} />
+            </>
+          )}
         </Section>
 
         {/* WhatsApp connection */}
@@ -393,52 +428,61 @@ function SettingsPage() {
               : payoutsVerified
                 ? { label: "Accepted · bank check pending", tone: "warning" }
                 : tradesafeStatus === "escrow_failed"
-                ? { label: "Verification failed", tone: "destructive" }
-                : tradesafeStatus === "escrow_provisioning"
-                  ? { label: "Verifying…", tone: "warning" }
-                  : { label: "Not verified", tone: "warning" }
+                  ? { label: "Verification failed", tone: "destructive" }
+                  : tradesafeStatus === "escrow_provisioning"
+                    ? { label: "Verifying…", tone: "warning" }
+                    : { label: "Not verified", tone: "warning" }
           }
         >
-          <div className="grid gap-3 sm:grid-cols-3">
-            <LockedPref
-              label="Bank"
-              value={hostProfile?.tradesafe_bank_name ?? "Not set"}
-              note="Held by TradeSafe"
-            />
-            <LockedPref
-              label="Account"
-              value={
-                hostProfile?.tradesafe_bank_last4
-                  ? `•••• ${hostProfile.tradesafe_bank_last4}`
-                  : "Not set"
-              }
-              note="Only the last 4 digits are stored"
-            />
-            <LockedPref
-              label="Account type"
-              value={hostProfile?.tradesafe_account_type ?? "—"}
-              note={
-                bankVerified && hostProfile?.tradesafe_verified_at
-                  ? `Verified ${new Date(hostProfile.tradesafe_verified_at).toLocaleDateString("en-ZA")}`
-                  : hostProfile?.tradesafe_ready_at
-                    ? `Accepted ${new Date(hostProfile.tradesafe_ready_at).toLocaleDateString("en-ZA")}`
-                    : "Not yet verified"
-              }
-            />
-          </div>
+          {/* Bank details reach the browser only with payouts.view (SHR-L04-01). */}
+          {can("payouts.view") ? (
+            <>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <LockedPref
+                  label="Bank"
+                  value={hostProfile?.tradesafe_bank_name ?? "Not set"}
+                  note="Held by TradeSafe"
+                />
+                <LockedPref
+                  label="Account"
+                  value={
+                    hostProfile?.tradesafe_bank_last4
+                      ? `•••• ${hostProfile.tradesafe_bank_last4}`
+                      : "Not set"
+                  }
+                  note="Only the last 4 digits are stored"
+                />
+                <LockedPref
+                  label="Account type"
+                  value={hostProfile?.tradesafe_account_type ?? "—"}
+                  note={
+                    bankVerified && hostProfile?.tradesafe_verified_at
+                      ? `Verified ${new Date(hostProfile.tradesafe_verified_at).toLocaleDateString("en-ZA")}`
+                      : hostProfile?.tradesafe_ready_at
+                        ? `Accepted ${new Date(hostProfile.tradesafe_ready_at).toLocaleDateString("en-ZA")}`
+                        : "Not yet verified"
+                  }
+                />
+              </div>
 
-          <p className="mt-4 text-xs leading-5 text-muted-foreground">
-            {bankVerified
-              ? "TradeSafe has verified this bank account. Paid listings can go live, and funds are released here once each booking's escrow window closes."
-              : payoutsVerified
-                ? "TradeSafe accepted your payout details, so paid listings can go live and take bookings. It is now verifying the bank account itself; guest payments stay safely in escrow and are released here once that check is done."
-                : "Until TradeSafe accepts your payout details, paid listings stay in draft and no funds can be released to you."}
-            {hostProfile?.tradesafe_last_error && !payoutsVerified && (
-              <span className="mt-1 block text-destructive">
-                Last TradeSafe response: {hostProfile.tradesafe_last_error}
-              </span>
-            )}
-          </p>
+              <p className="mt-4 text-xs leading-5 text-muted-foreground">
+                {bankVerified
+                  ? "TradeSafe has verified this bank account. Paid listings can go live, and funds are released here once each booking's escrow window closes."
+                  : payoutsVerified
+                    ? "TradeSafe accepted your payout details, so paid listings can go live and take bookings. It is now verifying the bank account itself; guest payments stay safely in escrow and are released here once that check is done."
+                    : "Until TradeSafe accepts your payout details, paid listings stay in draft and no funds can be released to you."}
+                {hostProfile?.tradesafe_last_error && !payoutsVerified && (
+                  <span className="mt-1 block text-destructive">
+                    Last TradeSafe response: {hostProfile.tradesafe_last_error}
+                  </span>
+                )}
+              </p>
+            </>
+          ) : (
+            <p className="text-xs leading-5 text-muted-foreground">
+              Bank details are visible to the Spot owner and finance teammates only.
+            </p>
+          )}
 
           <div className="mt-6 flex justify-end">
             {canManagePayouts ? (
@@ -487,14 +531,17 @@ function CloseAccountCard() {
   const [reason, setReason] = useState("");
   const closure = useAccountClosure(open);
   const request = useRequestAccountClosure();
-  const blockers = request.data && !request.data.ok ? request.data.blockers : (closure.data?.blockers ?? []);
+  const blockers =
+    request.data && !request.data.ok ? request.data.blockers : (closure.data?.blockers ?? []);
   const staffSeat = !!activeHostId && activeHostId !== user?.id;
 
   function closeNow() {
     request.mutate(reason, {
       onSuccess: async (res) => {
         if (!res.ok) return;
-        toast.success(`Your account will be closed on ${closingDate(res.wipeAfter)}. Sign in before then to keep it.`);
+        toast.success(
+          `Your account will be closed on ${closingDate(res.wipeAfter)}. Sign in before then to keep it.`,
+        );
         await signOut();
         navigate({ to: "/" });
       },
@@ -510,18 +557,29 @@ function CloseAccountCard() {
             ? "This closes your own TROVE account, not the Spot you're working in. To leave a team only, ask the Spot owner to remove you."
             : "Closing your account also closes your Spot: listings are archived and guests can no longer find it."}
         </p>
-        <Button variant="outline" className="border-destructive/40 text-destructive hover:bg-destructive/10" onClick={() => setOpen(true)}>
+        <Button
+          variant="outline"
+          className="border-destructive/40 text-destructive hover:bg-destructive/10"
+          onClick={() => setOpen(true)}
+        >
           Close my account
         </Button>
       </div>
     );
   }
-  if (closure.isLoading) return <p className="text-sm text-muted-foreground" role="status">Checking your account…</p>;
+  if (closure.isLoading)
+    return (
+      <p className="text-sm text-muted-foreground" role="status">
+        Checking your account…
+      </p>
+    );
   if (closure.isError) {
     return (
       <div className="space-y-2">
         <p className="text-sm text-muted-foreground">We couldn't check your account right now.</p>
-        <Button variant="outline" size="sm" onClick={() => closure.refetch()}>Try again</Button>
+        <Button variant="outline" size="sm" onClick={() => closure.refetch()}>
+          Try again
+        </Button>
       </div>
     );
   }
@@ -531,12 +589,27 @@ function CloseAccountCard() {
         <p className="text-sm font-semibold">Finish these first</p>
         <ul className="space-y-2">
           {blockers.map((b) => (
-            <li key={b.code} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-sm">{b.message}</li>
+            <li
+              key={b.code}
+              className="rounded-2xl border border-white/8 bg-white/[0.03] p-3 text-sm"
+            >
+              {b.message}
+            </li>
           ))}
         </ul>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => { setOpen(false); request.reset(); }}>OK</Button>
-          <Button variant="ghost" asChild><Link to="/listings">Go to listings</Link></Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setOpen(false);
+              request.reset();
+            }}
+          >
+            OK
+          </Button>
+          <Button variant="ghost" asChild>
+            <Link to="/listings">Go to listings</Link>
+          </Button>
         </div>
       </div>
     );
@@ -545,15 +618,23 @@ function CloseAccountCard() {
     <div className="space-y-4">
       <p className="text-sm font-semibold">Close your TROVE account?</p>
       <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-        You'll be signed out on every device, your live listings are paused and your Spot is hidden straight away. You
-        have 14 days to change your mind: sign in again and choose Keep my account. After that your personal details
-        and the Spot's public profile are wiped and this email can't be used to sign in to this account again.
+        You'll be signed out on every device, your live listings are paused and your Spot is hidden
+        straight away. You have 14 days to change your mind: sign in again and choose Keep my
+        account. After that your personal details and the Spot's public profile are wiped and this
+        email can't be used to sign in to this account again.
       </p>
       <Field label="Why are you leaving? (optional)">
-        <Textarea value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} rows={2} />
+        <Textarea
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          maxLength={500}
+          rows={2}
+        />
       </Field>
       <div className="flex flex-wrap justify-end gap-2">
-        <Button variant="outline" onClick={() => setOpen(false)}>Keep my account</Button>
+        <Button variant="outline" onClick={() => setOpen(false)}>
+          Keep my account
+        </Button>
         <Button variant="destructive" disabled={request.isPending} onClick={closeNow}>
           {request.isPending ? "Closing…" : "Close account"}
         </Button>
@@ -577,8 +658,8 @@ function PrivacyDataCard() {
           Product analytics
         </p>
         <p className="mt-1 text-sm leading-6 text-muted-foreground">
-          Anonymous usage stats (PostHog) that help us improve the Engine. We
-          never link them to your account. Details in the{" "}
+          Anonymous usage stats (PostHog) that help us improve the Engine. We never link them to
+          your account. Details in the{" "}
           <a
             href="https://www.welovetrove.co.za/legal/privacy"
             target="_blank"
@@ -594,7 +675,6 @@ function PrivacyDataCard() {
     </div>
   );
 }
-
 
 function LockedPref({
   label,
@@ -742,7 +822,11 @@ function WhatsAppCard() {
         disabled={start.isPending || waiting}
         className="bg-gradient-brand text-primary-foreground shadow-glow-sm hover:opacity-95"
       >
-        {waiting ? "Waiting for your message…" : start.isPending ? "Preparing…" : "Connect WhatsApp"}
+        {waiting
+          ? "Waiting for your message…"
+          : start.isPending
+            ? "Preparing…"
+            : "Connect WhatsApp"}
       </Button>
     </div>
   );

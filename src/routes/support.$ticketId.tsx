@@ -76,7 +76,8 @@ function TicketDetailPage() {
   function handleReplyFiles(picked: FileList | null) {
     if (!picked) return;
     const next = Array.from(picked).filter((f) => f.type.startsWith("image/"));
-    setReplyFiles((prev) => [...prev, ...next].slice(0, 6));
+    // The database takes at most 5 attachments per message.
+    setReplyFiles((prev) => [...prev, ...next].slice(0, 5));
   }
 
   async function handleReply(e: FormEvent) {

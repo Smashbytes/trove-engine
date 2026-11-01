@@ -1,8 +1,106 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 import type { HostProfile, Profile, TeamRole } from "./database.types";
 import { ALL_PERMISSIONS, type PermissionKey } from "./permissions";
+import { passwordErrorCopy } from "./password";
+
+// ---------------------------------------------------------------------------
+// Spot details any team member may read (SHR-L04-01)
+// ---------------------------------------------------------------------------
+// Signed-in users can only select these host_profiles columns. Bank, legal and
+// WhatsApp details come from host_private_details(): the owner and staff with
+// payouts.view get the bank details, only the owner gets the legal name,
+// registration number and WhatsApp number (D-060).
+
+const HOST_PROFILE_COLUMNS = [
+  "user_id, slug, display_name, bio, hero_url, city, host_type, social_links, notification_prefs",
+  "address, address_number, lat, lng, location_place_id, location_json",
+  "kyc_status, kyc_rejection_reason, verified, verified_at, response_rate",
+  "suspended, suspended_at, suspended_reason, payouts_frozen, payouts_frozen_at, payouts_paused",
+  "bank_account_verified, whatsapp_verified_at",
+  "tradesafe_status, tradesafe_ready_at, tradesafe_token_created_at, tradesafe_verified, tradesafe_verified_at",
+  "created_at, updated_at",
+].join(", ");
+
+async function withPrivateDetails(hp: HostProfile, allowed: boolean): Promise<HostProfile> {
+  if (!allowed) return hp;
+  const { data, error } = await (
+    supabase as unknown as {
+      rpc: (
+        f: string,
+        a: Record<string, unknown>,
+      ) => Promise<{ data: Partial<HostProfile> | null; error: { message: string } | null }>;
+    }
+  ).rpc("host_private_details", { p_host_id: hp.user_id });
+  if (error) console.error("[auth] host_private_details failed:", error);
+  return { ...hp, ...(data ?? {}) };
+}
+
+// ---------------------------------------------------------------------------
+// Sign-out after 14 days without use (D-059)
+// ---------------------------------------------------------------------------
+// The Free plan can't time-box sessions on the server, so the Engine does it:
+// every visit and interaction stamps this device; a session found more than 14
+// days after the last stamp is signed out before anything loads.
+
+const LAST_ACTIVE_KEY = "trove:last-active";
+const IDLE_LIMIT_MS = 14 * 24 * 60 * 60 * 1000;
+const STAMP_EVERY_MS = 5 * 60 * 1000;
+/** Shown once on the next screen after the app signs someone out by itself. */
+export const SIGNED_OUT_NOTICE_KEY = "trove:signed-out-notice";
+
+function readLastActive(): number | null {
+  try {
+    const value = Number(localStorage.getItem(LAST_ACTIVE_KEY));
+    return Number.isFinite(value) && value > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function stampActive(force = false) {
+  try {
+    const last = readLastActive();
+    if (force || !last || Date.now() - last > STAMP_EVERY_MS) {
+      localStorage.setItem(LAST_ACTIVE_KEY, String(Date.now()));
+    }
+  } catch {
+    // Storage blocked (private mode): the idle rule just doesn't apply.
+  }
+}
+
+function idleTooLong(): boolean {
+  const last = readLastActive();
+  return last !== null && Date.now() - last > IDLE_LIMIT_MS;
+}
+
+function leaveNotice(message: string) {
+  try {
+    sessionStorage.setItem(SIGNED_OUT_NOTICE_KEY, message);
+  } catch {
+    // ignore
+  }
+}
+
+// supabase-js keeps the session when the logout request fails (no signal),
+// with any scope: it returns the error before removing the stored session.
+// Drop this device's copy ourselves; the caller reloads so the client starts
+// from the cleared cookies.
+function forgetSessionOnThisDevice() {
+  for (const part of document.cookie.split(";")) {
+    const name = part.split("=")[0]?.trim();
+    if (name?.startsWith("sb-") && name.includes("-auth-token")) {
+      document.cookie = `${name}=; Max-Age=0; path=/; SameSite=Lax`;
+    }
+  }
+  try {
+    localStorage.removeItem(LAST_ACTIVE_KEY);
+  } catch {
+    // ignore
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Workspace model
@@ -73,7 +171,9 @@ interface AuthContextValue {
   resendSignupCode: (email: string) => Promise<{ error: string | null }>;
   resetPassword: (email: string) => Promise<{ error: string | null }>;
   updateEmail: (email: string) => Promise<{ error: string | null }>;
-  updatePassword: (password: string) => Promise<{ error: string | null }>;
+  /** Settings: needs the current password (Supabase checks it). /reset-password doesn't, it has the recovery link. */
+  updatePassword: (currentPassword: string, password: string) => Promise<{ error: string | null }>;
+  /** Signs out everywhere; if the request fails, at least this device is signed out (page reloads). */
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -105,6 +205,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalView, setAuthModalView] = useState<"signin" | "signup">("signin");
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     let cancelled = false;
@@ -114,10 +215,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!cancelled) setIsLoading(false);
     }, 8000);
 
+    // Email links (/reset-password, /auth/confirm) sign the user in on purpose,
+    // so an old stamp must not sign them straight back out.
+    const fromEmailLink = /^\/(reset-password|auth\/confirm)/.test(window.location.pathname);
+
     supabase.auth
       .getSession()
-      .then(({ data: { session } }) => {
+      .then(async ({ data: { session } }) => {
         if (cancelled) return;
+        if (session && !fromEmailLink && idleTooLong()) {
+          leaveNotice(
+            "You were signed out because this device hadn't used TROVE Engine for 14 days. Sign in again to continue.",
+          );
+          const { error } = await supabase.auth.signOut({ scope: "local" });
+          if (error) {
+            forgetSessionOnThisDevice();
+            window.location.reload();
+            return;
+          }
+          if (cancelled) return;
+          session = null;
+        } else if (session) {
+          stampActive(fromEmailLink);
+        }
         setSession(session);
         if (session) {
           loadedForUserId = session.user.id;
@@ -154,6 +274,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setWorkspaces([]);
         setActiveHostId(null);
         setIsLoading(false);
+        // Nothing from the last user (bookings, guests, revenue) stays in memory.
+        if (event === "SIGNED_OUT") queryClient.clear();
         // Only a real sign-out should close the modal. INITIAL_SESSION also
         // lands here with a null session and must not stomp a modal that a
         // landing CTA or ?auth= deep link just opened.
@@ -183,7 +305,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearTimeout(safetyTimeout);
       subscription.unsubscribe();
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // D-059: keep stamping while the host uses the app; a tab left open for 14
+  // days is signed out the moment it's looked at again.
+  const signedIn = !!session;
+  useEffect(() => {
+    if (!signedIn) return;
+    const onActivity = () => stampActive();
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      if (idleTooLong()) {
+        leaveNotice(
+          "You were signed out because this device hadn't used TROVE Engine for 14 days. Sign in again to continue.",
+        );
+        void supabase.auth.signOut({ scope: "local" }).then(({ error }) => {
+          if (error) forgetSessionOnThisDevice();
+          window.location.replace("/");
+        });
+        return;
+      }
+      stampActive();
+    };
+    window.addEventListener("pointerdown", onActivity, { passive: true });
+    window.addEventListener("keydown", onActivity);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("pointerdown", onActivity);
+      window.removeEventListener("keydown", onActivity);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [signedIn]);
 
   async function loadWorkspaces(userId: string, own: HostProfile | null) {
     const list: Workspace[] = [];
@@ -201,23 +353,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data, error } = await supabase
       .from("host_team_members")
-      .select("host_id, role, permissions, status, host_profiles(*)")
+      .select(`host_id, role, permissions, status, host_profiles(${HOST_PROFILE_COLUMNS})`)
       .eq("member_user_id", userId)
       .eq("status", "active");
     if (error) console.error("[auth] memberships fetch failed:", error);
 
-    for (const row of (data ?? []) as unknown as MembershipRow[]) {
-      if (!row.host_profiles) continue;
-      if (list.some((w) => w.hostId === row.host_id)) continue; // own spot wins
+    const rows = ((data ?? []) as unknown as MembershipRow[]).filter(
+      (row) => row.host_profiles && row.host_id !== own?.user_id, // own spot wins
+    );
+    const profiles = await Promise.all(
+      rows.map((row) =>
+        withPrivateDetails(row.host_profiles!, (row.permissions ?? []).includes("payouts.view")),
+      ),
+    );
+    rows.forEach((row, i) => {
       list.push({
         hostId: row.host_id,
-        hostProfile: row.host_profiles,
+        hostProfile: profiles[i],
         role: row.role,
         permissions: row.permissions ?? [],
         isOwner: false,
-        label: workspaceLabel(row.host_profiles, "Team spot"),
+        label: workspaceLabel(profiles[i], "Team spot"),
       });
-    }
+    });
 
     setWorkspaces(list);
 
@@ -247,11 +405,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (p?.is_host) {
         const { data: hp, error: hpErr } = await supabase
           .from("host_profiles")
-          .select("*")
+          .select(HOST_PROFILE_COLUMNS)
           .eq("user_id", userId)
           .maybeSingle();
         if (hpErr) console.error("[auth] host_profiles fetch failed:", hpErr);
-        own = hp ?? null;
+        own = hp ? await withPrivateDetails(hp as unknown as HostProfile, true) : null;
       }
       setOwnHostProfile(own);
       await loadWorkspaces(userId, own);
@@ -272,8 +430,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithEmail = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    if (!error) stampActive(true);
     const unconfirmed =
-      !!error && (error.code === "email_not_confirmed" || /email not confirmed/i.test(error.message));
+      !!error &&
+      (error.code === "email_not_confirmed" || /email not confirmed/i.test(error.message));
     return { error: error?.message ?? null, unconfirmed };
   };
 
@@ -287,7 +447,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         emailRedirectTo: `${window.location.origin}/onboarding`,
       },
     });
-    if (error) return { error: error.message, needsCode: false, alreadyRegistered: false };
+    if (error)
+      return {
+        error: passwordErrorCopy(error.message),
+        needsCode: false,
+        alreadyRegistered: false,
+      };
     // Supabase hides whether an email is taken: for an already-CONFIRMED
     // account it returns a user with no identities and sends nothing.
     const alreadyRegistered = !!data.user && (data.user.identities?.length ?? 0) === 0;
@@ -300,6 +465,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       token: code.trim(),
       type: "signup",
     });
+    if (!error) stampActive(true);
     return { error: error?.message ?? null };
   };
 
@@ -327,13 +493,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error?.message ?? null };
   };
 
-  const updatePassword = async (password: string) => {
-    const { error } = await supabase.auth.updateUser({ password });
-    return { error: error?.message ?? null };
+  const updatePassword = async (currentPassword: string, password: string) => {
+    // Supabase refuses a password change without the current one (SHR-L04-05);
+    // only a recovery link skips it.
+    const { error } = await supabase.auth.updateUser({
+      password,
+      current_password: currentPassword,
+    });
+    return { error: error ? passwordErrorCopy(error.message, error.code) : null };
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    let failed = false;
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error("[auth] sign-out failed:", error);
+        failed = true;
+      }
+    } catch (error) {
+      console.error("[auth] sign-out threw:", error);
+      failed = true;
+    }
+    queryClient.clear();
+    if (!failed) {
+      try {
+        localStorage.removeItem(LAST_ACTIVE_KEY);
+      } catch {
+        // ignore
+      }
+      return;
+    }
+    // ENG-L04-03: the request didn't reach TROVE. Sign this device out anyway
+    // and say so: the session may still be live on other devices.
+    forgetSessionOnThisDevice();
+    leaveNotice(
+      "Signed out on this device. We couldn't reach TROVE, so you may still be signed in on other devices. Sign in and out again when you're back online.",
+    );
+    window.location.replace("/");
   };
 
   const refreshProfile = async () => {
