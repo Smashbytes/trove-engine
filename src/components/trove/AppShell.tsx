@@ -5,6 +5,7 @@ import {
   ChevronsUpDown,
   LogOut,
   Menu,
+  QrCode,
   Snowflake,
   Sparkles,
   X,
@@ -68,6 +69,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const navItems = workspace.nav.filter((item) => !item.perm || can(item.perm));
   const roleLabel = activeRole === "owner" || !activeRole ? "Owner" : ROLE_META[activeRole].label;
   const verification = getVerificationCopy(hostProfile?.kyc_status);
+  // Phone/tablet shortcut to the door scanner (staff scan tickets on their phones).
+  const showScanFab = can("scanner.use") && !path.startsWith("/scanner");
   const handleLogout = async () => {
     await signOut();
     navigate({ to: "/" });
@@ -288,7 +291,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
           </div>
         </header>
-        <main className="flex-1 space-y-4 px-4 py-6 lg:px-8 lg:py-8">
+        <main
+          className={`flex-1 space-y-4 px-4 py-6 lg:px-8 lg:py-8 ${showScanFab ? "pb-28" : ""}`}
+        >
           {hostProfile?.suspended && (
             <div className="flex items-start gap-3 rounded-2xl border border-destructive/35 bg-destructive/8 p-4">
               <AlertOctagon className="mt-0.5 size-5 shrink-0 text-destructive" />
@@ -324,6 +329,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+
+      {showScanFab && !mobileOpen && (
+        <Link
+          to="/scanner"
+          aria-label="Scan tickets"
+          className="fixed right-4 bottom-[calc(1.25rem+env(safe-area-inset-bottom))] z-20 flex items-center gap-2 rounded-full bg-gradient-brand-deep py-3 pr-5 pl-4 font-display text-sm font-semibold text-white shadow-glow ring-1 ring-white/15 transition-transform active:scale-95 lg:hidden"
+        >
+          <span className="relative flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
+            <span className="absolute inset-0 animate-ping rounded-full bg-white/20 motion-reduce:hidden" />
+            <QrCode aria-hidden className="h-4 w-4" />
+          </span>
+          Scan
+        </Link>
+      )}
     </div>
   );
 }

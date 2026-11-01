@@ -173,6 +173,11 @@
   }
   .bg-gradient-brand { background-image: var(--gradient-brand); }
   .bg-gradient-brand-soft { background-image: var(--gradient-brand-soft); }
+  /* Deeper brand gradient for tiles with white text on top. --gradient-brand's bright
+     pink start is too light for white figures; this starts at --primary-fill (AA). */
+  .bg-gradient-brand-deep {
+    background-image: linear-gradient(135deg, var(--primary-fill), oklch(0.5 0.25 330) 55%, oklch(0.44 0.22 300));
+  }
   /* Placeholder fill for a missing cover/hero image */
   .bg-cover-placeholder {
     background-image: linear-gradient(135deg, oklch(0.62 0.26 0 / 0.22), oklch(0.52 0.25 300 / 0.18), oklch(1 0 0 / 0.02));
